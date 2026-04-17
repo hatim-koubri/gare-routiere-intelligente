@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Base de données MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: gare_mysql
+    restart: always
+    ports:
+      - "3307:3306"  # Port 3307 sur votre PC → 3306 dans Docker
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gare_routiere
+      MYSQL_USER: gare_user
+      MYSQL_PASSWORD: gare_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - gare_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin (interface web)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: gare_phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    networks:
+      - gare_network
+    depends_on:
+      - mysql
+
+networks:
+  gare_network:
+
+volumes:
+  mysql_data:

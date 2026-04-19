@@ -1,0 +1,29 @@
+{
+  "common": {
+    "login": "Se connecter",
+    "register": "S'inscrire",
+    "logout": "Se déconnecter",
+    "dashboard": "Tableau de bord",
+    "welcome": "Bienvenue",
+    "loading": "Chargement...",
+    "noAccount": "Pas de compte ?"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Téléphone",
+    "role": "Rôle",
+    "traveler": "Voyageur",
+    "driver": "Chauffeur"
+  },
+  "offline": {
+    "horaires": "Horaires",
+    "download": "Télécharger",
+    "saveOffline": "Sauvegarder offline",
+    "sync": "Synchroniser",
+    "notifications": "Notifications"
+  }
+}

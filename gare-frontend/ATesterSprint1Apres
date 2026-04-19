@@ -1,0 +1,13 @@
+📁 US-07 : Télécharger horaires offline (7 jours)
+    API offline:lib/api/offline.ts
+    components/offline/HoraireDownload.tsx
+    HoraireOfflineController.java
+
+📁 US-08 : Télécharger plan de la gare
+    components/offline/PlanGareDownload.tsx
+
+📁 US-09 : Alertes push après reconnexion    
+    components/offline/NotificationSync.tsx
+    lib/api/notifications.ts
+    NotificationOfflineController.java
+

@@ -5,7 +5,33 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="079be014-9a32-4b03-8542-5457e047805a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/gare-backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Annonce.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Annonce.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Bus.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Bus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Chauffeur.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Chauffeur.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/CodePromo.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/CodePromo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Quai.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Quai.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminQuaiService.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminQuaiService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/login/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/register/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/globals.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/auth/RegisterForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/auth/RegisterForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/layout/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/layout/Footer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/lib/auth/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/lib/auth/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/next.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/next.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/tailwind.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/types/index.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +63,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;Spring Boot.GareBackendApplication.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;sprint1/frontend-rayan&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;sprint2/frontend-rayan&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/rayan/OneDrive/Documents/GIGRDEV2/gare-routiere-intelligente&quot;,
@@ -79,6 +105,11 @@
       <workItem from="1776548342769" duration="618000" />
       <workItem from="1776548978317" duration="611000" />
       <workItem from="1776550389030" duration="311000" />
+      <workItem from="1776607297593" duration="5766000" />
+      <workItem from="1776627867103" duration="3760000" />
+      <workItem from="1776696193021" duration="201000" />
+      <workItem from="1776728121293" duration="2827000" />
+      <workItem from="1776770955086" duration="775000" />
     </task>
     <servers />
   </component>

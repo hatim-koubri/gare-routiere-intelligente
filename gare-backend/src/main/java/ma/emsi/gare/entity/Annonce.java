@@ -1,5 +1,6 @@
 package ma.emsi.gare.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Annonce {
 
     @Id
@@ -39,5 +41,6 @@ public class Annonce {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "compagnie_id")
-    private Compagnie compagnie; // null = annonce globale gare
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Compagnie compagnie;
 }

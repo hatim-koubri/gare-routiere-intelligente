@@ -47,6 +47,7 @@ public class AdminQuaiService {
         }
 
         attribuerCompagnie(quai, compagnieId);
+        quai.setDisponible(false);
         return quaiRepository.save(quai);
     }
 
@@ -59,6 +60,14 @@ public class AdminQuaiService {
     }
 
     public List<Quai> getTousLesQuais() {
+        List<Quai> quais = quaiRepository.findAll();
+        quais.forEach(q -> {
+            boolean shouldBeDisponible = q.getCompagnie() == null;
+            if (q.isDisponible() != shouldBeDisponible) {
+                q.setDisponible(shouldBeDisponible);
+                quaiRepository.save(q);
+            }
+        });
         return quaiRepository.findAll();
     }
 

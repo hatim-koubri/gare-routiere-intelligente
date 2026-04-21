@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { authApi } from '@/lib/api/auth';
 import { User, Role } from '@/types';
 import { storage } from '@/lib/utils/storage';
+import { useRouter, useParams } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +28,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const { locale } = useParams() as { locale: string };
 
   useEffect(() => {
     const storedUser = storage.getUser();
@@ -38,24 +41,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
-    setUser({
+    const loggedUser = {
       id: response.userId,
       email: response.email,
       nom: response.nom,
       prenom: response.prenom,
       role: response.role,
-    });
+    };
+    setUser(loggedUser);
+    
+    // Redirection selon le rôle
+    if (response.role === Role.ADMIN) {
+      router.push(`/${locale}/admin`);
+    } else {
+      router.push(`/${locale}/dashboard`);
+    }
   };
 
   const register = async (data: any) => {
     const response = await authApi.register(data);
-    setUser({
+    const newUser = {
       id: response.userId,
       email: response.email,
       nom: response.nom,
       prenom: response.prenom,
       role: response.role,
-    });
+    };
+    setUser(newUser);
+    
+    // Redirection selon le rôle après inscription
+    if (response.role === Role.ADMIN) {
+      router.push(`/${locale}/admin`);
+    } else {
+      router.push(`/${locale}/dashboard`);
+    }
   };
 
   const logout = () => {

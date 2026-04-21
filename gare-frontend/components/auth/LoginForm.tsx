@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { useTranslations } from '@/lib/hooks/useTranslations';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useTranslations } from '@/lib/hooks/useTranslations';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { PremiumLoader } from '@/components/ui/PremiumLoader';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -32,53 +36,51 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-      <h2 className="text-2xl font-bold text-center mb-6">{t.common.login}</h2>
+    <div className="w-full">
+      {error && <Badge variant="danger" className="w-full text-center py-2 mb-6">{error}</Badge>}
       
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{t.auth.email}</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <Input
+          type="email"
+          label={t.auth.email}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
         
-        <div className="mb-6">
-          <label className="block text-gray-700 mb-2">{t.auth.password}</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            required
-          />
-        </div>
+        <Input
+          type="password"
+          label={t.auth.password}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
         
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
-        >
-          {loading ? t.common.loading : t.common.login}
-        </button>
+        <div className="mt-4">
+            <Button
+              type="submit"
+              disabled={loading}
+              fullWidth
+              className="relative overflow-hidden group"
+            >
+              <div className={`flex items-center justify-center transition-all duration-300 ${loading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+                {t.common.login}
+              </div>
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <PremiumLoader color="white" size={24} />
+                </div>
+              )}
+            </Button>
+        </div>
       </form>
       
-      <p className="text-center text-gray-600 mt-4">
+      <div className="mt-12 pt-8 border-t border-[var(--ink)]/10 font-body text-[15px] text-[var(--muted)] text-center">
         {t.common.noAccount}{' '}
-        <Link href={`/${locale}/auth/register`} className="text-blue-600 hover:underline">
-          {t.common.register}
+        <Link href={`/${locale}/auth/register`} className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
+          Créer un compte
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

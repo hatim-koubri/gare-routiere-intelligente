@@ -5,6 +5,11 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Role } from '@/types';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { ModernCheckbox } from '@/components/ui/ModernCheckbox';
+import { PremiumLoader } from '@/components/ui/PremiumLoader';
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -14,8 +19,9 @@ export default function RegisterForm() {
     password: '',
     confirmPassword: '',
     telephone: '',
-    role: Role.VOYAGEUR,  // Fixé à VOYAGEUR
+    role: Role.VOYAGEUR,
   });
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -25,6 +31,11 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!acceptTerms) {
+        setError('Vous devez accepter les conditions d\'utilisation');
+        return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
@@ -50,102 +61,62 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-      <h2 className="text-2xl font-bold text-center mb-6">Inscription Voyageur</h2>
+    <div className="w-full">
+      {error && <Badge variant="danger" className="w-full text-center py-2 mb-6">{error}</Badge>}
       
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-gray-700 mb-2">Nom</label>
-            <input
-              type="text"
-              value={formData.nom}
-              onChange={(e) => setFormData({...formData, nom: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-2">Prénom</label>
-            <input
-              type="text"
-              value={formData.prenom}
-              onChange={(e) => setFormData({...formData, prenom: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-4">
+            <Input type="text" label="Nom" value={formData.nom} onChange={(e) => setFormData({...formData, nom: e.target.value})} required />
+            <Input type="text" label="Prénom" value={formData.prenom} onChange={(e) => setFormData({...formData, prenom: e.target.value})} required />
         </div>
         
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Email</label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            required
-          />
-        </div>
+        <Input type="email" label="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
+        <Input type="tel" label="Téléphone" value={formData.telephone} onChange={(e) => setFormData({...formData, telephone: e.target.value})} />
         
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Téléphone</label>
-          <input
-            type="tel"
-            value={formData.telephone}
-            onChange={(e) => setFormData({...formData, telephone: e.target.value})}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          />
-        </div>
-        
-        {/* Champ rôle caché - plus de select */}
         <input type="hidden" name="role" value={Role.VOYAGEUR} />
         
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Mot de passe</label>
-          <input
-            type="password"
-            value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            required
-            minLength={8}
-          />
-          <p className="text-xs text-gray-500 mt-1">Minimum 8 caractères</p>
-        </div>
+        <Input type="password" label="Mot de passe" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required minLength={8} />
+        <Input type="password" label="Confirmer" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} required />
         
-        <div className="mb-6">
-          <label className="block text-gray-700 mb-2">Confirmer le mot de passe</label>
-          <input
-            type="password"
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            required
-          />
+        {/* Modern Styled Checkbox */}
+        <div className="mt-2">
+            <ModernCheckbox 
+                id="terms"
+                checked={acceptTerms}
+                onChange={setAcceptTerms}
+                label={
+                  <>
+                    J'accepte les <Link href="#" className="text-primary font-semibold hover:underline">conditions d'utilisation</Link>
+                  </>
+                }
+            />
         </div>
-        
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition"
-        >
-          {loading ? 'Inscription...' : "S'inscrire"}
-        </button>
+
+        <div className="mt-4">
+            <Button
+              type="submit"
+              disabled={loading}
+              fullWidth
+              className="relative overflow-hidden group"
+            >
+              <div className={`flex items-center justify-center transition-all duration-300 ${loading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+                S'inscrire
+              </div>
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <PremiumLoader color="white" size={24} />
+                </div>
+              )}
+            </Button>
+        </div>
       </form>
       
-      <p className="text-center text-gray-600 mt-4">
+      <div className="mt-12 pt-8 border-t border-[var(--ink)]/10 font-body text-[15px] text-[var(--muted)] text-center">
         Déjà un compte ?{' '}
-        <Link href={`/${locale}/auth/login`} className="text-blue-600 hover:underline">
+        <Link href={`/${locale}/auth/login`} className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
           Se connecter
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

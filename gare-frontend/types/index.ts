@@ -99,3 +99,178 @@ export interface NotificationDTO {
   payload: string;
   dateCreation: string;
 }
+// ============ SPRINT 2 - TYPES ============
+
+// Bus
+export interface Bus {
+  id: number;
+  matricule: string;
+  marque: string;
+  modele?: string;
+  nbSieges: number;
+  climatise: boolean;
+  wifi: boolean;
+  dateMaintenance?: string;
+  enMaintenance: boolean;
+  actif: boolean;
+  compagnieId?: number;
+  compagnie?: {  // ← Ajoute cette possibilité
+    id: number;
+    nom: string;
+    code: string;
+    
+  };
+  compagnieNom?: string;
+}
+
+export interface BusRequest {
+  matricule: string;
+  marque: string;
+  modele?: string;
+  nbSieges: number;
+  climatise: boolean;
+  wifi: boolean;
+  dateMaintenance?: string;
+  compagnieId: number;
+}
+
+// Compagnie
+export interface Compagnie {
+  id: number;
+  nom: string;
+  code: string;
+  logo?: string;
+  description?: string;
+  telephone?: string;
+  email?: string;
+  actif: boolean;
+}
+
+// Ligne
+export interface Ligne {
+  id: number;
+  villeDepart: string;
+  villeArrivee: string;
+  dureeMinutes?: number;
+  prixBase: number;
+  actif: boolean;
+  compagnieId: number;
+  compagnieNom?: string;
+  arrets?: Arret[];
+}
+
+export interface Arret {
+  id?: number;
+  ville: string;
+  ordre: number;
+  dureePauseMinutes?: number;
+  heurePrevueOffsetMinutes?: number;
+}
+
+export interface LigneRequest {
+  villeDepart: string;
+  villeArrivee: string;
+  dureeMinutes?: number;
+  prixBase: number;
+  compagnieId: number;
+  arrets?: Arret[];
+}
+
+// Quai
+export interface Quai {
+  id: number;
+  numero: number;
+  tarifHoraire: number;
+  disponible: boolean;
+  compagnieId?: number;
+  compagnieNom?: string;
+}
+
+export interface QuaiRequest {
+  numero: number;
+  tarifHoraire: number;
+  compagnieId?: number;
+}
+
+// Trajet
+export interface Trajet {
+  id: number;
+  ligneId: number;
+  ligneNom?: string;
+  busId: number;
+  busMatricule?: string;
+  chauffeurId?: number;
+  chauffeurNom?: string;
+  quaiId?: number;
+  quaiNumero?: number;
+  dateDepart: string;
+  dateArriveePrevue?: string;
+  statut: string;
+}
+
+export interface TrajetRequest {
+  ligneId: number;
+  busId: number;
+  chauffeurId?: number;
+  quaiId?: number;
+  dateDepart: string;
+  dateArriveePrevue?: string;
+}
+
+// Chauffeur
+export interface Chauffeur {
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone?: string;
+  numeroPermis?: string;
+  dateEmbauche?: string;
+  enConge: boolean;
+  compagnieId: number;
+  compagnieNom?: string;
+}
+
+// Code Promo
+export interface CodePromo {
+  id: number;
+  code: string;
+  pourcentageReduction: number;
+  dateExpiration: string;
+  nbUtilisationsMax?: number;
+  nbUtilisationsActuel: number;
+  actif: boolean;
+  compagnieId?: number;
+}
+
+export interface CodePromoRequest {
+  code: string;
+  pourcentageReduction: number;
+  dateExpiration: string;
+  nbUtilisationsMax?: number;
+  compagnieId?: number;
+}
+
+// Annonce
+export interface Annonce {
+  id: number;
+  titreFr: string;
+  titreAr?: string;
+  contenuFr: string;
+  contenuAr?: string;
+  dateDebut?: string;
+  dateFin?: string;
+  active: boolean;
+  compagnieId?: number;
+}
+
+// Tarification
+export interface TarificationConfig {
+  reductionTrentejours: number;
+  reductionQuinzeJours: number;
+  supplementJourMeme: number;
+  seuilHaut: number;
+  supplementHaut: number;
+  seuilBas: number;
+  reductionBas: number;
+}

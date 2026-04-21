@@ -2,6 +2,7 @@ package ma.emsi.gare.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;  // ← AJOUTER CET IMPORT
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,11 +36,14 @@ public class Compagnie {
     private boolean actif = true;
 
     @OneToMany(mappedBy = "compagnie", cascade = CascadeType.ALL)
+    @JsonIgnore  // ← AJOUTER CETTE LIGNE
     private List<Bus> bus = new ArrayList<>();
 
     @OneToMany(mappedBy = "compagnie", cascade = CascadeType.ALL)
+    @JsonIgnore  // ← AJOUTER CETTE LIGNE
     private List<Quai> quais = new ArrayList<>();
 
     @OneToMany(mappedBy = "compagnie", cascade = CascadeType.ALL)
+    @JsonIgnore  // ← AJOUTER CETTE LIGNE
     private List<Chauffeur> chauffeurs = new ArrayList<>();
 }

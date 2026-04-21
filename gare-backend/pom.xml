@@ -16,7 +16,8 @@
 
     <properties>
         <java.version>21</java.version>
-        <lombok.version>1.18.34</lombok.version>  <!-- Ajoute cette ligne -->
+        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
 
     <dependencies>
@@ -55,13 +56,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok avec version explicite pour Java 21 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
             <optional>true</optional>
-            <scope>provided</scope>
         </dependency>
 
         <!-- JWT -->
@@ -109,6 +108,13 @@
             <version>3.5.2</version>
         </dependency>
 
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+
         <!-- Test Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -144,15 +150,26 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.11.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${org.mapstruct.version}</version>
+                        </path>
+                        <!-- Nécessaire pour Lombok + MapStruct ensemble -->
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>0.2.0</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

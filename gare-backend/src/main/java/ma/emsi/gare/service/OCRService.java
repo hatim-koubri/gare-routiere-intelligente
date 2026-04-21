@@ -197,22 +197,36 @@ public class OCRService {
     // =========================================================
 
     private Quai attribuerQuaiLibre(Long compagnieId) {
-        // Chercher un quai disponible de cette compagnie
-        List<Quai> quaisCompagnie = quaiRepository
-                .findByCompagnieId(compagnieId);
+        // D'abord chercher un quai disponible attribué à cette compagnie
+        List<Quai> quaisCompagnie = quaiRepository.findByCompagnieId(compagnieId);
 
-        return quaisCompagnie.stream()
+        Optional<Quai> quaiDispo = quaisCompagnie.stream()
                 .filter(Quai::isDisponible)
-                .findFirst()
-                .map(quai -> {
-                    quai.setDisponible(false);
-                    return quaiRepository.save(quai);
-                })
-                .orElseGet(() -> {
-                    log.warn("Aucun quai disponible pour compagnie {}",
-                            compagnieId);
-                    return null;
-                });
+                .findFirst();
+
+        if (quaiDispo.isPresent()) {
+            Quai quai = quaiDispo.get();
+            quai.setDisponible(false);
+            return quaiRepository.save(quai);
+        }
+
+        // Si aucun quai de la compagnie n'est disponible,
+        // chercher un quai libre non attribué (quai global)
+        List<Quai> quaisLibres = quaiRepository.findByDisponibleTrue();
+        Optional<Quai> quaiGlobal = quaisLibres.stream()
+                .filter(q -> q.getCompagnie() == null)
+                .findFirst();
+
+        if (quaiGlobal.isPresent()) {
+            Quai quai = quaiGlobal.get();
+            quai.setDisponible(false);
+            log.info("Quai global {} attribué temporairement à compagnie {}",
+                    quai.getNumero(), compagnieId);
+            return quaiRepository.save(quai);
+        }
+
+        log.warn("Aucun quai disponible pour compagnie {}", compagnieId);
+        return null;
     }
 
     private StationnementOCR demarrerFacturation(String matricule,

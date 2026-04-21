@@ -206,6 +206,13 @@ export interface Trajet {
   dateDepart: string;
   dateArriveePrevue?: string;
   statut: string;
+  retardMinutes?: number;
+  nbReservations?: number;
+  nbSieges?: number;
+  compagnieNom?: string;
+  villeDepart?: string;
+  villeArrivee?: string;
+  arrets?: Arret[];  // ← Ajouter cette ligne
 }
 
 export interface TrajetRequest {
@@ -273,4 +280,104 @@ export interface TarificationConfig {
   supplementHaut: number;
   seuilBas: number;
   reductionBas: number;
+}
+// ============ SPRINT 3 - TYPES ============
+
+// OCR
+export interface OCRDetectionResponse {
+  matricule: string;
+  statut: 'DETECTE' | 'INCONNU' | 'ILLISIBLE';
+  stationnementId: number;
+  quaiAttribue?: number;
+  compagnie?: string;
+  message: string;
+  succès: boolean;
+}
+
+export interface OCRCorrectionRequest {
+  matricule: string;
+  heureEntree?: string;
+  heureSortie?: string;
+  quaiId?: number;
+}
+
+export interface StationnementOCR {
+  id: number;
+  matricule: string;
+  compagnieNom?: string;
+  quaiAttribue?: number;
+  debut: string;
+  fin?: string;
+  statut: 'EN_COURS' | 'TERMINE' | 'CORRECTION_MANUELLE';
+  montant?: number;
+  correctionManuelle: boolean;
+}
+
+// Incident
+export interface IncidentRequest {
+  trajetId: number;
+  type: string;
+  description: string;
+}
+
+export interface IncidentResponse {
+  id: number;
+  type: string;
+  description: string;
+  dateIncident: string;
+  resolu: boolean;
+  trajetId: number;
+  villeDepart: string;
+  villeArrivee: string;
+  dateDepart: string;
+  chauffeurId: number;
+  chauffeurNom: string;
+  chauffeurPrenom: string;
+}
+
+// Jalon
+export interface JalonRequest {
+  trajetId: number;
+  ville: string;
+  ordre: number;
+}
+
+// Manifeste
+export interface ManifesteResponse {
+  trajetId: number;
+  ligne: string;
+  dateDepart: string;
+  nbPassagers: number;
+  passagers: ManifestePassager[];
+}
+
+export interface ManifestePassager {
+  nom: string;
+  prenom: string;
+  siege: string;
+  categorie: string;
+  statut: string;
+  enfantSurGenoux: boolean;
+}
+
+// Validation ticket
+export interface ValidationTicketResponse {
+  valide: boolean;
+  nomPassager: string;
+  prenomPassager: string;
+  numeroSiege: string;
+  categorie: string;
+  enfantSurGenoux: boolean;
+  message: string;
+}
+
+// Scan bagage
+export interface ScanBagageResponse {
+  bagageId: number;
+  qrCodeBagage: string;
+  nomVoyageur: string;
+  emailVoyageur: string;
+  poidsKg: number;
+  surplusPrix: number;
+  message: string;
 }

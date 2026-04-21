@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="079be014-9a32-4b03-8542-5457e047805a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminBusController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminCompagnieController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminLigneController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminPromoController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminQuaiController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/admin/AdminTrajetController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/AnnonceRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/ArretRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/BusRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/CodePromoRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/LigneRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/QuaiRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/TarificationRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/request/TrajetRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/AnnonceRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/ArretRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/BusRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/ChauffeurRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/CodePromoRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/CompagnieRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/LigneRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/QuaiRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminBusService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminLigneService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminPromoAnnonceService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminQuaiService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/AdminTrajetChauffeurService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/TarificationService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/test/java/ma/emsi/gare/service/AdminBusServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/test/java/ma/emsi/gare/service/AdminPromoAnnonceServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/test/java/ma/emsi/gare/service/AdminQuaiServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/test/java/ma/emsi/gare/service/NotificationOfflineServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-backend/src/test/java/ma/emsi/gare/service/TarificationServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/(site)/layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/annonces/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/bus/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/chauffeurs/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/compagnies/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/lignes/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/promotions/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/quais/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/trajets/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/dashboard/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/HeroScroll.module.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/HeroScroll.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/common/AdminLayout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/common/AdminSidebar.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/common/ThemeToggle.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/compagnies/AddCompagnieModal.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/compagnies/CompagnieCard.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/compagnies/CompagnieTable.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/AdminHeader.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/AnalyticsChart.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/CalendarWidget.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/ProgressGauge.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/TeamCollaboration.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/dashboard/TimeTracker.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/quais/AddQuaiModal.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/quais/AttribuerModal.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/admin/quais/QuaiSlot.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/theme-provider.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/Badge.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/Button.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/Card.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/Input.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/ModernCheckbox.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/PremiumLoader.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/RedesignUtils.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/auth-fuse.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/container-scroll-animation.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/menu-toggle-icon.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/navigation-menu.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/scroll-expansion-hero.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/components/ui/use-scroll.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/bus.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/chauffeurs.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/compagnies.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/lignes.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/promotions.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/quais.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/api/admin/trajets.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/lib/utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/public/hero-poster.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/public/hero/bus_seat.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/public/hero/img1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/public/hero/img2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gare-frontend/public/hero/video.mp4" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Annonce.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Annonce.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Bus.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Bus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Chauffeur.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Chauffeur.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/CodePromo.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/CodePromo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Quai.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Quai.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/login/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/auth/register/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/globals.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/auth/RegisterForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/auth/RegisterForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/layout/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/layout/Footer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/lib/auth/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/lib/auth/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/next.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/next.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/tailwind.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/types/index.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="3CY2mTAaYU7ZhBPwIseud9OSEir" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Spring Boot.GareBackendApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;sprint2/frontend-rayan&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/rayan/OneDrive/Documents/GIGRDEV2/gare-routiere-intelligente&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="GareBackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="gare-backend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="ma.emsi.gare.GareBackendApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.27397.103" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-IU-252.27397.103" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="079be014-9a32-4b03-8542-5457e047805a" name="Changes" comment="" />
+      <created>1776548341289</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1776548341289</updated>
+      <workItem from="1776548342769" duration="618000" />
+      <workItem from="1776548978317" duration="611000" />
+      <workItem from="1776550389030" duration="311000" />
+      <workItem from="1776607297593" duration="5766000" />
+      <workItem from="1776627867103" duration="3760000" />
+      <workItem from="1776696193021" duration="201000" />
+      <workItem from="1776728121293" duration="2827000" />
+      <workItem from="1776770955086" duration="1375000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

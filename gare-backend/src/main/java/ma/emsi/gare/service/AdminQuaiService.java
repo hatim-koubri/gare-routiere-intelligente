@@ -38,7 +38,6 @@ public class AdminQuaiService {
         Quai quai = quaiRepository.findById(quaiId)
                 .orElseThrow(() -> new RuntimeException("Quai non trouvé"));
 
-        // Règle métier : max 5 quais par compagnie
         long nbQuaisActuels = quaiRepository.countByCompagnieId(compagnieId);
         if (nbQuaisActuels >= MAX_QUAIS_PAR_COMPAGNIE) {
             throw new RuntimeException(
@@ -47,7 +46,7 @@ public class AdminQuaiService {
         }
 
         attribuerCompagnie(quai, compagnieId);
-        quai.setDisponible(false);
+        quai.setDisponible(true); // ← attribué à une compagnie mais physiquement libre
         return quaiRepository.save(quai);
     }
 
@@ -60,14 +59,8 @@ public class AdminQuaiService {
     }
 
     public List<Quai> getTousLesQuais() {
-        List<Quai> quais = quaiRepository.findAll();
-        quais.forEach(q -> {
-            boolean shouldBeDisponible = q.getCompagnie() == null;
-            if (q.isDisponible() != shouldBeDisponible) {
-                q.setDisponible(shouldBeDisponible);
-                quaiRepository.save(q);
-            }
-        });
+        // Ne plus forcer disponible selon compagnie
+        // disponible = géré uniquement par l'OCR (bus garé ou non)
         return quaiRepository.findAll();
     }
 

@@ -16,19 +16,16 @@ import {
 
 const CHART_COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 
-// ─── Clock Widget ────────────────────────────────────────────────────────────
 function ClockWidget() {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
-
   const hours = time.getHours().toString().padStart(2, '0');
   const minutes = time.getMinutes().toString().padStart(2, '0');
   const seconds = time.getSeconds().toString().padStart(2, '0');
   const dateStr = time.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col items-center justify-center gap-2">
       <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">🕐 Heure actuelle</p>
@@ -40,12 +37,10 @@ function ClockWidget() {
   );
 }
 
-// ─── Timer Widget ────────────────────────────────────────────────────────────
 function TimerWidget() {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
     if (running) {
       intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
@@ -54,11 +49,9 @@ function TimerWidget() {
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [running]);
-
   const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
   const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
   const seconds = (elapsed % 60).toString().padStart(2, '0');
-
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col items-center justify-center gap-3">
       <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">⏱️ Temps en session</p>
@@ -83,21 +76,17 @@ function TimerWidget() {
   );
 }
 
-// ─── Calendar Widget ─────────────────────────────────────────────────────────
 function CalendarWidget() {
   const today = new Date();
   const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-
   const year = current.getFullYear();
   const month = current.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthName = current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
   const days = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
-
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
@@ -125,7 +114,6 @@ function CalendarWidget() {
   );
 }
 
-// ─── Chart Card ──────────────────────────────────────────────────────────────
 function ChartCard({ title, subtitle, color, children }: { title: string; subtitle: string; color: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -139,7 +127,6 @@ function ChartCard({ title, subtitle, color, children }: { title: string; subtit
   );
 }
 
-// ─── Legend Row ───────────────────────────────────────────────────────────────
 function LegendRow({ items, colors }: { items: { name: string; value: number }[]; colors: string[] }) {
   return (
     <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
@@ -154,7 +141,6 @@ function LegendRow({ items, colors }: { items: { name: string; value: number }[]
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -164,6 +150,7 @@ export default function AdminDashboardPage() {
   });
   const [fleetChartData, setFleetChartData] = useState<{ name: string; bus: number }[]>([]);
   const [quaisChartData, setQuaisChartData] = useState<{ name: string; value: number }[]>([]);
+  const [quaisOccupesParCompagnie, setQuaisOccupesParCompagnie] = useState<{ name: string; occupes: number }[]>([]);
   const [annoncesEvolution, setAnnoncesEvolution] = useState<{ date: string; total: number }[]>([]);
   const [promosParCompagnie, setPromosParCompagnie] = useState<{ name: string; promos: number }[]>([]);
   const [annoncesParCompagnie, setAnnoncesParCompagnie] = useState<{ name: string; annonces: number }[]>([]);
@@ -200,6 +187,15 @@ export default function AdminDashboardPage() {
         { name: 'Disponibles', value: quaisData.length - allocatedQuais },
         { name: 'Occupés', value: allocatedQuais },
       ]);
+
+      // Quais occupés par compagnie
+      const quaisOccupes = compagniesData.map((c: any) => ({
+        name: c.nom,
+        occupes: quaisData.filter((q: any) =>
+          Number(q.compagnieId) === Number(c.id) && !q.disponible
+        ).length,
+      }));
+      setQuaisOccupesParCompagnie(quaisOccupes);
 
       const countsByDate: Record<string, number> = {};
       annoncesData.forEach((a: any) => {
@@ -291,7 +287,8 @@ export default function AdminDashboardPage() {
             <KpiCard label="Quais Occupés" value={stats.quaisAllocated} color="bg-red-100 text-red-700" emoji="🔴" />
             <KpiCard label="Quais Libres" value={stats.quaisFree} color="bg-green-100 text-green-700" emoji="✅" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <ChartCard title="Bus par compagnie" subtitle="Répartition de la flotte" color="bg-blue-500">
               {fleetChartData.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-8">Aucune donnée</p>
@@ -326,6 +323,37 @@ export default function AdminDashboardPage() {
               )}
             </ChartCard>
           </div>
+
+          {/* Quais occupés par compagnie */}
+          <ChartCard title="Quais occupés par compagnie" subtitle="Nombre de quais indisponibles par compagnie" color="bg-red-500">
+            {quaisOccupesParCompagnie.filter(q => q.occupes > 0).length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-8">Aucun quai occupé actuellement</p>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={quaisOccupesParCompagnie} barSize={36}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: '#fef2f2' }}
+                      formatter={(v) => [v, 'Quais occupés']}
+                    />
+                    <Bar dataKey="occupes" name="Quais occupés" radius={[6, 6, 0, 0]}>
+                      {quaisOccupesParCompagnie.map((_, i) => (
+                        <Cell key={i} fill={['#dc2626', '#ef4444', '#f87171', '#fca5a5'][i % 4]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <LegendRow
+                  items={quaisOccupesParCompagnie.map(q => ({ name: q.name, value: q.occupes }))}
+                  colors={quaisOccupesParCompagnie.map((_, i) => ['#dc2626', '#ef4444', '#f87171', '#fca5a5'][i % 4])}
+                />
+              </>
+            )}
+          </ChartCard>
         </div>
 
         {/* ── Section 4 : Annonces ── */}

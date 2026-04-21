@@ -26,7 +26,6 @@ export default function Header() {
     const { locale } = useParams();
     const router = useRouter();
 
-    // ← mainLinks ICI à l'intérieur du composant
     const mainLinks = [
         { title: 'Accueil', href: `/${locale}` },
         { title: 'Réservation', href: '#reservation' },
@@ -51,6 +50,13 @@ export default function Header() {
         router.push(`/${locale}/auth/login`);
     };
 
+    // Version corrigée sans legacyBehavior
+    const renderNavLink = (href: string, children: React.ReactNode, className?: string) => (
+        <Link href={href} className={className}>
+            {children}
+        </Link>
+    );
+
 	return (
 		<header
 			className={cn(
@@ -67,26 +73,29 @@ export default function Header() {
 				)}
 			>
                 {/* Brand */}
-                <a href={`/${locale}`} className="font-bold text-xl tracking-tight flex items-center gap-2 shrink-0 text-orange-500 hover:text-orange-600 transition-colors">
+                <Link href={`/${locale}`} className="font-bold text-xl tracking-tight flex items-center gap-2 shrink-0 text-orange-500 hover:text-orange-600 transition-colors">
                     <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
                         <Bus className="w-5 h-5 text-orange-500" />
                     </div>
                     Gare Routière
-                </a>
+                </Link>
                     
-                {/* Navigation Menu */}
+                {/* Navigation Menu Desktop */}
                 <NavigationMenu className="hidden lg:flex w-full justify-center">
                     <NavigationMenuList className="gap-1">
                         {mainLinks.map((link) => (
                             <NavigationMenuItem key={link.title}>
-                                <Link href={link.href} legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(
-                                        navigationMenuTriggerStyle(),
-                                        "bg-transparent font-semibold text-muted-foreground hover:text-orange-500 hover:bg-orange-50 transition-colors duration-200"
-                                    )}>
+                                <NavigationMenuLink asChild>
+                                    <Link 
+                                        href={link.href} 
+                                        className={cn(
+                                            navigationMenuTriggerStyle(),
+                                            "bg-transparent font-semibold text-muted-foreground hover:text-orange-500 hover:bg-orange-50 transition-colors duration-200"
+                                        )}
+                                    >
                                         {link.title}
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
                         ))}
                     </NavigationMenuList>
@@ -180,11 +189,14 @@ export default function Header() {
                     <NavigationMenu className="max-w-full block items-start justify-start w-full">
                         <div className="flex w-full flex-col gap-2">
                             {mainLinks.map((link) => (
-                                <Link key={link.title} href={link.href} legacyBehavior passHref>
-                                    <NavigationMenuLink className="w-full flex p-4 rounded-xl font-bold border border-transparent hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200 transition-colors">
+                                <NavigationMenuLink asChild key={link.title}>
+                                    <Link 
+                                        href={link.href} 
+                                        className="w-full flex p-4 rounded-xl font-bold border border-transparent hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200 transition-colors"
+                                    >
                                         {link.title}
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             ))}
                         </div>
                     </NavigationMenu>

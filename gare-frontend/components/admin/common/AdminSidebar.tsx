@@ -12,7 +12,10 @@ import {
   Megaphone,
   Tag,
   LogOut,
-  Users
+  Users,
+  ScanEye,
+  MapPin,
+  Calendar
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -24,7 +27,11 @@ export default function AdminSidebar() {
     { name: 'Dashboard', icon: LayoutGrid, href: '/admin' },
     { name: 'Compagnies', icon: Building2, href: '/admin/compagnies' },
     { name: 'Bus', icon: Bus, href: '/admin/bus' },
+    { name: 'Lignes', icon: MapPin, href: '/admin/lignes' },
+    { name: 'Trajets', icon: Calendar, href: '/admin/trajets' },
     { name: 'Quais', icon: SquareStack, href: '/admin/quais' },
+    { name: 'Chauffeurs', icon: Users, href: '/admin/chauffeurs' },
+    { name: 'OCR', icon: ScanEye, href: '/admin/ocr' },        // ← AJOUT OCR
     { name: 'Annonces', icon: Megaphone, href: '/admin/annonces' },
     { name: 'Promotions', icon: Tag, href: '/admin/promotions' },
   ];
@@ -44,7 +51,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto">
         {menu.map((item) => {
           const href = `/${locale}${item.href}`;
           const active = pathname === href;

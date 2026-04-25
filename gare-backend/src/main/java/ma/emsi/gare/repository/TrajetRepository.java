@@ -35,4 +35,5 @@ public interface TrajetRepository extends JpaRepository<Trajet, Long> {
             @Param("fin") LocalDateTime fin,
             @Param("statuts") List<StatutTrajet> statuts
     );
+    List<Trajet> findByChauffeurIdAndStatutIn(Long chauffeurId, List<StatutTrajet> statuts);
 }

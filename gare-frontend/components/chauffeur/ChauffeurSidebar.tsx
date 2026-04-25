@@ -10,6 +10,8 @@ import {
   Luggage, 
   AlertTriangle,
   LogOut,
+
+  History  ,
   Bus
 } from 'lucide-react';
 
@@ -44,6 +46,7 @@ export default function ChauffeurSidebar() {
       href: `/chauffeur/incidents`, 
       icon: AlertTriangle 
     },
+    { name: 'Historique', href: '/chauffeur/historique', icon: History },
   ];
 
   const isActive = (href: string) => {

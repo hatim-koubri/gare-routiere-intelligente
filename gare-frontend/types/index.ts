@@ -193,26 +193,64 @@ export interface QuaiRequest {
 }
 
 // Trajet
+// Trajet - avec relations complètes
 export interface Trajet {
   id: number;
-  ligneId: number;
-  ligneNom?: string;
-  busId: number;
-  busMatricule?: string;
-  chauffeurId?: number;
-  chauffeurNom?: string;
-  quaiId?: number;
-  quaiNumero?: number;
   dateDepart: string;
   dateArriveePrevue?: string;
+  dateArriveeReelle?: string;
   statut: string;
   retardMinutes?: number;
   nbReservations?: number;
-  nbSieges?: number;
-  compagnieNom?: string;
+  
+  // IDs
+  ligneId: number;
+  busId: number;
+  chauffeurId?: number;
+  quaiId?: number;
+  
+  // Objets relations (optionnels - pour les réponses enrichies)
+  ligne?: {
+    id: number;
+    villeDepart: string;
+    villeArrivee: string;
+    prixBase: number;
+    dureeMinutes?: number;
+    compagnie?: {
+      id: number;
+      nom: string;
+      code: string;
+    };
+  };
+  bus?: {
+    id: number;
+    matricule: string;
+    marque: string;
+    modele?: string;
+    nbSieges: number;
+  };
+  quai?: {
+    id: number;
+    numero: number;
+    tarifHoraire: number;
+  };
+  chauffeur?: {
+    id: number;
+    nom: string;
+    prenom: string;
+  };
+  
+  // Champs plats (pour compatibilité API simple)
   villeDepart?: string;
   villeArrivee?: string;
-  arrets?: Arret[];  // ← Ajouter cette ligne
+  compagnieNom?: string;
+  busMatricule?: string;
+  nbSieges?: number;
+  quaiNumero?: number;
+  chauffeurNom?: string;
+  
+  // Pour les arrêts
+  arrets?: Arret[];
 }
 
 export interface TrajetRequest {

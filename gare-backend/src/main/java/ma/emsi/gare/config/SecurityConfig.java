@@ -62,7 +62,8 @@ public class SecurityConfig {
                                 "/api-docs/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")  // ← Utilise hasRole
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/chauffeur/**").hasRole("CHAUFFEUR")  // ← AJOUTER CETTE LIGNE
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

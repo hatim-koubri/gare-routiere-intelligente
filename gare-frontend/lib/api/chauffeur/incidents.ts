@@ -1,10 +1,36 @@
-import { apiClient } from '../client';
 import { IncidentRequest, IncidentResponse } from '@/types';
 
 export const chauffeurIncidentApi = {
-  // Signaler un incident
+  // Signaler un incident - Version directe sans proxy
   signalerIncident: async (data: IncidentRequest): Promise<IncidentResponse> => {
-    const response = await apiClient.post('/chauffeur/incidents', data);
-    return response.data;
+    const token = localStorage.getItem('auth_token');
+    console.log('=== APPEL DIRECT ===');
+    console.log('TrajetId:', data.trajetId);
+    console.log('Type:', data.type);
+    console.log('Description:', data.description);
+    console.log('Token présent:', !!token);
+    
+    const response = await fetch('http://localhost:8080/api/chauffeur/incidents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        trajetId: data.trajetId,
+        type: data.type,
+        description: data.description
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Erreur réponse:', response.status, errorText);
+      throw new Error(`Erreur ${response.status}: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Succès:', result);
+    return result;
   },
 };

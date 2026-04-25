@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
 import { Trajet } from '@/types';
 import Link from 'next/link';
 
 export default function ChauffeurTrajetsPage() {
+  const { user } = useAuth();
   const { locale } = useParams();
   const [trajets, setTrajets] = useState<Trajet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,8 @@ export default function ChauffeurTrajetsPage() {
     setLoading(true);
     try {
       const data = await chauffeurTrajetApi.getTrajetsJour();
-      console.log('Trajets reçus:', data);
+      console.log('=== TRAJETS PAGE ===');
+      console.log('Données reçues:', data);
       setTrajets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Erreur chargement trajets', error);
@@ -40,15 +43,41 @@ export default function ChauffeurTrajetsPage() {
     return colors[statut] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatutLabel = (statut: string) => {
-    const labels: Record<string, string> = {
-      PLANIFIE: 'Planifié',
-      EN_COURS: 'En cours',
-      TERMINE: 'Terminé',
-      ANNULE: 'Annulé',
-      RETARDE: 'Retardé',
-    };
-    return labels[statut] || statut;
+  const getVilleDepart = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.villeDepart || anyTrajet.ligne?.villeDepart || '?';
+  };
+
+  const getVilleArrivee = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.villeArrivee || anyTrajet.ligne?.villeArrivee || '?';
+  };
+
+  const getCompagnieNom = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.compagnieNom || anyTrajet.ligne?.compagnie?.nom || 'N/A';
+  };
+
+  const getBusMatricule = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.busMatricule || anyTrajet.bus?.matricule || 'N/A';
+  };
+
+  const getNbSieges = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.nbSieges || anyTrajet.bus?.nbSieges || 0;
+  };
+
+  const getQuaiNumero = (trajet: Trajet) => {
+    const anyTrajet = trajet as any;
+    return anyTrajet.quaiNumero || anyTrajet.quai?.numero || 'N/A';
+  };
+
+  const getDateDepart = (trajet: Trajet) => {
+    if (trajet.dateDepart) {
+      return new Date(trajet.dateDepart).toLocaleString();
+    }
+    return 'N/A';
   };
 
   if (loading) {
@@ -62,7 +91,12 @@ export default function ChauffeurTrajetsPage() {
   if (trajets.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">Mes trajets</h1>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Mes trajets</h1>
+          <p className="text-gray-600 mt-1">
+            Bonjour {user?.prenom} {user?.nom}
+          </p>
+        </div>
         <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
           Aucun trajet prévu pour aujourd'hui
         </div>
@@ -72,65 +106,83 @@ export default function ChauffeurTrajetsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Mes trajets</h1>
-      
-      <div className="grid gap-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Mes trajets</h1>
+        <p className="text-gray-600 mt-1">
+          Bonjour {user?.prenom} {user?.nom}
+        </p>
+      </div>
+
+      <div className="grid gap-6">
         {trajets.map((trajet) => (
           <div key={trajet.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-            <div className="p-5">
-              <div className="flex justify-between items-start mb-3">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold">
-                    {trajet.villeDepart || '?'} → {trajet.villeArrivee || '?'}
+                  <h3 className="text-xl font-semibold">
+                    {getVilleDepart(trajet)} → {getVilleArrivee(trajet)}
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    {trajet.compagnieNom || 'N/A'} • Bus {trajet.busMatricule || 'N/A'}
+                  <p className="text-gray-600 text-sm mt-1">
+                    {getCompagnieNom(trajet)} • Bus {getBusMatricule(trajet)}
                   </p>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs ${getStatutColor(trajet.statut)}`}>
-                  {getStatutLabel(trajet.statut)}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-                <div>
-                  <span className="text-gray-500">Départ:</span>
-                  <span className="font-medium ml-2">
-                    {trajet.dateDepart ? new Date(trajet.dateDepart).toLocaleString() : 'N/A'}
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">
+                    {getDateDepart(trajet)}
+                  </div>
+                  <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${getStatutColor(trajet.statut)}`}>
+                    {trajet.statut}
                   </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6">
+                <div>
+                  <span className="text-gray-500">Sièges:</span>
+                  <span className="font-semibold ml-2">{getNbSieges(trajet)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Réservations:</span>
+                  <span className="font-semibold ml-2">{trajet.nbReservations || 0}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Quai:</span>
-                  <span className="font-medium ml-2">{trajet.quaiNumero || 'N/A'}</span>
+                  <span className="font-semibold ml-2">{getQuaiNumero(trajet)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Passagers:</span>
-                  <span className="font-medium ml-2">{trajet.nbReservations || 0}/{trajet.nbSieges || 0}</span>
+                  <span className="text-gray-500">Retard:</span>
+                  <span className="font-semibold ml-2">{trajet.retardMinutes || 0} min</span>
                 </div>
               </div>
-              
-              <div className="flex gap-3 pt-2 border-t flex-wrap">
+
+              <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/${locale}/chauffeur/trajets/${trajet.id}/manifeste`}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
                 >
                   📋 Manifeste
                 </Link>
                 <Link
-                  href={`/${locale}/chauffeur/trajets/${trajet.id}/jalons`}
-                  className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
-                >
-                  📍 Jalons
-                </Link>
-                <Link
                   href={`/${locale}/chauffeur/scanner/ticket?trajetId=${trajet.id}`}
-                  className="text-green-600 hover:text-green-800 text-sm font-medium"
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
                 >
                   🎫 Scanner ticket
                 </Link>
                 <Link
+                  href={`/${locale}/chauffeur/scanner/bagage?trajetId=${trajet.id}`}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm"
+                >
+                  🧳 Scanner bagage
+                </Link>
+                <Link
+                  href={`/${locale}/chauffeur/trajets/${trajet.id}/jalons`}
+                  className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 text-sm"
+                >
+                  📍 Jalons
+                </Link>
+                <Link
                   href={`/${locale}/chauffeur/incidents?trajetId=${trajet.id}`}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm"
                 >
                   ⚠️ Incident
                 </Link>

@@ -1,5 +1,6 @@
 package ma.emsi.gare.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;  // ← AJOUTER CET IMPORT
@@ -11,6 +12,7 @@ import java.util.List;
 @Table(name = "compagnies")
 @Data
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @AllArgsConstructor
 public class Compagnie {
 

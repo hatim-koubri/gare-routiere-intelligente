@@ -140,4 +140,71 @@ public class PdfService {
         table.addCell(labelCell);
         table.addCell(valueCell);
     }
+
+    public byte[] genererTicket(String nom, String prenom,
+                                String trajet, String siege,
+                                String qrCode) {
+
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A6, 20, 20, 20, 20);
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            // HEADER
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.WHITE);
+
+            PdfPTable header = new PdfPTable(1);
+            header.setWidthPercentage(100);
+
+            PdfPCell cell = new PdfPCell(new Phrase("GARE ROUTIÈRE", headerFont));
+            cell.setBackgroundColor(new BaseColor(255, 107, 0)); // orange
+            cell.setBorder(0);
+            cell.setPadding(10);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+            header.addCell(cell);
+            document.add(header);
+
+            document.add(Chunk.NEWLINE);
+
+            // TITRE
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+            Paragraph title = new Paragraph("Ticket de voyage", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+
+            document.add(Chunk.NEWLINE);
+
+            // INFOS
+            Font infoFont = FontFactory.getFont(FontFactory.HELVETICA, 11);
+
+            document.add(new Paragraph("Nom: " + nom + " " + prenom, infoFont));
+            document.add(new Paragraph("Trajet: " + trajet, infoFont));
+            document.add(new Paragraph("Siège: " + siege, infoFont));
+            document.add(new Paragraph("Date: " + java.time.LocalDate.now(), infoFont));
+
+            document.add(Chunk.NEWLINE);
+
+            // QR CODE
+            BarcodeQRCode qr = new BarcodeQRCode(qrCode, 120, 120, null);
+            Image qrImage = qr.getImage();
+            qrImage.setAlignment(Element.ALIGN_CENTER);
+            document.add(qrImage);
+
+            document.add(Chunk.NEWLINE);
+
+            // FOOTER
+            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10, BaseColor.GRAY);
+            Paragraph footer = new Paragraph("Bon voyage ✨", footerFont);
+            footer.setAlignment(Element.ALIGN_CENTER);
+            document.add(footer);
+
+            document.close();
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur génération ticket PDF");
+        }
+    }
 }

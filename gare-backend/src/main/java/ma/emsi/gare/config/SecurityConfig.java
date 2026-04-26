@@ -63,7 +63,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/chauffeur/**").hasRole("CHAUFFEUR")  // ← AJOUTER CETTE LIGNE
+                        .requestMatchers("/api/chauffeur/**").hasRole("CHAUFFEUR")
+                        .requestMatchers("/api/voyageur/**").hasRole("VOYAGEUR")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -22,4 +22,6 @@ public class ReservationResponseDTO {
     private Integer nombrePassagers;
 
     private List<String> membres;
+    private TrajetResponseDTO trajet;
+    private List<TicketDTO> tickets;
 }

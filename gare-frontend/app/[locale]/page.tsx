@@ -16,7 +16,11 @@ export default function DashboardPage() {
       if (!user) {
         router.push(`/${locale}/auth/login`);
       } else if (user.role === Role.ADMIN) {
-        router.push(`/${locale}/admin`);
+        router.push(`/${locale}/admin/dashboard`);
+      } else if (user.role === Role.CHAUFFEUR) {
+        router.push(`/${locale}/chauffeur/dashboard`);
+      } else if (user.role === Role.VOYAGEUR) {
+        router.push(`/${locale}/voyageur/dashboard`);
       }
     }
   }, [user, isLoading, router, locale]);
@@ -24,16 +28,13 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
   }
 
   if (!user) return null;
-  if (user.role === Role.ADMIN) return null; // Ne rien afficher, la redirection se fait
-
-  return (
-    // Ton dashboard pour les non-admin
-    <div>Dashboard Voyageur/Chauffeur</div>
-  );
+  
+  // Ne rien afficher, la redirection se fait
+  return null;
 }

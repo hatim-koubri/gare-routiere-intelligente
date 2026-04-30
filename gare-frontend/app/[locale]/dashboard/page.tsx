@@ -1,44 +1,61 @@
+// app/[locale]/dashboard/page.tsx
 'use client';
 
-import { useAuth } from '@/lib/auth/AuthContext';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { Role } from '@/types';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 
-export default function DashboardPage() {
-  const { user, isLoading } = useAuth();
-  const { locale } = useParams();
+export default function DashboardRouterPage() {
   const router = useRouter();
+  const { locale } = useParams();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
+    const checkAuthAndRedirect = () => {
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      
+      if (!token || !userStr) {
         router.push(`/${locale}/auth/login`);
-      } 
-      // ✅ REDIRECTION POUR CHAUFFEUR
-      else if (user.role === Role.CHAUFFEUR) {
-        router.push(`/${locale}/chauffeur/dashboard`);
+        return;
       }
-      // ✅ REDIRECTION POUR ADMIN
-      else if (user.role === Role.ADMIN) {
-        router.push(`/${locale}/admin`);
+      
+      try {
+        const user = JSON.parse(userStr);
+        
+        // Rediriger selon le rôle
+        switch (user.role) {
+          case 'ADMIN':
+            router.push(`/${locale}/admin/dashboard`);
+            break;
+          case 'CHAUFFEUR':
+            router.push(`/${locale}/chauffeur/dashboard`);
+            break;
+          case 'VOYAGEUR':
+            router.push(`/${locale}/voyageur/dashboard`);
+            break;
+          case 'RESPONSABLE_COMPAGNIE':
+            router.push(`/${locale}/responsable/dashboard`);
+            break;
+          default:
+            router.push(`/${locale}/auth/login`);
+        }
+      } catch (error) {
+        console.error('Erreur de redirection:', error);
+        router.push(`/${locale}/auth/login`);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, [user, isLoading, router, locale]);
+    };
+    
+    checkAuthAndRedirect();
+  }, [router, locale]);
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-t-[3px] border-indigo-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
-    );
-  }
-
-  // Pour les voyageurs, afficher le dashboard voyageur
-  if (user.role === Role.VOYAGEUR) {
-    return (
-      // ... ton code voyageur existant
-      <div>Dashboard Voyageur</div>
     );
   }
 

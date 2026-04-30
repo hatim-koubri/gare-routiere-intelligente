@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { ContainerScroll } from '@/components/ui/container-scroll-animation';
 import { Button } from '@/components/ui/Button';
@@ -9,15 +10,34 @@ import Footer from '@/components/layout/Footer';
 import { motion, useScroll, useTransform } from 'framer-motion';
 
 export default function HomePage() {
+    const router = useRouter();
+    
     // Form State for the Tablet UI
     const [depart, setDepart] = useState('');
     const [arrivee, setArrivee] = useState('');
-    const [date, setDate] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [passagers, setPassagers] = useState(1);
 
     const handleChipClick = (dep: string, arr: string) => {
         setDepart(dep);
         setArrivee(arr);
+    };
+
+    const handleSearch = () => {
+        if (!depart || !arrivee || !date) {
+            alert('Veuillez remplir tous les champs');
+            return;
+        }
+        
+        // Rediriger vers la page de recherche avec les paramètres
+        const params = new URLSearchParams({
+            villeDepart: depart,
+            villeArrivee: arrivee,
+            date: date,
+            passagers: passagers.toString()
+        });
+        
+        router.push(`/fr/recherche?${params.toString()}`);
     };
 
     // Reference for the TOTAL Hero Section (Video Phase + Tablet Phase)
@@ -131,7 +151,7 @@ export default function HomePage() {
                                             <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Départ</label>
                                             <input 
                                                 type="text" 
-                                                placeholder="Ville de départ"
+                                                placeholder="Casablanca"
                                                 value={depart}
                                                 onChange={(e) => setDepart(e.target.value)}
                                                 className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
@@ -141,7 +161,7 @@ export default function HomePage() {
                                             <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Arrivée</label>
                                             <input 
                                                 type="text" 
-                                                placeholder="Ville d'arrivée"
+                                                placeholder="Marrakech"
                                                 value={arrivee}
                                                 onChange={(e) => setArrivee(e.target.value)}
                                                 className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
@@ -167,19 +187,22 @@ export default function HomePage() {
                                                 className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
                                             />
                                         </div>
-                                        <button className="md:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl px-6 py-3 h-[46px] transition-all hover:-translate-y-1 shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2">
+                                        <button 
+                                            onClick={handleSearch}
+                                            className="md:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl px-6 py-3 h-[46px] transition-all hover:-translate-y-1 shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2"
+                                        >
                                             Rechercher <ChevronRight size={18} />
                                         </button>
                                     </div>
 
                                     <div className="mt-8 flex flex-wrap gap-2 justify-center relative z-10">
-                                        <button onClick={() => handleChipClick('Casa', 'Marrakech')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
+                                        <button onClick={() => handleChipClick('Casablanca', 'Marrakech')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
                                             Casa → Marrakech
                                         </button>
                                         <button onClick={() => handleChipClick('Rabat', 'Fès')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
                                             Rabat → Fès
                                         </button>
-                                        <button onClick={() => handleChipClick('Tanger', 'Casa')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
+                                        <button onClick={() => handleChipClick('Tanger', 'Casablanca')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
                                             Tanger → Casa
                                         </button>
                                         <button onClick={() => handleChipClick('Agadir', 'Marrakech')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">

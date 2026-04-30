@@ -1,3 +1,4 @@
+// components/Header.tsx
 'use client';
 
 import React from 'react';
@@ -23,15 +24,18 @@ export default function Header() {
 	const scrolled = useScroll(10);
     const { user, logout } = useAuth();
     const { theme, setTheme } = useTheme();
-    const { locale } = useParams();
+    const params = useParams();
     const router = useRouter();
+    
+    // Récupérer le locale correctement
+    const locale = params?.locale as string || 'fr';
 
     const mainLinks = [
         { title: 'Accueil', href: `/${locale}` },
-        { title: 'Réservation', href: '#reservation' },
-        { title: 'Destinations', href: '#destinations' },
-        { title: 'Abonnement', href: '#abonnements' },
-        { title: 'À propos', href: '#about' },
+        { title: 'Réservation', href: `/${locale}#reservation` },
+        { title: 'Destinations', href: `/${locale}#destinations` },
+        { title: 'Abonnement', href: `/${locale}#abonnements` },
+        { title: 'À propos', href: `/${locale}#about` },
     ];
 
 	React.useEffect(() => {
@@ -50,12 +54,23 @@ export default function Header() {
         router.push(`/${locale}/auth/login`);
     };
 
-    // Version corrigée sans legacyBehavior
-    const renderNavLink = (href: string, children: React.ReactNode, className?: string) => (
-        <Link href={href} className={className}>
-            {children}
-        </Link>
-    );
+    const handleDashboardClick = () => {
+        if (!user) return;
+        
+        switch (user.role) {
+            case 'ADMIN':
+                router.push(`/${locale}/admin/dashboard`);
+                break;
+            case 'CHAUFFEUR':
+                router.push(`/${locale}/chauffeur/dashboard`);
+                break;
+            case 'VOYAGEUR':
+                router.push(`/${locale}/voyageur/dashboard`);
+                break;
+            default:
+                router.push(`/${locale}/auth/login`);
+        }
+    };
 
 	return (
 		<header
@@ -118,7 +133,7 @@ export default function Header() {
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="ghost"
-                                onClick={() => router.push(`/${locale}/dashboard`)}
+                                onClick={handleDashboardClick}
                                 className="rounded-full font-bold hover:text-orange-500 hover:bg-orange-50"
                             >
                                 Dashboard
@@ -206,7 +221,7 @@ export default function Header() {
                             <>
                                 <Button
                                     className="w-full rounded-xl h-12 bg-orange-500 hover:bg-orange-600 text-white"
-                                    onClick={() => router.push(`/${locale}/dashboard`)}
+                                    onClick={handleDashboardClick}
                                 >
                                     Dashboard
                                 </Button>

@@ -1,0 +1,7 @@
+organization=layhirayan
+projectKey=layhirayan_testsonar
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.86436
+dashboardUrl=https://sonarcloud.io/dashboard?id=layhirayan_testsonar
+ceTaskId=AZ3d7SdXYs1yXCbLAR3E
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZ3d7SdXYs1yXCbLAR3E

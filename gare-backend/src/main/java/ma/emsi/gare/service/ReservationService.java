@@ -99,7 +99,6 @@ public class ReservationService {
                 preference.setAccepteSexeOppose(membreRequest.getPreferenceVoisinage().isAccepteSexeOppose());
                 preference.setPreferencePosition(membreRequest.getPreferenceVoisinage().getPreferencePosition());
                 preference.setPrefereCoteMembreId(membreRequest.getPreferenceVoisinage().getPrefereCoteMembreId());
-
                 preferenceVoisinageRepository.save(preference);
             }
 
@@ -117,31 +116,16 @@ public class ReservationService {
     }
 
     private double calculPrixSimple(Double prixBase, CategorieTarifaire categorie, boolean enfantSurGenoux) {
-
-        if (enfantSurGenoux) {
-            return 0.0;
-        }
-
+        if (enfantSurGenoux) return 0.0;
         double prix = prixBase != null ? prixBase : 0.0;
-
-        if (categorie == CategorieTarifaire.ETUDIANT) {
-            prix *= 0.75;
-        } else if (categorie == CategorieTarifaire.ENFANT) {
-            prix *= 0.50;
-        } else if (categorie == CategorieTarifaire.MILITAIRE) {
-            prix *= 0.70;
-        } else if (categorie == CategorieTarifaire.SENIOR) {
-            prix *= 0.80;
-        }
-
+        if (categorie == CategorieTarifaire.ETUDIANT) prix *= 0.75;
+        else if (categorie == CategorieTarifaire.ENFANT) prix *= 0.50;
+        else if (categorie == CategorieTarifaire.MILITAIRE) prix *= 0.70;
+        else if (categorie == CategorieTarifaire.SENIOR) prix *= 0.80;
         return prix;
     }
 
-    private ReservationResponseDTO toResponse(
-            Reservation reservation,
-            GroupeVoyage groupe,
-            List<String> nomsMembres
-    ) {
+    private ReservationResponseDTO toResponse(Reservation reservation, GroupeVoyage groupe, List<String> nomsMembres) {
         ReservationResponseDTO dto = new ReservationResponseDTO();
         dto.setId(reservation.getId());
         dto.setVoyageurId(reservation.getVoyageur().getId());
@@ -161,15 +145,24 @@ public class ReservationService {
     public ReservationResponseDTO creerReservationParEmail(String email, ReservationRequest request) {
         Voyageur voyageur = voyageurRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Voyageur non trouvé"));
-
         return creerReservation(voyageur.getId(), request);
     }
 
+    // ── Plan Bus avec génération automatique ──────────────────
+    @Transactional
     public List<SiegeResponseDTO> getPlanBus(Long trajetId) {
 
-        var sieges = siegeRepository.findByTrajetId(trajetId);
+        Trajet trajet = trajetRepository.findById(trajetId)
+                .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
 
-        return sieges.stream().map(s -> {
+        // Générer les sièges automatiquement si pas encore fait
+        var siegesExistants = siegeRepository.findByTrajetId(trajetId);
+        if (siegesExistants.isEmpty()) {
+            genererSieges(trajet);
+            siegesExistants = siegeRepository.findByTrajetId(trajetId);
+        }
+
+        return siegesExistants.stream().map(s -> {
             SiegeResponseDTO dto = new SiegeResponseDTO();
             dto.setNumeroSiege(s.getNumeroSiege());
             dto.setNumeroRangee(s.getNumeroRangee());
@@ -183,21 +176,49 @@ public class ReservationService {
         }).collect(java.util.stream.Collectors.toList());
     }
 
+    private void genererSieges(Trajet trajet) {
+        int nbSieges = trajet.getBus().getNbSieges();
+        String[] colonnes = {"A", "B", "C", "D"};
+        int nbRangees = (int) Math.ceil(nbSieges / 4.0);
+
+        List<Siege> sieges = new ArrayList<>();
+        int compteur = 0;
+
+        for (int rangee = 1; rangee <= nbRangees && compteur < nbSieges; rangee++) {
+            for (String colonne : colonnes) {
+                if (compteur >= nbSieges) break;
+
+                Siege siege = new Siege();
+                siege.setTrajet(trajet);
+                siege.setNumeroSiege(rangee + colonne);
+                siege.setNumeroRangee(rangee);
+                siege.setPositionRangee(colonne);
+                siege.setOccupe(false);
+                siege.setBloque(false);
+                siege.setVerrouilleTemporaire(false);
+                siege.setEnfantSurGenoux(false);
+
+                sieges.add(siege);
+                compteur++;
+            }
+        }
+
+        siegeRepository.saveAll(sieges);
+    }
+
+    // ── Proposer sièges groupés ────────────────────────────────
     public List<String> proposerSiegesGroupe(Long trajetId, int nombrePlaces) {
 
         var sieges = siegeRepository.findSiegesLibresOrdonnes(trajetId);
 
         for (int i = 0; i < sieges.size(); i++) {
-
             List<Siege> bloc = new ArrayList<>();
             bloc.add(sieges.get(i));
 
             for (int j = i + 1; j < sieges.size(); j++) {
-
                 Siege precedent = sieges.get(j - 1);
                 Siege courant = sieges.get(j);
 
-                // même rangée + positions consécutives
                 if (courant.getNumeroRangee().equals(precedent.getNumeroRangee())) {
                     bloc.add(courant);
                 } else {
@@ -205,9 +226,7 @@ public class ReservationService {
                 }
 
                 if (bloc.size() == nombrePlaces) {
-                    return bloc.stream()
-                            .map(Siege::getNumeroSiege)
-                            .toList();
+                    return bloc.stream().map(Siege::getNumeroSiege).toList();
                 }
             }
         }
@@ -215,14 +234,13 @@ public class ReservationService {
         return new ArrayList<>();
     }
 
+    // ── Verrouillage temporaire ────────────────────────────────
     @Transactional
     public void verrouillerSieges(VerrouillageSiegeRequest request) {
 
-        // 1. Libérer sièges expirés (10 minutes)
         LocalDateTime expiration = LocalDateTime.now().minusMinutes(10);
         siegeRepository.libererSiegesExpires(expiration);
 
-        // 2. Vérification limite anti-hacker (max 5 sièges)
         if (request.getNumerosSieges().size() > 5) {
             throw new RuntimeException("Maximum 5 sièges par réservation");
         }
@@ -233,21 +251,17 @@ public class ReservationService {
                     .findByTrajetIdAndNumeroSiege(request.getTrajetId(), numero)
                     .orElseThrow(() -> new RuntimeException("Siège introuvable"));
 
-            // 3. Vérifier disponibilité
             if (siege.isOccupe()) {
                 throw new RuntimeException("Siège déjà occupé : " + numero);
             }
 
             if (siege.isVerrouilleTemporaire()) {
-
-                // Vérifier expiration
                 if (siege.getVerrouilleAt() != null &&
                         siege.getVerrouilleAt().isAfter(expiration)) {
                     throw new RuntimeException("Siège déjà réservé temporairement : " + numero);
                 }
             }
 
-            // 4. Verrouiller
             siege.setVerrouilleTemporaire(true);
             siege.setVerrouilleParReservationId(request.getReservationId());
             siege.setVerrouilleAt(LocalDateTime.now());

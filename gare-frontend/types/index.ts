@@ -419,3 +419,143 @@ export interface ScanBagageResponse {
   surplusPrix: number;
   message: string;
 }
+// ============ SPRINT 4 - TYPES VOYAGEUR ============
+
+// Recherche
+export interface RechercheTrajetRequest {
+  villeDepart: string;
+  villeArrivee: string;
+  date: string;
+  prixMin?: number;
+  prixMax?: number;
+  heureDepartMin?: number;
+  heureDepartMax?: number;
+  nbArretsMax?: number;
+}
+
+export interface TrajetRechercheDTO {
+  id: number;
+  villeDepart: string;
+  villeArrivee: string;
+  dateDepart: string;
+  heureDepart: string;
+  compagnieNom: string;
+  prixBase: number;
+  prixFinal: number;
+  dureeMinutes: number;
+  nbArrets: number;
+  nbSiegesDisponibles: number;
+}
+
+// Réservation
+export interface MembreGroupeRequest {
+  nomManuel?: string;
+  prenomManuel?: string;
+  sexe?: 'HOMME' | 'FEMME';
+  age?: number;
+  categorieTarifaire?: string;
+  lienOrganisateur?: string;
+  enfantSurGenoux?: boolean;
+  compteExistantId?: number;
+}
+
+// ✅ AJOUTER CETTE INTERFACE
+export interface MembreGroupeDTO {
+  id: number;
+  nom: string;
+  prenom: string;
+  sexe: string;
+  age: number;
+  categorieTarifaire: string;
+  lienOrganisateur: string;
+  enfantSurGenoux: boolean;
+  prixTicket: number;
+  numeroSiege?: string;
+  qrCode?: string;
+}
+
+export interface ReservationRequest {
+  trajetId: number;
+  typeGroupe: 'MOI_SEUL' | 'MOI_PLUS_ACCOMPAGNANTS' | 'AUTRE_PERSONNE';
+  membres: MembreGroupeRequest[];
+  numerosSieges?: string[];
+}
+
+export interface ReservationResponse {
+  id: number;
+  prixTotal: number;
+  statut: string;
+  trajet: TrajetRechercheDTO;
+  membres: MembreGroupeDTO[];  // ← Maintenant MembreGroupeDTO existe
+}
+
+// Plan bus
+export interface SiegePlanDTO {
+  numeroSiege: string;
+  occupe: boolean;
+  bloque: boolean;
+  verrouilleTemporaire: boolean;
+  verrouilleParReservationId?: number;
+}
+
+// Paiement
+export interface PaiementRequest {
+  reservationId: number;
+  methodePaiement: 'CARTE' | 'PAYPAL';
+}
+
+export interface PaiementResponse {
+  paiementId: number;
+  reservationId: number;
+  montant: number;
+  methodePaiement: string;
+  transactionId: string;
+  datePaiement: string;
+  confirme: boolean;
+  statutReservation: string;  // "CONFIRMEE"
+}
+
+export interface TicketDTO {
+  id: number;
+  qrCode: string;
+  nomPassager: string;
+  prenomPassager: string;
+  numeroSiege: string;
+  prix: number;
+  categorieTarifaire: string;
+}
+// ============ DASHBOARD VOYAGEUR ============
+
+export interface VoyageurStats {
+  totalReservations: number;
+  totalDepense: number;
+  totalTrajetsAvenir: number;
+  totalTrajetsPasses: number;
+  compagnieFavorite: string;
+  trajetsParMois: {
+    mois: string;
+    count: number;
+    totalDepense: number;
+  }[];
+}
+
+export interface ReservationHistorique {
+  id: number;
+  dateReservation: string;
+  dateDepart: string;
+  villeDepart: string;
+  villeArrivee: string;
+  compagnieNom: string;
+  statut: 'EN_ATTENTE' | 'CONFIRMEE' | 'ANNULEE' | 'REMBOURSEE';
+  prixTotal: number;
+  nombrePassagers: number;
+  numerosSieges: string[];
+  trajetId: number;
+}
+
+export interface DashboardVoyageurData {
+  stats: VoyageurStats;
+  reservations: ReservationHistorique[];
+  prochainsTrajets: ReservationHistorique[];
+  historique: ReservationHistorique[];
+}

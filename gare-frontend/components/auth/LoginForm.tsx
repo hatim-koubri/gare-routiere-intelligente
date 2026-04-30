@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useTranslations } from '@/lib/hooks/useTranslations';
@@ -18,6 +18,8 @@ export default function LoginForm() {
   const { login } = useAuth();
   const { locale } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl');
   const t = useTranslations();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +29,7 @@ export default function LoginForm() {
 
     try {
       await login(email, password);
-      router.push(`/${locale}/dashboard`);
+      router.push(returnUrl ? decodeURIComponent(returnUrl) : `/${locale}/dashboard`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur de connexion');
     } finally {
@@ -57,21 +59,21 @@ export default function LoginForm() {
         />
         
         <div className="mt-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              fullWidth
-              className="relative overflow-hidden group"
-            >
-              <div className={`flex items-center justify-center transition-all duration-300 ${loading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
-                {t.common.login}
+          <Button
+            type="submit"
+            disabled={loading}
+            fullWidth
+            className="relative overflow-hidden group"
+          >
+            <div className={`flex items-center justify-center transition-all duration-300 ${loading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+              {t.common.login}
+            </div>
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <PremiumLoader color="white" size={24} />
               </div>
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <PremiumLoader color="white" size={24} />
-                </div>
-              )}
-            </Button>
+            )}
+          </Button>
         </div>
       </form>
       

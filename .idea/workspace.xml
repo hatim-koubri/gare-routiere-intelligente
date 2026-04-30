@@ -7,28 +7,34 @@
     <list default="true" id="079be014-9a32-4b03-8542-5457e047805a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/pom.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/config/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/chauffeur/ChauffeurController.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/chauffeur/ChauffeurController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Compagnie.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Ligne.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Ligne.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Trajet.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/entity/Trajet.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/TrajetRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/repository/TrajetRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/ChauffeurService.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/ChauffeurService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/quais/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/admin/quais/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/dashboard/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/[id]/jalons/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/[id]/jalons/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/[id]/manifeste/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/[id]/manifeste/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/chauffeur/trajets/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/components/chauffeur/ChauffeurSidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/chauffeur/ChauffeurSidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/lib/api/chauffeur/incidents.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/lib/api/chauffeur/incidents.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gare-frontend/lib/api/chauffeur/trajets.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/lib/api/chauffeur/trajets.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/voyageur/VoyageurPaiementController.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/voyageur/VoyageurPaiementController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/voyageur/VoyageurReservationController.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/controller/voyageur/VoyageurReservationController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/response/PaiementResponseDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/response/PaiementResponseDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/response/ReservationResponseDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/dto/response/ReservationResponseDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/PdfService.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/PdfService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/ReservationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/gare-backend/src/main/java/ma/emsi/gare/service/ReservationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/dashboard/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/[locale]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/auth/LoginForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/layout/Header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/components/theme-provider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/components/theme-provider.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gare-frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gare-frontend/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/gare-frontend/types/index.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -45,31 +51,37 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
-    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
-    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
-    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;Spring Boot.GareBackendApplication.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/rayan/OneDrive/Documents/GIGRDEV2/gare-routiere-intelligente&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "Spring Boot.GareBackendApplication.executor": "Run",
+    "git-widget-placeholder": "sprint4-frontend",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/rayan/OneDrive/Documents/GIGRDEV2/gare-routiere-intelligente",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.0",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\rayan\OneDrive\Documents\GIGRDEV2\gare-routiere-intelligente\gare-backend" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration name="GareBackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <module name="gare-backend" />
@@ -109,10 +121,22 @@
       <workItem from="1776957087304" duration="2200000" />
       <workItem from="1776965278051" duration="4118000" />
       <workItem from="1776978659844" duration="4462000" />
+      <workItem from="1777234710341" duration="2008000" />
+      <workItem from="1777284919011" duration="1134000" />
+      <workItem from="1777300821588" duration="75000" />
+      <workItem from="1777330245292" duration="856000" />
+      <workItem from="1777378281288" duration="1755000" />
+      <workItem from="1777406572766" duration="759000" />
+      <workItem from="1777483080238" duration="2929000" />
+      <workItem from="1777504007212" duration="1297000" />
+      <workItem from="1777542345933" duration="2907000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="sonar-project.properties" />
   </component>
 </project>

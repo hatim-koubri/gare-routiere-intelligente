@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 public interface ReservationRepository
@@ -17,6 +20,10 @@ public interface ReservationRepository
 
     List<Reservation> findByVoyageurIdAndStatut(
             Long voyageurId, StatutReservation statut);
+
+    Page<Reservation> findAll(Pageable pageable);
+
+    long countByStatut(ma.emsi.gare.enums.StatutReservation statut);
 
     // Historique complet avec tickets
     @Query("""

@@ -13,11 +13,16 @@ import ma.emsi.gare.entity.Voyageur;
 import ma.emsi.gare.repository.ReservationRepository;
 import ma.emsi.gare.repository.TicketRepository;
 import ma.emsi.gare.repository.VoyageurRepository;
+import ma.emsi.gare.service.EmailService;
 import ma.emsi.gare.service.PdfService;
 import ma.emsi.gare.service.ReservationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import ma.emsi.gare.dto.request.ModificationReservationRequest;
+import ma.emsi.gare.dto.request.ChangementSiegeRequest;
+import ma.emsi.gare.dto.request.DeclarationBagageRequest;
+
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -33,6 +38,8 @@ public class VoyageurReservationController {
     private final VoyageurRepository voyageurRepository;
     private final TicketRepository ticketRepository;
     private final PdfService pdfService;
+
+    private final EmailService emailService;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -76,6 +83,45 @@ public class VoyageurReservationController {
     public void verrouillerSieges(@RequestBody VerrouillageSiegeRequest request) {
         reservationService.verrouillerSieges(request);
     }
+
+    @DeleteMapping("/{id}/annuler")
+    public double annulerReservation(@PathVariable Long id) {
+        return reservationService.annulerReservation(id);
+    }
+
+    @PutMapping("/{id}/modifier")
+    public ReservationResponseDTO modifierReservation(
+            @PathVariable Long id,
+            @RequestBody ModificationReservationRequest request
+    ) {
+        return reservationService.modifierReservation(id, request);
+    }
+
+    @PutMapping("/{id}/changer-sieges")
+    public ReservationResponseDTO changerSieges(
+            @PathVariable Long id,
+            @RequestBody ChangementSiegeRequest request
+    ) {
+        return reservationService.changerSieges(id, request.getNouveauxSieges());
+    }
+
+    @PostMapping("/bagage/declarer")
+    public void declarerBagage(@RequestBody DeclarationBagageRequest request) {
+        reservationService.declarerBagage(
+                request.getQrCodeBagage(),
+                request.getType()
+        );
+    }
+
+    @GetMapping("/test-email")
+    public String testEmail() {
+        byte[] fakePdf = new byte[0];
+
+        emailService.envoyerTicket("test@mail.com", fakePdf);
+
+        return "Email envoyé (ou tentative)";
+    }
+
 
     // ✅ Endpoint pour télécharger un ticket en PDF (version mise à jour)
     @GetMapping("/{reservationId}/ticket/{ticketId}")

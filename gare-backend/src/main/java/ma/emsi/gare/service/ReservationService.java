@@ -11,10 +11,22 @@ import ma.emsi.gare.enums.CategorieTarifaire;
 import ma.emsi.gare.enums.StatutReservation;
 import ma.emsi.gare.repository.*;
 import org.springframework.stereotype.Service;
+import ma.emsi.gare.messaging.NotificationProducer;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import ma.emsi.gare.dto.request.ModificationReservationRequest;
+import ma.emsi.gare.enums.StatutTicket;
+import java.time.Duration;
+import java.util.UUID;
+
+import ma.emsi.gare.enums.StatutTicket;
+import java.time.Duration;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +38,14 @@ public class ReservationService {
     private final GroupeVoyageRepository groupeVoyageRepository;
     private final MembreGroupeRepository membreGroupeRepository;
     private final PreferenceVoisinageRepository preferenceVoisinageRepository;
+
     private final VoyageurRepository voyageurRepository;
     private final TrajetRepository trajetRepository;
     private final SiegeRepository siegeRepository;
+    private final TicketRepository ticketRepository;
+    private final NotificationProducer notificationProducer;
+
+    private final BagageRepository bagageRepository;
 
     public ReservationResponseDTO creerReservation(Long voyageurId, ReservationRequest request) {
 
@@ -268,5 +285,298 @@ public class ReservationService {
 
             siegeRepository.save(siege);
         }
+
+
     }
+    @Transactional
+    public double annulerReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        if (reservation.getStatut() != StatutReservation.CONFIRMEE) {
+            throw new IllegalStateException("Seules les réservations confirmées peuvent être annulées");
+        }
+
+        double tauxRemboursement = calculTauxRemboursement(reservation.getTrajet().getDateDepart());
+        double montantRembourse = reservation.getPrixTotal() * tauxRemboursement;
+
+        reservation.setStatut(StatutReservation.ANNULEE);
+        reservationRepository.save(reservation);
+
+        List<Ticket> tickets = ticketRepository.findByReservationId(reservationId);
+        for (Ticket ticket : tickets) {
+            ticket.setStatut(StatutTicket.ANNULE);
+        }
+        ticketRepository.saveAll(tickets);
+
+        libererSiegesReservation(reservation, tickets);
+
+        notificationProducer.envoyerNotification(
+                "Réservation annulée ID=" + reservation.getId()
+                        + ", montant remboursé=" + montantRembourse
+        );
+
+        return montantRembourse;
+    }
+
+    private double calculTauxRemboursement(LocalDateTime dateDepart) {
+        long heuresAvantDepart = Duration.between(LocalDateTime.now(), dateDepart).toHours();
+
+        if (heuresAvantDepart > 48) {
+            return 0.75;
+        }
+
+        if (heuresAvantDepart > 0) {
+            return 0.50;
+        }
+
+        return 0.0;
+    }
+
+    private void libererSiegesReservation(Reservation reservation, List<Ticket> tickets) {
+        for (Ticket ticket : tickets) {
+            if (ticket.getNumeroSiege() != null) {
+                siegeRepository.findByTrajetIdAndNumeroSiege(
+                        reservation.getTrajet().getId(),
+                        ticket.getNumeroSiege()
+                ).ifPresent(this::libererSiege);
+            }
+        }
+    }
+
+    private void libererSiege(Siege siege) {
+        siege.setOccupe(false);
+        siege.setBloque(false);
+        siege.setGenreOccupant(null);
+        siege.setEnfantSurGenoux(false);
+        siege.setVerrouilleTemporaire(false);
+        siege.setVerrouilleParReservationId(null);
+        siege.setVerrouilleAt(null);
+        siegeRepository.save(siege);
+    }
+
+    private static final int HEURES_MIN_MODIFICATION_TRAJET = 24;
+    private static final double FRAIS_DEUXIEME_MODIFICATION = 20.0;
+
+    @Transactional
+    public ReservationResponseDTO modifierReservation(
+            Long reservationId,
+            ModificationReservationRequest request
+    ) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        verifierReservationModifiable(reservation);
+        Trajet nouveauTrajet = trajetRepository.findById(request.getNouveauTrajetId())
+                .orElseThrow(() -> new IllegalArgumentException("Nouveau trajet introuvable"));
+
+        verifierMemeLigne(reservation.getTrajet(), nouveauTrajet);
+
+        List<Ticket> tickets = ticketRepository.findByReservationId(reservationId);
+        verifierSiegesModification(request, tickets);
+
+        libererSiegesReservation(reservation, tickets);
+        occuperNouveauxSieges(nouveauTrajet, request.getNouveauxSieges());
+
+        appliquerModification(reservation, nouveauTrajet);
+        mettreAJourTickets(tickets, request.getNouveauxSieges());
+
+        ticketRepository.saveAll(tickets);
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        GroupeVoyage groupe = groupeVoyageRepository.findByReservationId(savedReservation.getId())
+                .orElseThrow(() -> new IllegalStateException("Groupe voyage introuvable"));
+
+        List<String> nomsMembres = membreGroupeRepository.findByGroupeId(groupe.getId())
+                .stream()
+                .map(membre -> membre.getPrenomManuel() + " " + membre.getNomManuel())
+                .toList();
+
+        notificationProducer.envoyerNotification(
+                "Réservation modifiée ID=" + savedReservation.getId()
+                        + ", nbModif=" + savedReservation.getNbModif()
+        );
+
+
+        return toResponse(savedReservation, groupe, nomsMembres);
+    }
+
+    private void verifierReservationModifiable(Reservation reservation) {
+        if (reservation.getStatut() != StatutReservation.CONFIRMEE) {
+            throw new IllegalStateException("Seules les réservations confirmées peuvent être modifiées");
+        }
+
+        long heuresAvantDepart = Duration
+                .between(LocalDateTime.now(), reservation.getTrajet().getDateDepart())
+                .toHours();
+
+        if (heuresAvantDepart < HEURES_MIN_MODIFICATION_TRAJET) {
+            throw new IllegalStateException("Modification autorisée seulement avant 24h du départ");
+        }
+    }
+
+    private void verifierMemeLigne(Trajet ancienTrajet, Trajet nouveauTrajet) {
+        if (ancienTrajet.getLigne().getId().equals(nouveauTrajet.getLigne().getId())) {
+            return;
+        }
+
+        String ancienDepart = normaliserVille(ancienTrajet.getLigne().getVilleDepart());
+        String nouveauDepart = normaliserVille(nouveauTrajet.getLigne().getVilleDepart());
+        String ancienArrivee = normaliserVille(ancienTrajet.getLigne().getVilleArrivee());
+        String nouveauArrivee = normaliserVille(nouveauTrajet.getLigne().getVilleArrivee());
+
+        if (!ancienDepart.equals(nouveauDepart) || !ancienArrivee.equals(nouveauArrivee)) {
+            throw new IllegalStateException("Le nouveau trajet doit avoir le même départ et la même arrivée");
+        }
+    }
+
+    private String normaliserVille(String ville) {
+        return ville == null ? "" : ville.trim().toLowerCase();
+    }
+
+    private void verifierSiegesModification(
+            ModificationReservationRequest request,
+            List<Ticket> tickets
+    ) {
+        long ticketsAvecSiege = tickets.stream()
+                .filter(ticket -> !ticket.isEnfantSurGenoux())
+                .count();
+
+        if (request.getNouveauxSieges() == null || request.getNouveauxSieges().size() != ticketsAvecSiege) {
+            throw new IllegalArgumentException("Nombre de sièges invalide pour cette réservation");
+        }
+    }
+
+    private void occuperNouveauxSieges(Trajet nouveauTrajet, List<String> numerosSieges) {
+        for (String numeroSiege : numerosSieges) {
+            Siege siege = siegeRepository
+                    .findByTrajetIdAndNumeroSiege(nouveauTrajet.getId(), numeroSiege)
+                    .orElseThrow(() -> new IllegalArgumentException("Siège introuvable : " + numeroSiege));
+
+            if (siege.isOccupe() || siege.isBloque() || siege.isVerrouilleTemporaire()) {
+                throw new IllegalStateException("Siège non disponible : " + numeroSiege);
+            }
+
+            siege.setOccupe(true);
+            siege.setVerrouilleTemporaire(false);
+            siege.setVerrouilleParReservationId(null);
+            siege.setVerrouilleAt(null);
+            siegeRepository.save(siege);
+        }
+    }
+
+    private void appliquerModification(Reservation reservation, Trajet nouveauTrajet) {
+        int nbModif = reservation.getNbModif() == null ? 0 : reservation.getNbModif();
+
+        reservation.setTrajet(nouveauTrajet);
+        reservation.setNbModif(nbModif + 1);
+
+        if (nbModif >= 1) {
+            reservation.setPrixTotal(reservation.getPrixTotal() + FRAIS_DEUXIEME_MODIFICATION);
+        }
+    }
+
+    private void mettreAJourTickets(List<Ticket> tickets, List<String> nouveauxSieges) {
+        int indexSiege = 0;
+
+        for (Ticket ticket : tickets) {
+            ticket.setQrCode(UUID.randomUUID().toString());
+            ticket.setStatut(StatutTicket.ACTIF);
+
+            if (!ticket.isEnfantSurGenoux()) {
+                ticket.setNumeroSiege(nouveauxSieges.get(indexSiege));
+                indexSiege++;
+            }
+        }
+    }
+
+    @Transactional
+    public ReservationResponseDTO changerSieges(
+            Long reservationId,
+            List<String> nouveauxSieges
+    ) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        if (reservation.getStatut() != StatutReservation.CONFIRMEE) {
+            throw new IllegalStateException("Seules les réservations confirmées peuvent changer de siège");
+        }
+
+        if (LocalDateTime.now().isAfter(reservation.getTrajet().getDateDepart())) {
+            throw new IllegalStateException("Impossible de changer de siège après le départ");
+        }
+
+        List<Ticket> tickets = ticketRepository.findByReservationId(reservationId);
+
+        long nbSiegesAttendus = tickets.stream()
+                .filter(t -> !t.isEnfantSurGenoux())
+                .count();
+
+        if (nouveauxSieges == null || nouveauxSieges.size() != nbSiegesAttendus) {
+            throw new IllegalArgumentException("Nombre de sièges invalide");
+        }
+
+        // 🔥 libérer anciens sièges
+        libererSiegesReservation(reservation, tickets);
+
+        // 🔥 occuper nouveaux sièges
+        occuperNouveauxSieges(reservation.getTrajet(), nouveauxSieges);
+
+        // 🔥 update tickets + QR
+        int index = 0;
+        for (Ticket ticket : tickets) {
+            ticket.setQrCode(UUID.randomUUID().toString());
+
+            if (!ticket.isEnfantSurGenoux()) {
+                ticket.setNumeroSiege(nouveauxSieges.get(index));
+                index++;
+            }
+        }
+
+        ticketRepository.saveAll(tickets);
+
+        GroupeVoyage groupe = groupeVoyageRepository.findByReservationId(reservation.getId())
+                .orElseThrow(() -> new IllegalStateException("Groupe introuvable"));
+
+        List<String> noms = membreGroupeRepository.findByGroupeId(groupe.getId())
+                .stream()
+                .map(m -> m.getPrenomManuel() + " " + m.getNomManuel())
+                .toList();
+
+        notificationProducer.envoyerNotification(
+                "Changement de sièges réservation ID=" + reservation.getId()
+        );
+
+        return toResponse(reservation, groupe, noms);
+    }
+    @Transactional
+    public void declarerBagage(String qrCode, String type) {
+
+        Bagage bagage = bagageRepository.findByQrCodeBagage(qrCode)
+                .orElseThrow(() -> new IllegalArgumentException("Bagage introuvable"));
+
+        if (type == null) {
+            throw new IllegalArgumentException("Type de déclaration requis");
+        }
+
+        switch (type.toUpperCase()) {
+            case "PERDU" -> {
+                bagage.setPerdu(true);
+                bagage.setEndommage(false);
+            }
+            case "ENDOMMAGE" -> {
+                bagage.setEndommage(true);
+                bagage.setPerdu(false);
+            }
+            default -> throw new IllegalArgumentException("Type invalide (PERDU / ENDOMMAGE)");
+        }
+
+        bagageRepository.save(bagage);
+    }
+
+    public Page<Reservation> getReservations(Pageable pageable) {
+        return reservationRepository.findAll(pageable);
+    }
+
+
 }

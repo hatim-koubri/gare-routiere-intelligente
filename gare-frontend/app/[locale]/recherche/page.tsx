@@ -1,11 +1,13 @@
+// app/recherche/page.tsx
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';  // ← Enlever useParams
 import { rechercheApi } from '@/lib/api/voyageur/recherche';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Calendar, Clock, MapPin, Filter, ChevronRight, Bus, Users, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, Filter, ArrowRight, Users, Building } from 'lucide-react';
+import { FlightCard } from '@/components/ui/flight-card';
 
 interface TrajetDTO {
   id: number;
@@ -31,40 +33,67 @@ interface TrajetDTO {
   compagnieNom: string;
 }
 
+interface Compagnie {
+  id: number;
+  nom: string;
+}
+
 export default function RecherchePage() {
   const router = useRouter();
-  const params = useParams();
-  const locale = params?.locale as string ?? 'fr';
+  // Enlever useParams et locale
 
   const [loading, setLoading] = useState(false);
-  const [trajets, setTrajets] = useState<TrajetDTO[]>([]);
-  const [correspondances, setCorrespondances] = useState<TrajetDTO[][]>([]);
+  const [allTrajets, setAllTrajets] = useState<TrajetDTO[]>([]);
+  const [allCorrespondances, setAllCorrespondances] = useState<TrajetDTO[][]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [searched, setSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<'directs' | 'correspondances'>('directs');
+  const [compagnies, setCompagnies] = useState<Compagnie[]>([]);
 
   const [formData, setFormData] = useState({
     villeDepart: '',
     villeArrivee: '',
     date: new Date().toISOString().split('T')[0],
     prixMin: 0,
-    prixMax: 500,
+    prixMax: 1000,
     heureDepartMin: 0,
     heureDepartMax: 23,
     nbArretsMax: 10,
+    compagnieId: null as number | null,
   });
+
+  const extractCompagnies = (trajets: TrajetDTO[]) => {
+    const uniqueCompagnies = new Map<number, Compagnie>();
+    trajets.forEach(t => {
+      if (!uniqueCompagnies.has(t.compagnieId)) {
+        uniqueCompagnies.set(t.compagnieId, {
+          id: t.compagnieId,
+          nom: t.compagnieNom
+        });
+      }
+    });
+    setCompagnies(Array.from(uniqueCompagnies.values()));
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setSearched(false);
     try {
+      const searchData = {
+        villeDepart: formData.villeDepart,
+        villeArrivee: formData.villeArrivee,
+        date: formData.date,
+      };
+      
       const [directsData, correspondancesData] = await Promise.all([
-        rechercheApi.rechercherDirects(formData).catch(() => []),
-        rechercheApi.rechercherCorrespondances(formData).catch(() => []),
+        rechercheApi.rechercherDirects(searchData).catch(() => []),
+        rechercheApi.rechercherCorrespondances(searchData).catch(() => []),
       ]);
-      setTrajets(directsData as TrajetDTO[]);
-      setCorrespondances(correspondancesData as TrajetDTO[][]);
+      
+      setAllTrajets(directsData as TrajetDTO[]);
+      setAllCorrespondances(correspondancesData as TrajetDTO[][]);
+      extractCompagnies(directsData as TrajetDTO[]);
       setSearched(true);
     } catch (error) {
       console.error('Erreur recherche', error);
@@ -73,8 +102,38 @@ export default function RecherchePage() {
     }
   };
 
+  const getFilteredTrajets = () => {
+    let filtered = [...allTrajets];
+    filtered = filtered.filter(t => t.prixBase >= formData.prixMin && t.prixBase <= formData.prixMax);
+    filtered = filtered.filter(t => {
+      const heure = new Date(t.dateDepart).getHours();
+      return heure >= formData.heureDepartMin && heure <= formData.heureDepartMax;
+    });
+    if (formData.compagnieId) {
+      filtered = filtered.filter(t => t.compagnieId === formData.compagnieId);
+    }
+    return filtered;
+  };
+
+  const getFilteredCorrespondances = () => {
+    let filtered = [...allCorrespondances];
+    filtered = filtered.filter(groupe => {
+      return groupe.some(t => {
+        const prixOk = t.prixBase >= formData.prixMin && t.prixBase <= formData.prixMax;
+        const heureOk = new Date(t.dateDepart).getHours() >= formData.heureDepartMin && 
+                        new Date(t.dateDepart).getHours() <= formData.heureDepartMax;
+        const compagnieOk = !formData.compagnieId || t.compagnieId === formData.compagnieId;
+        return prixOk && heureOk && compagnieOk;
+      });
+    });
+    return filtered;
+  };
+
+  const filteredTrajets = getFilteredTrajets();
+  const filteredCorrespondances = getFilteredCorrespondances();
+
   const handleReserver = (trajetId: number) => {
-    router.push(`/${locale}/reservation?trajetId=${trajetId}`);
+    router.push(`/fr/reservation?trajetId=${trajetId}`);
   };
 
   const formatHeure = (dateStr: string) => {
@@ -93,12 +152,23 @@ export default function RecherchePage() {
     return Math.max(0, (trajet.nbSieges || 0) - (trajet.nbReservations || 0));
   };
 
+  const resetFilters = () => {
+    setFormData(prev => ({
+      ...prev,
+      prixMin: 0,
+      prixMax: 1000,
+      heureDepartMin: 0,
+      heureDepartMax: 23,
+      compagnieId: null,
+    }));
+  };
+
   return (
     <>
       <Header />
       <main className="min-h-screen bg-gray-50">
 
-        {/* ── Hero Search ── */}
+        {/* Hero Search */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 py-12 px-4">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-3xl font-black text-white text-center mb-2">
@@ -110,7 +180,6 @@ export default function RecherchePage() {
 
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <form onSubmit={handleSearch} className="space-y-4">
-                {/* Champs principaux */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -153,7 +222,6 @@ export default function RecherchePage() {
                   </div>
                 </div>
 
-                {/* Filtres avancés */}
                 <button
                   type="button"
                   onClick={() => setShowFilters(!showFilters)}
@@ -164,7 +232,7 @@ export default function RecherchePage() {
                 </button>
 
                 {showFilters && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-gray-100">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Prix min (DH)</label>
                       <input
@@ -181,7 +249,7 @@ export default function RecherchePage() {
                         type="number"
                         value={formData.prixMax}
                         min={0}
-                        onChange={(e) => setFormData({ ...formData, prixMax: parseInt(e.target.value) || 500 })}
+                        onChange={(e) => setFormData({ ...formData, prixMax: parseInt(e.target.value) || 1000 })}
                         className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"
                       />
                     </div>
@@ -205,28 +273,53 @@ export default function RecherchePage() {
                         className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Compagnie</label>
+                      <select
+                        value={formData.compagnieId || ''}
+                        onChange={(e) => setFormData({ ...formData, compagnieId: e.target.value ? parseInt(e.target.value) : null })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"
+                      >
+                        <option value="">Toutes</option>
+                        {compagnies.map(comp => (
+                          <option key={comp.id} value={comp.id}>{comp.nom}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-3.5 rounded-xl font-bold text-base transition shadow-lg shadow-orange-200"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      Recherche en cours...
-                    </span>
-                  ) : '🔍 Rechercher des trajets'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-3.5 rounded-xl font-bold text-base transition shadow-lg shadow-orange-200"
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        Recherche en cours...
+                      </span>
+                    ) : '🔍 Rechercher des trajets'}
+                  </button>
+                  
+                  {searched && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition text-sm font-medium"
+                    >
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
         </div>
 
-        {/* ── Résultats ── */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Résultats */}
+        <div className="max-w-6xl mx-auto px-4 py-8">
 
           {searched && (
             <>
@@ -236,88 +329,121 @@ export default function RecherchePage() {
                   onClick={() => setActiveTab('directs')}
                   className={`px-5 py-2 rounded-full text-sm font-bold transition ${activeTab === 'directs' ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
                 >
-                  Trajets directs ({trajets.length})
+                  Trajets directs ({filteredTrajets.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('correspondances')}
                   className={`px-5 py-2 rounded-full text-sm font-bold transition ${activeTab === 'correspondances' ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
                 >
-                  Avec correspondances ({correspondances.length})
+                  Avec correspondances ({filteredCorrespondances.length})
                 </button>
               </div>
 
-              {/* ── Trajets directs ── */}
+              {/* Filtres actifs */}
+              {(formData.prixMin > 0 || formData.prixMax < 1000 || formData.heureDepartMin > 0 || formData.heureDepartMax < 23 || formData.compagnieId) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="text-xs text-gray-500">Filtres actifs :</span>
+                  {formData.prixMin > 0 && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Prix ≥ {formData.prixMin} DH</span>}
+                  {formData.prixMax < 1000 && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Prix ≤ {formData.prixMax} DH</span>}
+                  {formData.heureDepartMin > 0 && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Départ après {formData.heureDepartMin}h</span>}
+                  {formData.heureDepartMax < 23 && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Départ avant {formData.heureDepartMax}h</span>}
+                  {formData.compagnieId && compagnies.find(c => c.id === formData.compagnieId) && (
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                      {compagnies.find(c => c.id === formData.compagnieId)?.nom}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Trajets directs */}
               {activeTab === 'directs' && (
-                <div className="space-y-4">
-                  {trajets.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-12 text-center shadow-sm border">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTrajets.length === 0 ? (
+                    <div className="col-span-full bg-white rounded-2xl p-12 text-center shadow-sm border">
                       <p className="text-4xl mb-3">🔍</p>
-                      <p className="text-gray-500 font-medium">Aucun trajet direct trouvé</p>
-                      <p className="text-sm text-gray-400 mt-1">Essayez les trajets avec correspondances</p>
+                      <p className="text-gray-500 font-medium">Aucun trajet ne correspond aux filtres</p>
+                      <button onClick={resetFilters} className="mt-4 text-orange-500 text-sm hover:underline">
+                        Réinitialiser les filtres
+                      </button>
                     </div>
                   ) : (
-                    trajets.map((trajet) => (
-                      <TrajetCard
+                    filteredTrajets.map((trajet) => (
+                      <FlightCard
                         key={trajet.id}
-                        trajet={trajet}
-                        formatHeure={formatHeure}
-                        formatDuree={formatDuree}
-                        getSiegesDisponibles={getSiegesDisponibles}
-                        onReserver={() => handleReserver(trajet.id)}
+                        airline={trajet.compagnieNom}
+                        flightCode={`BUS-${trajet.busMatricule?.slice(-4) || trajet.id}`}
+                        flightClass="Standard"
+                        departureCode={trajet.villeDepart.slice(0, 3).toUpperCase()}
+                        departureCity={trajet.villeDepart}
+                        departureTime={formatHeure(trajet.dateDepart)}
+                        arrivalCode={trajet.villeArrivee.slice(0, 3).toUpperCase()}
+                        arrivalCity={trajet.villeArrivee}
+                        arrivalTime={formatHeure(trajet.dateArriveePrevue)}
+                        duration={formatDuree(trajet.dateDepart, trajet.dateArriveePrevue)}
+                        price={trajet.prixBase}
+                        availableSeats={getSiegesDisponibles(trajet)}
+                        onSelect={() => handleReserver(trajet.id)}
                       />
                     ))
                   )}
                 </div>
               )}
 
-              {/* ── Correspondances ── */}
+              {/* Correspondances */}
               {activeTab === 'correspondances' && (
                 <div className="space-y-4">
-                  {correspondances.length === 0 ? (
+                  {filteredCorrespondances.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center shadow-sm border">
                       <p className="text-4xl mb-3">🔄</p>
                       <p className="text-gray-500 font-medium">Aucune correspondance trouvée</p>
                     </div>
                   ) : (
-                    correspondances.map((groupe, idx) => (
+                    filteredCorrespondances.map((groupe, idx) => (
                       <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="bg-blue-50 px-5 py-3 border-b border-blue-100">
                           <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
                             🔄 Correspondance — {groupe.length} trajet(s)
                           </span>
                         </div>
-                        <div className="divide-y divide-gray-100">
+                        <div className="p-5 space-y-4">
                           {groupe.map((trajet, i) => (
-                            <div key={trajet.id} className="p-5">
+                            <div key={trajet.id}>
                               {i > 0 && (
                                 <div className="flex items-center gap-2 text-xs text-orange-500 font-medium mb-3">
                                   <Clock size={12} />
                                   Correspondance à {trajet.villeDepart}
                                 </div>
                               )}
-                              <TrajetCard
-                                trajet={trajet}
-                                formatHeure={formatHeure}
-                                formatDuree={formatDuree}
-                                getSiegesDisponibles={getSiegesDisponibles}
-                                onReserver={() => handleReserver(trajet.id)}
-                                compact
+                              <FlightCard
+                                airline={trajet.compagnieNom}
+                                flightCode={`BUS-${trajet.busMatricule?.slice(-4) || trajet.id}`}
+                                flightClass="Standard"
+                                departureCode={trajet.villeDepart.slice(0, 3).toUpperCase()}
+                                departureCity={trajet.villeDepart}
+                                departureTime={formatHeure(trajet.dateDepart)}
+                                arrivalCode={trajet.villeArrivee.slice(0, 3).toUpperCase()}
+                                arrivalCity={trajet.villeArrivee}
+                                arrivalTime={formatHeure(trajet.dateArriveePrevue)}
+                                duration={formatDuree(trajet.dateDepart, trajet.dateArriveePrevue)}
+                                price={trajet.prixBase}
+                                availableSeats={getSiegesDisponibles(trajet)}
+                                onSelect={() => handleReserver(trajet.id)}
                               />
                             </div>
                           ))}
-                        </div>
-                        <div className="px-5 py-3 bg-gray-50 border-t flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            Prix total estimé : <strong className="text-gray-800">
-                              {groupe.reduce((sum, t) => sum + (t.prixBase || 0), 0).toFixed(0)} DH
-                            </strong>
-                          </span>
-                          <button
-                            onClick={() => handleReserver(groupe[0].id)}
-                            className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition"
-                          >
-                            Réserver cette combinaison
-                          </button>
+                          <div className="pt-3 border-t flex justify-between items-center">
+                            <span className="text-sm text-gray-500">
+                              Prix total estimé : <strong className="text-gray-800">
+                                {groupe.reduce((sum, t) => sum + (t.prixBase || 0), 0).toFixed(0)} DH
+                              </strong>
+                            </span>
+                            <button
+                              onClick={() => handleReserver(groupe[0].id)}
+                              className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition"
+                            >
+                              Réserver cette combinaison
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -338,87 +464,5 @@ export default function RecherchePage() {
       </main>
       <Footer />
     </>
-  );
-}
-
-// ── Composant carte trajet ──
-function TrajetCard({
-  trajet,
-  formatHeure,
-  formatDuree,
-  getSiegesDisponibles,
-  onReserver,
-  compact = false,
-}: {
-  trajet: any;
-  formatHeure: (d: string) => string;
-  formatDuree: (d: string, a: string) => string;
-  getSiegesDisponibles: (t: any) => number;
-  onReserver: () => void;
-  compact?: boolean;
-}) {
-  const sieges = getSiegesDisponibles(trajet);
-  const siegeColor = sieges > 10 ? 'text-green-600' : sieges > 3 ? 'text-orange-500' : 'text-red-500';
-
-  return (
-    <div className={`${compact ? '' : 'bg-white rounded-2xl shadow-sm border border-gray-100'} hover:shadow-md transition`}>
-      <div className={`${compact ? '' : 'p-5'} flex flex-wrap justify-between items-center gap-4`}>
-
-        {/* Infos trajet */}
-        <div className="flex-1 min-w-0">
-          {/* Horaires */}
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl font-black text-gray-800">{formatHeure(trajet.dateDepart)}</span>
-            <div className="flex items-center gap-2 flex-1">
-              <div className="h-px bg-gray-300 flex-1" />
-              <span className="text-xs text-gray-400 whitespace-nowrap">
-                {formatDuree(trajet.dateDepart, trajet.dateArriveePrevue)}
-              </span>
-              <div className="h-px bg-gray-300 flex-1" />
-            </div>
-            <span className="text-2xl font-black text-gray-800">{formatHeure(trajet.dateArriveePrevue)}</span>
-          </div>
-
-          {/* Villes */}
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-            <MapPin size={14} className="text-orange-500" />
-            <span>{trajet.villeDepart}</span>
-            <ArrowRight size={14} className="text-gray-400" />
-            <span>{trajet.villeArrivee}</span>
-          </div>
-
-          {/* Détails */}
-          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Bus size={12} /> {trajet.compagnieNom || 'N/A'}
-            </span>
-            <span className="flex items-center gap-1">
-              🚌 {trajet.busMarque || trajet.busMatricule || 'N/A'}
-            </span>
-            {trajet.quaiNumero && (
-              <span className="flex items-center gap-1">
-                🅿️ Quai {trajet.quaiNumero}
-              </span>
-            )}
-            <span className={`flex items-center gap-1 font-medium ${siegeColor}`}>
-              <Users size={12} /> {sieges} siège(s)
-            </span>
-          </div>
-        </div>
-
-        {/* Prix + bouton */}
-        <div className="text-right">
-          <div className="text-2xl font-black text-orange-500">{trajet.prixBase} DH</div>
-          <div className="text-xs text-gray-400 mb-2">par personne</div>
-          <button
-            onClick={onReserver}
-            disabled={sieges === 0}
-            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-xl text-sm font-bold transition shadow-sm"
-          >
-            {sieges === 0 ? 'Complet' : 'Choisir →'}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import { ReservationRequest, ReservationResponse, SiegePlanDTO } from '@/types';
+import { ReservationRequest, ReservationResponse, SiegePlanDTO, BagageRequest, BagageResponseDTO } from '@/types';
 
 export const reservationApi = {
   creer: async (data: ReservationRequest): Promise<ReservationResponse> => {
@@ -19,4 +19,13 @@ export const reservationApi = {
       numerosSieges,
     });
   },
-};
+
+  /**
+   * Ajoute des bagages à une réservation existante.
+   * Le surplus est calculé automatiquement par le backend selon poids + volume.
+   */
+  ajouterBagages: async (reservationId: number, bagages: BagageRequest[]): Promise<BagageResponseDTO[]> => {
+    const response = await apiClient.post(`/voyageur/reservations/${reservationId}/bagages`, bagages);
+    return response.data;
+  },
+};

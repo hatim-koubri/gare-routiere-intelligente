@@ -173,6 +173,11 @@
             <artifactId>resilience4j-spring-boot3</artifactId>
             <version>${resilience4j.version}</version>
         </dependency>
+        <dependency>
+    <groupId>org.apache.activemq</groupId>
+    <artifactId>activemq-broker</artifactId>
+    <version>6.1.6</version>
+</dependency>   
     </dependencies>
 
     <build>

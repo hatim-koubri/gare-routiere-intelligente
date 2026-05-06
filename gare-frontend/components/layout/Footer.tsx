@@ -3,10 +3,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/Button';
 import { Bus, ArrowUpRight } from 'lucide-react';
-import { useParams } from 'next/navigation';
 
 export default function Footer() {
-    const { locale } = useParams();
 
     return (
         <footer className="bg-background text-foreground border-t border-border pt-32 pb-12 overflow-hidden relative transition-colors duration-500">
@@ -18,7 +16,7 @@ export default function Footer() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
                     {/* Left Brand Column */}
                     <div className="lg:col-span-5">
-                        <a href={`/${locale}`} className="font-bold text-3xl tracking-tight text-foreground flex items-center gap-3 mb-8">
+                        <a href="/" className="font-bold text-3xl tracking-tight text-foreground flex items-center gap-3 mb-8">
                             <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20">
                                 <Bus size={28} />
                             </div>

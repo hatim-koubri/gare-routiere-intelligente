@@ -248,6 +248,7 @@ export interface Trajet {
   nbSieges?: number;
   quaiNumero?: number;
   chauffeurNom?: string;
+  ligneNom?: string;
   
   // Pour les arrêts
   arrets?: Arret[];
@@ -419,6 +420,43 @@ export interface ScanBagageResponse {
   surplusPrix: number;
   message: string;
 }
+
+// ============ BAGAGES — Réservation ============
+
+export enum TypeBagage {
+  CABINE = 'CABINE',
+  SOUTE = 'SOUTE',
+  SURDIMENSIONNE = 'SURDIMENSIONNE',
+}
+
+/**
+ * Envoyé par le voyageur lors de la réservation pour déclarer un bagage.
+ * Le QR code sera généré plus tard lors du scan par le chauffeur.
+ */
+export interface BagageRequest {
+  /** Poids en kg (ex: 20.5) */
+  poidsKg: number;
+  /** Format "LxWxH" en cm (ex: "60x40x30") */
+  dimensionCm: string;
+  /** Optionnel — auto-détecté si absent */
+  typeBagage?: TypeBagage;
+}
+
+/**
+ * Retourné par le backend après création du bagage.
+ */
+export interface BagageResponseDTO {
+  id: number;
+  typeBagage: TypeBagage;
+  poidsKg: number;
+  dimensionCm: string;
+  /** Surplus calculé automatiquement en DH */
+  surplusPrix: number;
+  /** null jusqu'au scan du chauffeur */
+  qrCodeBagage: string | null;
+  reservationId: number;
+}
+
 // ============ SPRINT 4 - TYPES VOYAGEUR ============
 
 // Recherche

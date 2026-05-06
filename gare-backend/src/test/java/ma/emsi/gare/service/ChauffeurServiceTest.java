@@ -30,6 +30,7 @@ class ChauffeurServiceTest {
     @Mock private IncidentRepository incidentRepository;
     @Mock private StationnementOCRRepository stationnementRepo;
     @Mock private QuaiRepository quaiRepository;
+    @Mock private ChauffeurRepository chauffeurRepository;
     @Mock private WebSocketNotificationService wsNotifService;
     @Mock private NotificationOfflineService notifOfflineService;
     @Mock private PdfService pdfService;
@@ -260,6 +261,8 @@ class ChauffeurServiceTest {
 
         when(trajetRepository.findById(1L))
                 .thenReturn(Optional.of(trajet));
+        when(chauffeurRepository.findById(1L))
+                .thenReturn(Optional.of(new Chauffeur()));
         when(incidentRepository.save(any())).thenReturn(incident);
         when(trajetRepository.save(any())).thenReturn(trajet);
         doNothing().when(wsNotifService).notifierAdmins(any(), any());
@@ -287,6 +290,8 @@ class ChauffeurServiceTest {
 
         when(trajetRepository.findById(1L))
                 .thenReturn(Optional.of(trajet));
+        when(chauffeurRepository.findById(1L))
+                .thenReturn(Optional.of(new Chauffeur()));
         when(incidentRepository.save(any())).thenReturn(incident);
         doNothing().when(wsNotifService).notifierAdmins(any(), any());
 
@@ -297,9 +302,9 @@ class ChauffeurServiceTest {
 
         chauffeurService.signalerIncident(request, 1L);
 
-        // Statut ne change pas pour une panne
-        assertThat(trajet.getStatut()).isEqualTo(StatutTrajet.EN_COURS);
-        verify(trajetRepository, never()).save(any());
+        // Statut est changé en ANNULE pour une panne
+        assertThat(trajet.getStatut()).isEqualTo(StatutTrajet.ANNULE);
+        verify(trajetRepository, times(1)).save(trajet);
     }
 
     // ===== Tests déclenchement départ =====

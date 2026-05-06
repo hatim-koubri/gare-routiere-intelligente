@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/common/AdminLayout';
 import { adminPromotionApi } from '@/lib/api/admin/promotions';
 import { adminCompagnieApi } from '@/lib/api/admin/compagnies';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer, PieChart, Pie } from 'recharts';
+import { Plus, X, Search } from 'lucide-react';
+
+const COLORS = ['#7c3aed','#0891b2','#059669','#f59e0b','#dc2626','#0d9488'];
 
 interface Annonce {
   id: number;
@@ -86,80 +90,127 @@ export default function AnnoncesPage() {
     }
   };
 
+  // Chart data
+  const annoncesByCompagnie = [
+    { name: 'Global', annonces: annonces.filter(a => !a.compagnieId || a.compagnieId === 0).length },
+    ...compagnies.map(c => ({
+      name: c.nom,
+      annonces: annonces.filter(a => Number(a.compagnieId) === Number(c.id)).length,
+    }))
+  ];
+  const statutData = [
+    { name: 'Actives', value: annonces.filter(a => a.active).length, color: '#7c3aed' },
+    { name: 'Désactivées', value: annonces.filter(a => !a.active).length, color: '#94a3b8' },
+  ];
+
   return (
     <AdminLayout>
+      <div className="space-y-6 pb-10">
+
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Annonces</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Annonces</h1>
+          <p className="text-slate-500 text-sm mt-0.5">{annonces.length} annonces publiées</p>
+        </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 transition shadow-sm"
         >
-          + Nouvelle Annonce
+          <Plus size={16} /> Nouvelle annonce
         </button>
       </div>
 
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <p className="font-semibold text-slate-700 text-sm mb-4">Annonces par compagnie</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={annoncesByCompagnie} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} cursor={{ fill: '#f5f3ff' }} />
+              <Bar dataKey="annonces" name="Annonces" radius={[6,6,0,0]}>
+                {annoncesByCompagnie.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <p className="font-semibold text-slate-700 text-sm mb-4">Actives vs Désactivées</p>
+          <div className="flex items-center gap-6">
+            <ResponsiveContainer width="50%" height={180}>
+              <PieChart>
+                <Pie data={statutData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={4} dataKey="value">
+                  {statutData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-4">
+              {statutData.map(d => (
+                <div key={d.name}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-slate-600">{d.name}</span>
+                  </div>
+                  <p className="text-3xl font-bold ml-5" style={{ color: d.color }}>{d.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Recherche */}
-      <div className="mb-4">
+      <div className="relative">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
-          placeholder="Rechercher une annonce..."
+          placeholder="Rechercher une annonce…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
         />
       </div>
 
-      {/* Loading */}
+      {/* Loading / Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Chargement...</div>
+        <div className="flex flex-col items-center justify-center h-40 gap-3">
+          <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Chargement…</p>
+        </div>
       ) : filteredAnnonces.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-white rounded-lg shadow">
-          Aucune annonce trouvée
+        <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
+          <p className="text-slate-500 text-sm">Aucune annonce trouvée</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre (FR)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre (AR)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contenu</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date début</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date fin</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Compagnie</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                {['Titre','Contenu','Début','Fin','Compagnie','Statut','Actions'].map(h => (
+                  <th key={h} className="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-50">
               {filteredAnnonces.map((annonce) => (
-                <tr key={annonce.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium">{annonce.titreFr}</td>
-                  <td className="px-6 py-4 text-right" dir="rtl">{annonce.titreAr || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{annonce.contenuFr}</td>
-                  <td className="px-6 py-4 text-sm">
-                    {annonce.dateDebut ? new Date(annonce.dateDebut).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {annonce.dateFin ? new Date(annonce.dateFin).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {annonce.compagnieId ? compagnies.find(c => c.id === annonce.compagnieId)?.nom || '-' : 'Globale'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${annonce.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                      {annonce.active ? 'Active' : 'Désactivée'}
+                <tr key={annonce.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-4 font-semibold text-slate-800 text-sm">{annonce.titreFr}</td>
+                  <td className="px-5 py-4 text-sm text-slate-500 max-w-xs truncate">{annonce.contenuFr}</td>
+                  <td className="px-5 py-4 text-xs text-slate-500">{annonce.dateDebut ? new Date(annonce.dateDebut).toLocaleDateString('fr-FR') : '—'}</td>
+                  <td className="px-5 py-4 text-xs text-slate-500">{annonce.dateFin ? new Date(annonce.dateFin).toLocaleDateString('fr-FR') : '—'}</td>
+                  <td className="px-5 py-4 text-sm text-slate-600">{annonce.compagnieId ? compagnies.find(c => c.id === annonce.compagnieId)?.nom || '—' : 'Globale'}</td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${annonce.active ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {annonce.active ? '✓ Active' : 'Désactivée'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-4">
                     {annonce.active && (
-                      <button
-                        onClick={() => handleDesactiver(annonce.id)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Désactiver
-                      </button>
+                      <button onClick={() => handleDesactiver(annonce.id)} className="text-xs text-rose-500 hover:text-rose-700 font-medium transition">Désactiver</button>
                     )}
                   </td>
                 </tr>
@@ -168,6 +219,7 @@ export default function AnnoncesPage() {
           </table>
         </div>
       )}
+      </div>
 
       {/* Modal création */}
       {showModal && (

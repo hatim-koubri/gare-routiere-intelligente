@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function IncidentPage() {
   const searchParams = useSearchParams();
-  const { locale } = useParams();
+  const locale = 'fr';
   const router = useRouter();
   const trajetId = searchParams.get('trajetId');
   const [formData, setFormData] = useState({
@@ -48,7 +48,7 @@ export default function IncidentPage() {
       });
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/${locale}/chauffeur/dashboard`);
+        router.push(`/fr/chauffeur/dashboard`);
       }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du signalement');
@@ -63,7 +63,7 @@ export default function IncidentPage() {
       <div className="min-h-screen bg-gray-100 py-8">
         <div className="container mx-auto px-4 max-w-md">
           <div className="mb-6">
-            <Link href={`/${locale}/chauffeur/dashboard`} className="text-blue-600 hover:underline">
+            <Link href={`/fr/chauffeur/dashboard`} className="text-blue-600 hover:underline">
               ← Retour
             </Link>
           </div>

@@ -1,29 +1,28 @@
 'use client';
 
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Role } from '@/types';
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
-  const { locale } = useParams();
   const router = useRouter();
 
-  // ✅ Déplacer la redirection dans useEffect
+  // Redirection selon le rôle
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push(`/${locale}/auth/login`);
+        router.push('/fr/auth/login');
       } else if (user.role === Role.ADMIN) {
-        router.push(`/${locale}/admin/dashboard`);
+        router.push('/fr/admin/dashboard');
       } else if (user.role === Role.CHAUFFEUR) {
-        router.push(`/${locale}/chauffeur/dashboard`);
+        router.push('/fr/chauffeur/dashboard');
       } else if (user.role === Role.VOYAGEUR) {
-        router.push(`/${locale}/voyageur/dashboard`);
+        router.push('/fr/voyageur/dashboard');
       }
     }
-  }, [user, isLoading, router, locale]);
+  }, [user, isLoading, router]);
 
   if (isLoading) {
     return (

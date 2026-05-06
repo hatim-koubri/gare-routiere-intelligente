@@ -5,8 +5,12 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
 import { Trajet } from '@/types';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { Calendar, Clock, CheckCircle, AlertTriangle, TrendingUp, MapPin } from 'lucide-react';
+import {
+  CheckCircle2, XCircle, Clock, CalendarDays, TrendingUp,
+  MapPin, Bus, Building2, ParkingCircle, ArrowRight,
+  ChevronLeft, ChevronRight, BarChart3, AlertCircle,
+  Activity, FileText
+} from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, Legend
@@ -14,8 +18,6 @@ import {
 
 export default function ChauffeurDashboardPage() {
   const { user } = useAuth();
-  const params = useParams();
-  const locale = params?.locale as string ?? 'fr';
   const [trajets, setTrajets] = useState<Trajet[]>([]);
   const [historique, setHistorique] = useState<Trajet[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -45,7 +47,6 @@ export default function ChauffeurDashboardPage() {
   const allTrajets = [...trajets, ...historique];
   const today = new Date();
 
-  // ── Stats ──
   const stats = {
     total: historique.length,
     termine: historique.filter(t => t.statut === 'TERMINE').length,
@@ -55,7 +56,6 @@ export default function ChauffeurDashboardPage() {
     enCours: trajets.filter(t => t.statut === 'EN_COURS').length,
   };
 
-  // ── Cumul trajets ──
   const cumulData = (() => {
     const sorted = [...historique]
       .filter(t => t.dateDepart)
@@ -73,14 +73,12 @@ export default function ChauffeurDashboardPage() {
     });
   })();
 
-  // ── Pie 1 : Statuts ──
   const statutPieData = [
     { name: 'Terminés', value: stats.termine, color: '#16a34a' },
     { name: 'Annulés', value: stats.annule, color: '#dc2626' },
     { name: 'Retardés', value: stats.retarde, color: '#d97706' },
   ].filter(d => d.value > 0);
 
-  // ── Pie 2 : Incidents réels depuis BDD ──
   const incidentPieData = (() => {
     const counts: Record<string, number> = {};
     incidents.forEach((inc: any) => {
@@ -93,25 +91,25 @@ export default function ChauffeurDashboardPage() {
     }));
   })();
 
-  // ── Helpers ──
   const getVilleDepart = (t: Trajet) => (t as any).villeDepart || (t as any).ligne?.villeDepart || '?';
   const getVilleArrivee = (t: Trajet) => (t as any).villeArrivee || (t as any).ligne?.villeArrivee || '?';
   const getCompagnieNom = (t: Trajet) => (t as any).compagnieNom || (t as any).ligne?.compagnie?.nom || 'N/A';
   const getBusMatricule = (t: Trajet) => (t as any).busMatricule || (t as any).bus?.matricule || 'N/A';
   const getQuaiNumero = (t: Trajet) => (t as any).quaiNumero || (t as any).quai?.numero || 'N/A';
   const getDateDepart = (t: Trajet) => t.dateDepart ? new Date(t.dateDepart).toLocaleString('fr-FR') : 'N/A';
-  const getStatutBadge = (statut: string) => {
-    const map: Record<string, string> = {
-      PLANIFIE: 'bg-blue-100 text-blue-800',
-      EN_COURS: 'bg-green-100 text-green-800',
-      TERMINE: 'bg-gray-100 text-gray-800',
-      ANNULE: 'bg-red-100 text-red-800',
-      RETARDE: 'bg-yellow-100 text-yellow-800',
+
+  const getStatutConfig = (statut: string) => {
+    const map: Record<string, { label: string; className: string }> = {
+      PLANIFIE:  { label: 'Planifié',  className: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' },
+      EN_COURS:  { label: 'En cours',  className: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
+      TERMINE:   { label: 'Terminé',   className: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200' },
+      ANNULE:    { label: 'Annulé',    className: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
+      RETARDE:   { label: 'Retardé',   className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
     };
-    return map[statut] || 'bg-gray-100 text-gray-800';
+    return map[statut] || { label: statut, className: 'bg-slate-100 text-slate-600' };
   };
 
-  // ── Calendrier ──
+  // Calendrier
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
@@ -138,220 +136,274 @@ export default function ChauffeurDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <p className="text-sm text-slate-400 font-medium">Chargement du tableau de bord...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-8 pb-12">
 
-      {/* ══ Section 1 : Header ══ */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
-        <div className="flex justify-between items-center flex-wrap gap-4">
+      {/* ══ HEADER ══ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Bonjour {user?.prenom} {user?.nom} 👋</h1>
-            <p className="text-blue-100 mt-1 text-sm">Bienvenue sur votre espace chauffeur</p>
+            <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-1">Tableau de bord</p>
+            <h1 className="text-xl font-bold text-slate-900">
+              Bonjour, {user?.prenom} {user?.nom} 👋
+            </h1>
+            <p className="text-sm text-slate-400 mt-0.5">
+              {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
           </div>
-          <div className="text-right space-y-1">
-            <div className="flex items-center gap-2 text-blue-100 justify-end">
-              <Calendar className="w-4 h-4" />
-              <span className="text-sm">{today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <div className="flex items-center gap-3">
+            <div className="text-right bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+              <p className="text-xs text-slate-400 font-medium">Trajets aujourd'hui</p>
+              <p className="text-2xl font-bold text-indigo-600 leading-tight">{stats.enCours + stats.planifie}</p>
             </div>
-            <div className="flex items-center gap-2 text-blue-100 justify-end">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">{today.toLocaleTimeString('fr-FR')}</span>
+            <div className="text-right bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+              <p className="text-xs text-slate-400 font-medium">Total effectués</p>
+              <p className="text-2xl font-bold text-emerald-600 leading-tight">{stats.termine}</p>
             </div>
           </div>
         </div>
+        <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400" />
       </div>
 
-      {/* ══ Section 2 : Trajet du jour ══ */}
-      <div>
-        <SectionTitle emoji="🚌" title="Trajet du jour" />
+      {/* ══ KPI CARDS ══ */}
+      <section>
+        <SectionTitle icon={<BarChart3 size={16} />} title="Statistiques générales" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            icon={<CheckCircle2 size={18} className="text-emerald-600" />}
+            label="Terminés"
+            value={stats.termine}
+            bg="bg-emerald-50"
+            accent="text-emerald-600"
+          />
+          <KpiCard
+            icon={<XCircle size={18} className="text-red-500" />}
+            label="Annulés"
+            value={stats.annule}
+            bg="bg-red-50"
+            accent="text-red-500"
+          />
+          <KpiCard
+            icon={<Clock size={18} className="text-amber-500" />}
+            label="Retardés"
+            value={stats.retarde}
+            bg="bg-amber-50"
+            accent="text-amber-500"
+          />
+          <KpiCard
+            icon={<CalendarDays size={18} className="text-indigo-600" />}
+            label="Planifiés"
+            value={stats.planifie}
+            bg="bg-indigo-50"
+            accent="text-indigo-600"
+          />
+        </div>
+      </section>
+
+      {/* ══ TRAJET DU JOUR ══ */}
+      <section>
+        <SectionTitle icon={<Bus size={16} />} title="Trajet du jour" />
         {trajetAujourdhui ? (
-          <div className="bg-white rounded-xl shadow-sm border-l-4 border-green-500 p-5">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-              <div className="space-y-1">
-                <p className="text-lg font-bold text-gray-800">
-                  {getVilleDepart(trajetAujourdhui)} → {getVilleArrivee(trajetAujourdhui)}
-                </p>
-                <p className="text-sm text-gray-500">{getCompagnieNom(trajetAujourdhui)} • Bus {getBusMatricule(trajetAujourdhui)}</p>
-                <div className="flex gap-3 text-xs text-gray-400">
-                  <span>🕐 {getDateDepart(trajetAujourdhui)}</span>
-                  <span>🅿️ Quai {getQuaiNumero(trajetAujourdhui)}</span>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-stretch">
+              <div className="w-1 bg-emerald-500 flex-shrink-0" />
+              <div className="flex-1 p-5 flex items-center justify-between flex-wrap gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} className="text-slate-400" />
+                    <span className="text-base font-bold text-slate-900">
+                      {getVilleDepart(trajetAujourdhui)}
+                    </span>
+                    <ArrowRight size={14} className="text-slate-300" />
+                    <span className="text-base font-bold text-slate-900">
+                      {getVilleArrivee(trajetAujourdhui)}
+                    </span>
+                    <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${getStatutConfig(trajetAujourdhui.statut).className}`}>
+                      {getStatutConfig(trajetAujourdhui.statut).label}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Building2 size={12} /> {getCompagnieNom(trajetAujourdhui)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Bus size={12} /> Bus {getBusMatricule(trajetAujourdhui)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ParkingCircle size={12} /> Quai {getQuaiNumero(trajetAujourdhui)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} /> {getDateDepart(trajetAujourdhui)}
+                    </span>
+                  </div>
                 </div>
+                <Link
+                  href={`/fr/chauffeur/trajets/${trajetAujourdhui.id}/manifeste`}
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+                >
+                  <FileText size={15} />
+                  Voir le manifeste
+                </Link>
               </div>
-              <Link
-                href={`/${locale}/chauffeur/trajets/${trajetAujourdhui.id}/manifeste`}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-              >
-                Voir le manifeste →
-              </Link>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center text-gray-500 border">
-            <p className="text-sm">📅 Aucun trajet prévu pour aujourd'hui</p>
-            <Link href={`/${locale}/chauffeur/trajets`} className="text-blue-500 text-xs mt-1 inline-block hover:underline">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CalendarDays size={20} className="text-slate-400" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Aucun trajet prévu aujourd'hui</p>
+            <Link href="/fr/chauffeur/trajets" className="text-indigo-500 text-xs mt-2 inline-block hover:underline font-medium">
               Voir tous mes trajets →
             </Link>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* ══ Section 3 : KPIs ══ */}
-      <div>
-        <SectionTitle emoji="📊" title="Statistiques générales" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard emoji="✅" label="Terminés" value={stats.termine} color="text-green-600 bg-green-50" />
-          <KpiCard emoji="❌" label="Annulés" value={stats.annule} color="text-red-600 bg-red-50" />
-          <KpiCard emoji="⏰" label="Retardés" value={stats.retarde} color="text-yellow-600 bg-yellow-50" />
-          <KpiCard emoji="📅" label="Planifiés" value={stats.planifie} color="text-blue-600 bg-blue-50" />
-        </div>
-      </div>
-
-      {/* ══ Section 4 : Évolution cumulée ══ */}
-      <div>
-        <SectionTitle emoji="📈" title="Évolution cumulée des trajets" />
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      {/* ══ GRAPHIQUES ══ */}
+      <section>
+        <SectionTitle icon={<TrendingUp size={16} />} title="Évolution cumulée des trajets" />
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           {cumulData.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">Aucune donnée disponible</p>
+            <EmptyState message="Aucune donnée disponible" />
           ) : (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={240}>
               <LineChart data={cumulData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                <Legend />
-                <Line type="monotone" dataKey="termine" name="Terminés" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="annule" name="Annulés" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,0.08)', fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Line type="monotone" dataKey="termine" name="Terminés" stroke="#16a34a" strokeWidth={2} dot={{ r: 3, fill: '#16a34a' }} />
+                <Line type="monotone" dataKey="annule" name="Annulés" stroke="#dc2626" strokeWidth={2} dot={{ r: 3, fill: '#dc2626' }} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* ══ Section 5 : Pie Charts ══ */}
-      <div>
-        <SectionTitle emoji="🥧" title="Répartition de carrière" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ══ PIE CHARTS ══ */}
+      <section>
+        <SectionTitle icon={<Activity size={16} />} title="Répartition de carrière" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          {/* Pie 1 - Statuts */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4">Répartition des trajets</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <p className="text-sm font-semibold text-slate-700 mb-4">Répartition des trajets</p>
             {statutPieData.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucune donnée</p>
+              <EmptyState message="Aucune donnée" />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={210}>
                 <PieChart>
-                  <Pie
-                    data={statutPieData}
-                    cx="50%" cy="50%"
-                    outerRadius={80} innerRadius={45}
-                    paddingAngle={4}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={false}
+                  <Pie data={statutPieData} cx="50%" cy="50%" outerRadius={75} innerRadius={42}
+                    paddingAngle={4} dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`} labelLine={false}
                   >
                     {statutPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                  <Legend iconType="circle" />
+                  <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Pie 2 - Incidents */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4">Types d'incidents</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <p className="text-sm font-semibold text-slate-700 mb-4">Types d'incidents</p>
             {incidentPieData.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucun incident enregistré</p>
+              <EmptyState message="Aucun incident enregistré" />
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={210}>
                   <PieChart>
-                    <Pie
-                      data={incidentPieData}
-                      cx="50%" cy="50%"
-                      outerRadius={80} innerRadius={45}
-                      paddingAngle={4}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
-                      labelLine={false}
+                    <Pie data={incidentPieData} cx="50%" cy="50%" outerRadius={75} innerRadius={42}
+                      paddingAngle={4} dataKey="value"
+                      label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}
                     >
                       {incidentPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" />
+                    <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: 12 }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
-                <p className="text-center text-xs text-gray-400 mt-2">
+                <p className="text-center text-xs text-slate-400 mt-1">
                   Total : {incidents.length} incident(s) enregistré(s)
                 </p>
               </>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ══ Section 6 : Calendrier ══ */}
-      <div>
-        <SectionTitle emoji="📅" title="Calendrier des trajets" />
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      {/* ══ CALENDRIER + TRAJETS À VENIR (côte à côte) ══ */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* Navigation mois */}
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 text-sm">◀</button>
-            <span className="text-sm font-bold text-gray-700 capitalize">{monthName}</span>
-            <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 text-sm">▶</button>
+        {/* Calendrier */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays size={16} className="text-indigo-500" />
+            <p className="text-sm font-semibold text-slate-700">Calendrier des trajets</p>
           </div>
 
-          {/* Légende */}
-          <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-500">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-semibold text-slate-700 capitalize">{monthName}</span>
+            <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-3 text-[10px] text-slate-400">
             {[
-              { color: 'bg-blue-500', label: 'Planifié' },
-              { color: 'bg-green-500', label: 'Terminé' },
+              { color: 'bg-indigo-500', label: 'Planifié' },
+              { color: 'bg-emerald-500', label: 'Terminé' },
               { color: 'bg-red-500', label: 'Annulé' },
-              { color: 'bg-yellow-500', label: 'Retardé' },
+              { color: 'bg-amber-500', label: 'Retardé' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-1">
-                <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                <div className={`w-2 h-2 rounded-full ${item.color}`} />
                 <span>{item.label}</span>
               </div>
             ))}
           </div>
 
-          {/* Jours semaine */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map((d, i) => (
-              <div key={i} className="text-center text-[10px] font-bold text-gray-400 uppercase py-1">{d}</div>
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
+            {['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'].map((d, i) => (
+              <div key={i} className="text-center text-[10px] font-bold text-slate-400 uppercase py-1">{d}</div>
             ))}
           </div>
 
-          {/* Cases */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5">
             {calendarDays.map((day, i) => {
               if (!day) return <div key={i} />;
               const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
               const dayTrajets = trajetByDay[day] || [];
               const hasTrajet = dayTrajets.length > 0;
 
-              let dotColor = 'bg-blue-500';
-              if (dayTrajets.some(t => t.statut === 'TERMINE')) dotColor = 'bg-green-500';
+              let dotColor = 'bg-indigo-500';
+              if (dayTrajets.some(t => t.statut === 'TERMINE')) dotColor = 'bg-emerald-500';
               if (dayTrajets.some(t => t.statut === 'ANNULE')) dotColor = 'bg-red-500';
-              if (dayTrajets.some(t => t.statut === 'RETARDE')) dotColor = 'bg-yellow-500';
+              if (dayTrajets.some(t => t.statut === 'RETARDE')) dotColor = 'bg-amber-500';
 
               return (
-                <div key={i} className={`relative text-center py-2.5 rounded-lg text-xs font-medium transition-all
-                  ${isToday ? 'bg-blue-600 text-white font-black shadow-sm'
-                    : hasTrajet ? 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200'
-                    : 'text-gray-400 hover:bg-gray-50'}`}>
+                <div key={i} className={`relative text-center py-2 rounded-lg text-xs font-medium transition-all
+                  ${isToday
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : hasTrajet
+                    ? 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    : 'text-slate-400 hover:bg-slate-50'}`}>
                   {day}
                   {hasTrajet && (
                     <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isToday ? 'bg-white' : dotColor}`} />
@@ -361,81 +413,92 @@ export default function ChauffeurDashboardPage() {
             })}
           </div>
         </div>
-      </div>
 
-      {/* ══ Section 7 : Trajets à venir ══ */}
-      <div>
-        <SectionTitle emoji="📋" title="Trajets à venir" />
-        {trajets.filter(t => t.statut === 'PLANIFIE').length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border p-6 text-center text-gray-500 text-sm">
-            Aucun trajet planifié
+        {/* Trajets à venir */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-indigo-500" />
+              <p className="text-sm font-semibold text-slate-700">Trajets à venir</p>
+            </div>
+            <Link href="/fr/chauffeur/trajets" className="text-xs text-indigo-500 hover:underline font-medium">
+              Voir tout →
+            </Link>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {trajets.filter(t => t.statut === 'PLANIFIE').slice(0, 3).map((trajet) => (
-              <div key={trajet.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-sm text-gray-800">
-                      {getVilleDepart(trajet)} → {getVilleArrivee(trajet)}
-                    </p>
-                    <div className="flex gap-3 text-xs text-gray-400">
-                      <span>🏢 {getCompagnieNom(trajet)}</span>
-                      <span>🚌 {getBusMatricule(trajet)}</span>
-                      <span>🅿️ Quai {getQuaiNumero(trajet)}</span>
+
+          {trajets.filter(t => t.statut === 'PLANIFIE').length === 0 ? (
+            <EmptyState message="Aucun trajet planifié" />
+          ) : (
+            <div className="space-y-3">
+              {trajets.filter(t => t.statut === 'PLANIFIE').slice(0, 4).map((trajet) => (
+                <div key={trajet.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MapPin size={11} className="text-slate-400 flex-shrink-0" />
+                      <p className="text-sm font-semibold text-slate-800 truncate">
+                        {getVilleDepart(trajet)} → {getVilleArrivee(trajet)}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400">{getDateDepart(trajet)}</p>
+                    <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                      <span>{getCompagnieNom(trajet)}</span>
+                      <span>Bus {getBusMatricule(trajet)}</span>
+                      <span>Q.{getQuaiNumero(trajet)}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{getDateDepart(trajet)}</p>
                   </div>
                   <Link
-                    href={`/${locale}/chauffeur/trajets/${trajet.id}/manifeste`}
-                    className="text-blue-500 text-xs hover:underline font-medium"
+                    href={`/fr/chauffeur/trajets/${trajet.id}/manifeste`}
+                    className="flex-shrink-0 w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:bg-indigo-600 hover:border-indigo-600 hover:text-white text-slate-400 transition-all"
                   >
-                    Voir →
+                    <ArrowRight size={13} />
                   </Link>
                 </div>
-              </div>
-            ))}
-            {trajets.filter(t => t.statut === 'PLANIFIE').length > 3 && (
-              <Link href={`/${locale}/chauffeur/trajets`} className="text-center text-blue-500 text-sm hover:underline block">
-                Voir tous les trajets →
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* ══ Bouton navigation ══ */}
-      <div className="text-center pt-2">
-        <Link
-          href={`/${locale}/chauffeur/trajets`}
-          className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-        >
-          📋 Voir tous mes trajets
-        </Link>
-      </div>
+      </section>
 
     </div>
   );
 }
 
-function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
+// ── Composants utilitaires ──
+
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-base">{emoji}</span>
-      <h2 className="text-sm font-bold text-gray-700">{title}</h2>
-      <div className="flex-1 h-px bg-gray-100" />
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-indigo-500">{icon}</span>
+      <h2 className="text-sm font-bold text-slate-700">{title}</h2>
+      <div className="flex-1 h-px bg-slate-100" />
     </div>
   );
 }
 
-function KpiCard({ emoji, label, value, color }: { emoji: string; label: string; value: number; color: string }) {
+function KpiCard({ icon, label, value, bg, accent }: {
+  icon: React.ReactNode; label: string; value: number; bg: string; accent: string;
+}) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
-      <div className={`text-xl p-2.5 rounded-xl ${color}`}>{emoji}</div>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
+        {icon}
+      </div>
       <div>
-        <p className="text-xl font-bold text-gray-800">{value}</p>
-        <p className="text-xs text-gray-500">{label}</p>
+        <p className={`text-2xl font-bold leading-tight ${accent}`}>{value}</p>
+        <p className="text-xs text-slate-500 font-medium">{label}</p>
       </div>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 gap-2">
+      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+        <AlertCircle size={18} className="text-slate-400" />
+      </div>
+      <p className="text-sm text-slate-400 font-medium">{message}</p>
     </div>
   );
 }

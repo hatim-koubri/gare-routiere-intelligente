@@ -102,7 +102,8 @@ public class PdfService {
     // ===== TICKET DE VOYAGE ULTRA STYLISÉ =====
     public byte[] genererTicket(String nom, String prenom, String trajet, String siege, String qrCode,
                                 String compagnieNom, String busMatricule, String heureDepart,
-                                String dateDepart, String villeDepart, String villeArrivee) {
+                                String dateDepart, String villeDepart, String villeArrivee,
+                                java.util.List<ma.emsi.gare.entity.Bagage> bagages) {
 
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -138,8 +139,8 @@ public class PdfService {
             PdfPTable badgeTable = new PdfPTable(1);
             badgeTable.setWidthPercentage(80);
             badgeTable.setHorizontalAlignment(Element.ALIGN_CENTER);
-            badgeTable.setSpacingBefore(8);
-            badgeTable.setSpacingAfter(8);
+            badgeTable.setSpacingBefore(4);
+            badgeTable.setSpacingAfter(4);
 
             PdfPCell badgeCell = new PdfPCell();
             badgeCell.setBackgroundColor(ORANGE_LIGHT);
@@ -169,7 +170,7 @@ public class PdfService {
 
             PdfPCell passagerName = new PdfPCell(new Phrase(nom + " " + prenom, valueFont));
             passagerName.setBorder(Rectangle.NO_BORDER);
-            passagerName.setPaddingBottom(8);
+            passagerName.setPaddingBottom(4);
             passagerTable.addCell(passagerName);
 
             document.add(passagerTable);
@@ -226,16 +227,44 @@ public class PdfService {
 
             document.add(dateTable);
 
+            addDashedLine(document);
+
+            // ===== ZONE BAGAGES =====
+            PdfPTable bagagesTable = new PdfPTable(1);
+            bagagesTable.setWidthPercentage(100);
+            bagagesTable.setSpacingBefore(5);
+
+            PdfPCell bagagesTitle = new PdfPCell(new Phrase("BAGAGES DÉCLARÉS (" + (bagages != null ? bagages.size() : 0) + ")", sectionTitleFont));
+            bagagesTitle.setBorder(Rectangle.NO_BORDER);
+            bagagesTitle.setPaddingBottom(2);
+            bagagesTable.addCell(bagagesTitle);
+
+            if (bagages == null || bagages.isEmpty()) {
+                PdfPCell noBagage = new PdfPCell(new Phrase("Aucun bagage déclaré en soute.", smallValueFont));
+                noBagage.setBorder(Rectangle.NO_BORDER);
+                bagagesTable.addCell(noBagage);
+            } else {
+                for (int i = 0; i < bagages.size(); i++) {
+                    ma.emsi.gare.entity.Bagage b = bagages.get(i);
+                    String info = "Bagage " + (i + 1) + " (" + (b.getTypeBagage() != null ? b.getTypeBagage().name() : "STANDARD") + ") - ID: " + b.getId() + " - " + b.getPoidsKg() + " kg";
+                    PdfPCell bCell = new PdfPCell(new Phrase(info, smallValueFont));
+                    bCell.setBorder(Rectangle.NO_BORDER);
+                    bCell.setPaddingBottom(1);
+                    bagagesTable.addCell(bCell);
+                }
+            }
+            document.add(bagagesTable);
+
             // ===== Message d'avant départ =====
             PdfPTable messageTable = new PdfPTable(1);
             messageTable.setWidthPercentage(100);
-            messageTable.setSpacingBefore(10);
-            messageTable.setSpacingAfter(10);
+            messageTable.setSpacingBefore(5);
+            messageTable.setSpacingAfter(5);
 
             PdfPCell messageCell = new PdfPCell();
             messageCell.setBackgroundColor(ORANGE_LIGHT);
             messageCell.setBorder(Rectangle.NO_BORDER);
-            messageCell.setPadding(8);
+            messageCell.setPadding(4);
 
             Font messageFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, ORANGE_DARK);
             Paragraph message = new Paragraph("⏰ Présentez-vous 30 minutes avant le départ à la gare.", messageFont);
@@ -245,11 +274,11 @@ public class PdfService {
             document.add(messageTable);
 
             // ===== QR CODE =====
-            BarcodeQRCode qr = new BarcodeQRCode(qrCode, 110, 110, null);
+            BarcodeQRCode qr = new BarcodeQRCode(qrCode, 90, 90, null);
             Image qrImage = qr.getImage();
             qrImage.setAlignment(Element.ALIGN_CENTER);
-            qrImage.setSpacingBefore(5);
-            qrImage.setSpacingAfter(5);
+            qrImage.setSpacingBefore(2);
+            qrImage.setSpacingAfter(2);
             document.add(qrImage);
 
             // ===== CODE UNIQUE =====
@@ -262,7 +291,7 @@ public class PdfService {
             // ===== FOOTER =====
             PdfPTable footerTable = new PdfPTable(1);
             footerTable.setWidthPercentage(100);
-            footerTable.setSpacingBefore(10);
+            footerTable.setSpacingBefore(5);
 
             PdfPCell footerCell = new PdfPCell();
             footerCell.setBackgroundColor(GRAY_50);
@@ -297,7 +326,8 @@ public class PdfService {
                 "Transporteur", "BUS-" + System.currentTimeMillis() % 1000,
                 LocalDateTime.now().format(TIME_FORMATTER),
                 LocalDateTime.now().format(DATE_FORMATTER),
-                villeDepart, villeArrivee
+                villeDepart, villeArrivee,
+                java.util.Collections.emptyList()
         );
     }
 

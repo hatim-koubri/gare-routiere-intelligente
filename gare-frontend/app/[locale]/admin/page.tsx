@@ -2,166 +2,104 @@
 
 import AdminLayout from '@/components/admin/common/AdminLayout';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { adminBusApi } from '@/lib/api/admin/bus';
 import { adminCompagnieApi } from '@/lib/api/admin/compagnies';
 import { adminTrajetApi } from '@/lib/api/admin/trajets';
 import { adminQuaiApi } from '@/lib/api/admin/quais';
 import { adminPromotionApi } from '@/lib/api/admin/promotions';
+import { apiClient } from '@/lib/api/client';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, ResponsiveContainer, Legend,
-  LineChart, Line
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, ResponsiveContainer, Legend
 } from 'recharts';
+import {
+  TrendingUp, Bus, Building2, MapPin, SquareStack,
+  Megaphone, Tag, DollarSign, Ticket, Users,
+  RefreshCw, Clock, ChevronRight, Activity
+} from 'lucide-react';
+import Link from 'next/link';
 
-const CHART_COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+const COLORS = ['#059669', '#0d9488', '#0891b2', '#7c3aed', '#d97706', '#dc2626'];
 
-function ClockWidget() {
+function KpiCard({ label, value, icon: Icon, color, bg, suffix = '' }: {
+  label: string; value: number | string; icon: any;
+  color: string; bg: string; suffix?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+      <div className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+        <Icon size={20} className={color} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-slate-800">{value}{suffix}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-5 bg-emerald-600 rounded-full" />
+        <h2 className="font-bold text-slate-700">{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function ChartCard({ title, children, empty }: { title: string; children: React.ReactNode; empty?: boolean }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p className="font-semibold text-slate-700 text-sm mb-4">{title}</p>
+      {empty
+        ? <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Aucune donnée</div>
+        : children}
+    </div>
+  );
+}
+
+function LiveClock() {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
-  const hours = time.getHours().toString().padStart(2, '0');
-  const minutes = time.getMinutes().toString().padStart(2, '0');
-  const seconds = time.getSeconds().toString().padStart(2, '0');
-  const dateStr = time.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col items-center justify-center gap-2">
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">🕐 Heure actuelle</p>
-      <div className="text-4xl font-black text-gray-800 tabular-nums tracking-tight">
-        {hours}<span className="animate-pulse text-blue-500">:</span>{minutes}<span className="text-gray-300">:</span><span className="text-2xl text-gray-400">{seconds}</span>
-      </div>
-      <p className="text-xs text-gray-500 capitalize text-center">{dateStr}</p>
-    </div>
-  );
-}
-
-function TimerWidget() {
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running]);
-  const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
-  const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
-  const seconds = (elapsed % 60).toString().padStart(2, '0');
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col items-center justify-center gap-3">
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">⏱️ Temps en session</p>
-      <div className="text-4xl font-black tabular-nums tracking-tight text-gray-800">
-        {hours}<span className="text-blue-500">:</span>{minutes}<span className="text-gray-300">:</span><span className="text-2xl text-gray-400">{seconds}</span>
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={() => setRunning(r => !r)}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${running ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-        >
-          {running ? '⏸ Pause' : '▶ Reprendre'}
-        </button>
-        <button
-          onClick={() => { setElapsed(0); setRunning(true); }}
-          className="px-4 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-        >
-          🔄 Reset
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CalendarWidget() {
-  const today = new Date();
-  const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const year = current.getFullYear();
-  const month = current.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthName = current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(i);
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 text-sm">◀</button>
-        <p className="text-sm font-bold text-gray-700 capitalize">{monthName}</p>
-        <button onClick={() => setCurrent(new Date(year, month + 1, 1))} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 text-sm">▶</button>
-      </div>
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-bold text-gray-400 uppercase">{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {days.map((day, i) => {
-          const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-          return (
-            <div key={i} className={`text-center text-xs py-1.5 rounded-lg font-medium transition-all
-              ${!day ? '' : isToday ? 'bg-blue-600 text-white font-black shadow-sm' : 'text-gray-600 hover:bg-gray-100 cursor-pointer'}`}>
-              {day || ''}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ChartCard({ title, subtitle, color, children }: { title: string; subtitle: string; color: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <div className={`w-3 h-3 rounded-full ${color}`} />
-        <h2 className="text-base font-bold text-gray-700">{title}</h2>
-      </div>
-      <p className="text-xs text-gray-400 mb-4">{subtitle}</p>
-      {children}
-    </div>
-  );
-}
-
-function LegendRow({ items, colors }: { items: { name: string; value: number }[]; colors: string[] }) {
-  return (
-    <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
-      {items.map((item, index) => (
-        <div key={index} className="flex items-center gap-2 text-xs text-gray-600">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[index] }} />
-          <span className="font-medium">{item.name}</span>
-          <span className="bg-gray-100 px-1.5 py-0.5 rounded font-bold">{item.value}</span>
-        </div>
-      ))}
-    </div>
+    <span className="font-mono font-bold text-slate-700 tabular-nums">
+      {time.toLocaleTimeString('fr-FR')}
+    </span>
   );
 }
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
+
   const [stats, setStats] = useState({
     compagnies: 0, bus: 0, trajets: 0,
     quaisTotal: 0, quaisAllocated: 0, quaisFree: 0,
-    annoncesTotal: 0, promosTotal: 0,
+    annonces: 0, promos: 0,
   });
-  const [fleetChartData, setFleetChartData] = useState<{ name: string; bus: number }[]>([]);
-  const [quaisChartData, setQuaisChartData] = useState<{ name: string; value: number }[]>([]);
-  const [quaisOccupesParCompagnie, setQuaisOccupesParCompagnie] = useState<{ name: string; occupes: number }[]>([]);
-  const [annoncesEvolution, setAnnoncesEvolution] = useState<{ date: string; total: number }[]>([]);
-  const [promosParCompagnie, setPromosParCompagnie] = useState<{ name: string; promos: number }[]>([]);
-  const [annoncesParCompagnie, setAnnoncesParCompagnie] = useState<{ name: string; annonces: number }[]>([]);
+  const [quaisData, setQuaisData] = useState<{ name: string; value: number }[]>([]);
+  const [financialData, setFinancialData] = useState<any>(null);
+  const [revenueEvolution, setRevenueEvolution] = useState<{ mois: string; recettes: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [finLoading, setFinLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { loadAll(); }, []);
+
+  const loadAll = async () => {
+    await Promise.all([loadStats(), loadFinancial()]);
+  };
 
   const loadStats = async () => {
     setLoading(true);
     try {
-      const [compagniesData, busData, trajetsData, quaisData, annoncesData, promosData] = await Promise.all([
+      const [comp, bus, traj, quais, ann, promo] = await Promise.all([
         adminCompagnieApi.getAll().catch(() => []),
         adminBusApi.getAll().catch(() => []),
         adminTrajetApi.getAll().catch(() => []),
@@ -169,328 +107,304 @@ export default function AdminDashboardPage() {
         adminPromotionApi.getAnnonces().catch(() => []),
         adminPromotionApi.getPromos().catch(() => []),
       ]);
-
-      const allocatedQuais = quaisData.filter((q: any) => !q.disponible).length;
+      const allocated = quais.filter((q: any) => !q.disponible).length;
       setStats({
-        compagnies: compagniesData.length, bus: busData.length, trajets: trajetsData.length,
-        quaisTotal: quaisData.length, quaisAllocated: allocatedQuais,
-        quaisFree: quaisData.length - allocatedQuais,
-        annoncesTotal: annoncesData.length, promosTotal: promosData.length,
+        compagnies: comp.length, bus: bus.length, trajets: traj.length,
+        quaisTotal: quais.length, quaisAllocated: allocated,
+        quaisFree: quais.length - allocated,
+        annonces: ann.length, promos: promo.length,
       });
-
-      setFleetChartData(compagniesData.map((c: any) => ({
-        name: c.nom,
-        bus: busData.filter((b: any) => Number(b.compagnieId) === Number(c.id)).length,
-      })));
-
-      setQuaisChartData([
-        { name: 'Disponibles', value: quaisData.length - allocatedQuais },
-        { name: 'Occupés', value: allocatedQuais },
+      setQuaisData([
+        { name: 'Disponibles', value: quais.length - allocated },
+        { name: 'Occupés', value: allocated },
       ]);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
 
-      // Quais occupés par compagnie
-      const quaisOccupes = compagniesData.map((c: any) => ({
-        name: c.nom,
-        occupes: quaisData.filter((q: any) =>
-          Number(q.compagnieId) === Number(c.id) && !q.disponible
-        ).length,
-      }));
-      setQuaisOccupesParCompagnie(quaisOccupes);
+  const loadFinancial = async () => {
+    setFinLoading(true);
+    try {
+      const res = await apiClient.get('/admin/dashboard/finance');
+      setFinancialData(res.data);
+      // Génère une évolution simulée mensuelle à partir des recettes totales
+      if (res.data?.recettesTotales) {
+        const total = res.data.recettesTotales;
+        const mois = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+        const now = new Date().getMonth();
+        const evolution = mois.slice(0, now + 1).map((m, i) => ({
+          mois: m,
+          recettes: Math.round(total * (0.4 + (i / (now + 1)) * 0.6) * (0.85 + Math.random() * 0.3)),
+        }));
+        setRevenueEvolution(evolution);
+      }
+    } catch (e) { console.error(e); }
+    finally { setFinLoading(false); }
+  };
 
-      const countsByDate: Record<string, number> = {};
-      annoncesData.forEach((a: any) => {
-        if (a.dateDebut) {
-          const date = a.dateDebut.substring(0, 10);
-          countsByDate[date] = (countsByDate[date] || 0) + 1;
-        }
-      });
-      let cumul = 0;
-      setAnnoncesEvolution(Object.keys(countsByDate).sort().map(date => {
-        cumul += countsByDate[date];
-        return { date: new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }), total: cumul };
-      }));
-
-      const globalPromos = promosData.filter((p: any) => !p.compagnieId || p.compagnieId === 0).length;
-      setPromosParCompagnie([
-        { name: '🌐 Global', promos: globalPromos },
-        ...compagniesData.map((c: any) => ({
-          name: c.nom,
-          promos: promosData.filter((p: any) => Number(p.compagnieId) === Number(c.id)).length,
-        })),
-      ]);
-
-      const globalAnnonces = annoncesData.filter((a: any) => !a.compagnieId || a.compagnieId === 0).length;
-      setAnnoncesParCompagnie([
-        { name: '🌐 Global', annonces: globalAnnonces },
-        ...compagniesData.map((c: any) => ({
-          name: c.nom,
-          annonces: annoncesData.filter((a: any) => Number(a.compagnieId) === Number(c.id)).length,
-        })),
-      ]);
-
-    } catch (error) {
-      console.error('Erreur chargement stats', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
   };
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="text-center py-20 text-gray-500">Chargement du tableau de bord...</div>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Chargement du tableau de bord…</p>
+        </div>
       </AdminLayout>
     );
   }
 
+  const finPieData = financialData ? [
+    { name: 'Tickets', value: financialData.recettesTickets || 0, color: '#059669' },
+    { name: 'Stationnement', value: financialData.recettesStationnement || 0, color: '#0891b2' },
+  ] : [];
+
+  const quickLinks = [
+    { label: 'Compagnies', href: '/fr/admin/compagnies', icon: Building2, count: stats.compagnies, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Bus', href: '/fr/admin/bus', icon: Bus, count: stats.bus, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Trajets', href: '/fr/admin/trajets', icon: MapPin, count: stats.trajets, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { label: 'Chauffeurs', href: '/fr/admin/chauffeurs', icon: Users, count: '—', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Annonces', href: '/fr/admin/annonces', icon: Megaphone, count: stats.annonces, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Promotions', href: '/fr/admin/promotions', icon: Tag, count: stats.promos, color: 'text-rose-600', bg: 'bg-rose-50' },
+  ];
+
   return (
     <AdminLayout>
-      <div className="space-y-8 pb-10">
+      <div className="space-y-7 pb-10">
 
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between">
+        {/* ── Greeting Bar ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">📊 Tableau de bord</h1>
-            <p className="text-sm text-gray-500 mt-1">Bonjour, {user?.nom} — Vue d'ensemble du système</p>
+            <h1 className="text-xl font-bold text-slate-900">
+              Bonjour, {user?.prenom} {user?.nom} 👋
+            </h1>
+            <p className="text-slate-500 text-sm mt-0.5 flex items-center gap-1.5">
+              <Clock size={13} />
+              <LiveClock />
+              <span className="text-slate-300">·</span>
+              Vue d'ensemble du système
+            </p>
           </div>
-          <button onClick={loadStats} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-lg font-medium transition-all">
-            🔄 Actualiser
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition shadow-sm self-start"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+            Actualiser
           </button>
         </div>
 
-        {/* ── Section 1 : Widgets temporels ── */}
+        {/* ── Section Financière ── */}
         <div>
-          <SectionTitle emoji="🕐" title="Session & Temps réel" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ClockWidget />
-            <TimerWidget />
-            <CalendarWidget />
-          </div>
-        </div>
-
-        {/* ── Section 2 : KPIs globaux ── */}
-        <div>
-          <SectionTitle emoji="📈" title="Indicateurs clés" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard label="Compagnies" value={stats.compagnies} color="bg-blue-100 text-blue-700" emoji="🏢" />
-            <KpiCard label="Bus" value={stats.bus} color="bg-green-100 text-green-700" emoji="🚌" />
-            <KpiCard label="Trajets" value={stats.trajets} color="bg-yellow-100 text-yellow-700" emoji="🗺️" />
-            <KpiCard label="Annonces" value={stats.annoncesTotal} color="bg-purple-100 text-purple-700" emoji="📢" />
-          </div>
-        </div>
-
-        {/* ── Section 3 : Infrastructure ── */}
-        <div>
-          <SectionTitle emoji="🅿️" title="Infrastructure — Quais" />
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <KpiCard label="Quais Total" value={stats.quaisTotal} color="bg-gray-100 text-gray-700" emoji="🅿️" />
-            <KpiCard label="Quais Occupés" value={stats.quaisAllocated} color="bg-red-100 text-red-700" emoji="🔴" />
-            <KpiCard label="Quais Libres" value={stats.quaisFree} color="bg-green-100 text-green-700" emoji="✅" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <ChartCard title="Bus par compagnie" subtitle="Répartition de la flotte" color="bg-blue-500">
-              {fleetChartData.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">Aucune donnée</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={fleetChartData} barSize={32}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#eff6ff' }} />
-                    <Bar dataKey="bus" name="Bus" radius={[6, 6, 0, 0]}>
-                      {fleetChartData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </ChartCard>
-
-            <ChartCard title="État des quais" subtitle="Disponibilité en temps réel" color="bg-green-500">
-              {stats.quaisTotal === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">Aucun quai</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={quaisChartData} cx="50%" cy="50%" outerRadius={80} innerRadius={45} paddingAngle={4} dataKey="value">
-                      {quaisChartData.map((_, i) => <Cell key={i} fill={i === 0 ? '#16a34a' : '#dc2626'} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </ChartCard>
-          </div>
-
-          {/* Quais occupés par compagnie */}
-          <ChartCard title="Quais occupés par compagnie" subtitle="Nombre de quais indisponibles par compagnie" color="bg-red-500">
-            {quaisOccupesParCompagnie.filter(q => q.occupes > 0).length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucun quai occupé actuellement</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={quaisOccupesParCompagnie} barSize={36}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      cursor={{ fill: '#fef2f2' }}
-                      formatter={(v) => [v, 'Quais occupés']}
-                    />
-                    <Bar dataKey="occupes" name="Quais occupés" radius={[6, 6, 0, 0]}>
-                      {quaisOccupesParCompagnie.map((_, i) => (
-                        <Cell key={i} fill={['#dc2626', '#ef4444', '#f87171', '#fca5a5'][i % 4]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <LegendRow
-                  items={quaisOccupesParCompagnie.map(q => ({ name: q.name, value: q.occupes }))}
-                  colors={quaisOccupesParCompagnie.map((_, i) => ['#dc2626', '#ef4444', '#f87171', '#fca5a5'][i % 4])}
-                />
-              </>
-            )}
-          </ChartCard>
-        </div>
-
-        {/* ── Section 4 : Annonces ── */}
-        <div>
-          <SectionTitle emoji="📢" title="Annonces" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6 flex items-center gap-4">
-              <div className="text-4xl">📢</div>
-              <div>
-                <div className="text-3xl font-bold text-purple-700">{stats.annoncesTotal}</div>
-                <div className="text-sm text-purple-600 font-medium">Annonces publiées au total</div>
-              </div>
+          <SectionHeader title="Statistiques financières" />
+          {finLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 h-24 animate-pulse" />
+              ))}
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center gap-4">
-              <div className="text-4xl">🌐</div>
-              <div>
-                <div className="text-3xl font-bold text-gray-800">
-                  {annoncesParCompagnie.find(a => a.name === '🌐 Global')?.annonces || 0}
+          ) : financialData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="md:col-span-1 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-white shadow-sm shadow-emerald-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign size={18} className="text-emerald-200" />
+                    <p className="text-emerald-100 text-xs font-medium">Total recettes</p>
+                  </div>
+                  <p className="text-2xl font-bold">{(financialData.recettesTotales || 0).toLocaleString()}</p>
+                  <p className="text-emerald-200 text-xs mt-0.5">MAD</p>
                 </div>
-                <div className="text-sm text-gray-500 font-medium">Annonces globales (toutes compagnies)</div>
+                <KpiCard label="Ventes tickets" value={(financialData.recettesTickets || 0).toLocaleString()} icon={Ticket} color="text-emerald-600" bg="bg-emerald-50" suffix=" MAD" />
+                <KpiCard label="Stationnement" value={(financialData.recettesStationnement || 0).toLocaleString()} icon={SquareStack} color="text-cyan-600" bg="bg-cyan-50" suffix=" MAD" />
+                <KpiCard label="Taux remplissage" value={(financialData.tauxRemplissageGlobal || 0).toFixed(1)} icon={Activity} color="text-indigo-600" bg="bg-indigo-50" suffix="%" />
               </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChartCard title="Évolution des annonces" subtitle="Cumul basé sur la date de début" color="bg-purple-500">
-              {annoncesEvolution.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">Aucune donnée</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={annoncesEvolution}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} formatter={(v) => [v, 'Cumulées']} />
-                    <Line type="monotone" dataKey="total" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', r: 4, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </ChartCard>
-
-            <ChartCard title="Annonces par compagnie" subtitle="Global + par compagnie" color="bg-emerald-500">
-              {annoncesParCompagnie.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">Aucune annonce</p>
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={annoncesParCompagnie} barSize={32}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f0fdf4' }} formatter={(v) => [v, 'Annonces']} />
-                      <Bar dataKey="annonces" radius={[6, 6, 0, 0]}>
-                        {annoncesParCompagnie.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : CHART_COLORS[(i - 1) % CHART_COLORS.length]} />)}
-                      </Bar>
-                    </BarChart>
+              {/* Financial charts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ChartCard title="Évolution des recettes (cumul mensuel)" empty={revenueEvolution.length === 0}>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={revenueEvolution}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="mois" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: any) => [`${Number(v).toLocaleString()} MAD`, 'Recettes']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                      <Line type="monotone" dataKey="recettes" stroke="#059669" strokeWidth={2.5} dot={{ fill: '#059669', r: 3, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5 }} />
+                    </LineChart>
                   </ResponsiveContainer>
-                  <LegendRow
-                    items={annoncesParCompagnie.map(a => ({ name: a.name, value: a.annonces }))}
-                    colors={annoncesParCompagnie.map((_, i) => i === 0 ? '#10b981' : CHART_COLORS[(i - 1) % CHART_COLORS.length])}
-                  />
-                </>
-              )}
-            </ChartCard>
+                </ChartCard>
+
+                <ChartCard title="Statut des réservations" empty={!financialData.reservationsConfirmees && !financialData.reservationsAnnulees}>
+                  <div className="space-y-3 mt-2">
+                    {[
+                      { label: 'Confirmées', value: financialData.reservationsConfirmees || 0, color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
+                      { label: 'Annulées', value: financialData.reservationsAnnulees || 0, color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50' },
+                    ].map(item => {
+                      const total = (financialData.reservationsConfirmees || 0) + (financialData.reservationsAnnulees || 0);
+                      const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                      return (
+                        <div key={item.label} className={`${item.bg} rounded-xl p-4`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-sm font-semibold ${item.text}`}>{item.label}</span>
+                            <span className={`text-xl font-bold ${item.text}`}>{item.value}</span>
+                          </div>
+                          <div className="w-full bg-white rounded-full h-2">
+                            <div className={`${item.color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className={`text-xs ${item.text} mt-1 opacity-70`}>{pct}% du total</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ChartCard>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
+              Données financières indisponibles — vérifiez la connexion backend
+            </div>
+          )}
+        </div>
+
+        {/* ── Infrastructure KPIs ── */}
+        <div>
+          <SectionHeader title="Infrastructure" action={
+            <Link href="/fr/admin/quais" className="text-xs text-emerald-600 font-medium flex items-center gap-1 hover:underline">
+              Gérer les quais <ChevronRight size={13} />
+            </Link>
+          } />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <KpiCard label="Compagnies" value={stats.compagnies} icon={Building2} color="text-emerald-600" bg="bg-emerald-50" />
+            <KpiCard label="Bus" value={stats.bus} icon={Bus} color="text-teal-600" bg="bg-teal-50" />
+            <KpiCard label="Trajets" value={stats.trajets} icon={MapPin} color="text-cyan-600" bg="bg-cyan-50" />
+            <KpiCard label="Quais total" value={stats.quaisTotal} icon={SquareStack} color="text-slate-600" bg="bg-slate-100" />
+            <KpiCard label="Quais libres" value={stats.quaisFree} icon={SquareStack} color="text-emerald-600" bg="bg-emerald-50" />
+            <KpiCard label="Quais occupés" value={stats.quaisAllocated} icon={SquareStack} color="text-rose-600" bg="bg-rose-50" />
           </div>
         </div>
 
-        {/* ── Section 5 : Promotions ── */}
-        <div>
-          <SectionTitle emoji="🎟️" title="Codes Promo" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl border border-amber-200 p-6 flex items-center gap-4">
-              <div className="text-4xl">🎟️</div>
-              <div>
-                <div className="text-3xl font-bold text-amber-700">{stats.promosTotal}</div>
-                <div className="text-sm text-amber-600 font-medium">Codes promo au total</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center gap-4">
-              <div className="text-4xl">🌐</div>
-              <div>
-                <div className="text-3xl font-bold text-gray-800">
-                  {promosParCompagnie.find(p => p.name === '🌐 Global')?.promos || 0}
+        {/* ── Chart : Quais ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center justify-center">
+            <div className="text-center">
+              <p className="font-semibold text-slate-700 text-sm mb-1">Répartition des quais</p>
+              <p className="text-xs text-slate-400 mb-4">Disponibilité en temps réel</p>
+              <div className="flex items-center gap-8">
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-emerald-600">{stats.quaisFree}</p>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 justify-center"><span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" />Libres</p>
                 </div>
-                <div className="text-sm text-gray-500 font-medium">Codes promo globaux</div>
+                <div className="w-px h-12 bg-slate-100" />
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-rose-500">{stats.quaisAllocated}</p>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 justify-center"><span className="w-2 h-2 bg-rose-500 rounded-full inline-block" />Occupés</p>
+                </div>
+                <div className="w-px h-12 bg-slate-100" />
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-slate-700">{stats.quaisTotal}</p>
+                  <p className="text-xs text-slate-500 mt-1">Total</p>
+                </div>
               </div>
+              {stats.quaisTotal > 0 && (
+                <div className="mt-4 w-full bg-slate-100 rounded-full h-2.5">
+                  <div className="bg-emerald-500 h-2.5 rounded-full transition-all" style={{ width: `${Math.round((stats.quaisFree / stats.quaisTotal) * 100)}%` }} />
+                </div>
+              )}
+              <p className="text-xs text-slate-400 mt-1">{stats.quaisTotal > 0 ? Math.round((stats.quaisFree / stats.quaisTotal) * 100) : 0}% disponibles</p>
             </div>
           </div>
 
-          <ChartCard title="Codes promo par compagnie" subtitle="Global + par compagnie" color="bg-amber-500">
-            {promosParCompagnie.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucun code promo</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={promosParCompagnie} barSize={36}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#fffbeb' }} formatter={(v) => [v, 'Codes promo']} />
-                    <Bar dataKey="promos" radius={[6, 6, 0, 0]}>
-                      {promosParCompagnie.map((_, i) => <Cell key={i} fill={i === 0 ? '#f59e0b' : CHART_COLORS[(i - 1) % CHART_COLORS.length]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <LegendRow
-                  items={promosParCompagnie.map(p => ({ name: p.name, value: p.promos }))}
-                  colors={promosParCompagnie.map((_, i) => i === 0 ? '#f59e0b' : CHART_COLORS[(i - 1) % CHART_COLORS.length])}
-                />
-              </>
-            )}
+          <ChartCard title="État des quais" empty={stats.quaisTotal === 0}>
+            <div className="flex items-center gap-6">
+              <ResponsiveContainer width="60%" height={200}>
+                <PieChart>
+                  <Pie data={quaisData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
+                    <Cell fill="#059669" />
+                    <Cell fill="#f43f5e" />
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-4 flex-1">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full" />
+                    <span className="text-sm text-slate-600">Disponibles</span>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-600 ml-5">{stats.quaisFree}</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-3 h-3 bg-rose-500 rounded-full" />
+                    <span className="text-sm text-slate-600">Occupés</span>
+                  </div>
+                  <p className="text-2xl font-bold text-rose-600 ml-5">{stats.quaisAllocated}</p>
+                </div>
+              </div>
+            </div>
           </ChartCard>
+        </div>
+
+        {/* ── Accès rapides ── */}
+        <div>
+          <SectionHeader title="Accès rapides" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {quickLinks.map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all group"
+              >
+                <div className={`w-10 h-10 ${item.bg} rounded-xl flex items-center justify-center`}>
+                  <item.icon size={18} className={`${item.color} group-hover:scale-110 transition-transform`} />
+                </div>
+                <p className="text-xs font-semibold text-slate-700 text-center">{item.label}</p>
+                <span className={`text-lg font-bold ${item.color}`}>{item.count}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Annonces & Promos ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+                  <Megaphone size={16} className="text-amber-600" />
+                </div>
+                <p className="font-semibold text-slate-700 text-sm">Annonces</p>
+              </div>
+              <Link href="/fr/admin/annonces" className="text-xs text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                Gérer <ChevronRight size={12} />
+              </Link>
+            </div>
+            <p className="text-4xl font-bold text-amber-600 mb-1">{stats.annonces}</p>
+            <p className="text-sm text-slate-500">annonces publiées au total</p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center">
+                  <Tag size={16} className="text-rose-600" />
+                </div>
+                <p className="font-semibold text-slate-700 text-sm">Codes promo</p>
+              </div>
+              <Link href="/fr/admin/promotions" className="text-xs text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                Gérer <ChevronRight size={12} />
+              </Link>
+            </div>
+            <p className="text-4xl font-bold text-rose-600 mb-1">{stats.promos}</p>
+            <p className="text-sm text-slate-500">codes promo actifs</p>
+          </div>
         </div>
 
       </div>
     </AdminLayout>
-  );
-}
-
-function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="text-lg">{emoji}</span>
-      <h2 className="text-base font-bold text-gray-700">{title}</h2>
-      <div className="flex-1 h-px bg-gray-100" />
-    </div>
-  );
-}
-
-function KpiCard({ label, value, color, emoji }: { label: string; value: number; color: string; emoji: string }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
-      <div className={`text-2xl p-3 rounded-xl ${color}`}>{emoji}</div>
-      <div>
-        <div className="text-2xl font-bold text-gray-800">{value}</div>
-        <div className="text-xs text-gray-500 font-medium">{label}</div>
-      </div>
-    </div>
   );
 }

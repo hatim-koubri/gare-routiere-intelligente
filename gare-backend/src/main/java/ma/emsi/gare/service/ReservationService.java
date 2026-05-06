@@ -1,14 +1,17 @@
 package ma.emsi.gare.service;
 
 import lombok.RequiredArgsConstructor;
+import ma.emsi.gare.dto.request.BagageRequest;
 import ma.emsi.gare.dto.request.MembreGroupeRequest;
 import ma.emsi.gare.dto.request.ReservationRequest;
 import ma.emsi.gare.dto.request.VerrouillageSiegeRequest;
+import ma.emsi.gare.dto.response.BagageResponseDTO;
 import ma.emsi.gare.dto.response.ReservationResponseDTO;
 import ma.emsi.gare.dto.response.SiegeResponseDTO;
 import ma.emsi.gare.entity.*;
 import ma.emsi.gare.enums.CategorieTarifaire;
 import ma.emsi.gare.enums.StatutReservation;
+import ma.emsi.gare.enums.TypeBagage;
 import ma.emsi.gare.repository.*;
 import org.springframework.stereotype.Service;
 import ma.emsi.gare.messaging.NotificationProducer;
@@ -29,6 +32,7 @@ import ma.emsi.gare.enums.StatutTicket;
 import java.time.Duration;
 
 import org.springframework.transaction.annotation.Transactional;
+
 
 @Service
 @RequiredArgsConstructor
@@ -578,5 +582,154 @@ public class ReservationService {
         return reservationRepository.findAll(pageable);
     }
 
+    @Transactional(readOnly = true)
+    public List<Reservation> getReservationsForVoyageur(Long voyageurId) {
+        List<Reservation> reservations = reservationRepository.findByVoyageurId(voyageurId);
+        // Force l'initialisation des collections pour éviter le LazyInitializationException
+        reservations.forEach(r -> {
+            if (r.getTickets() != null) r.getTickets().size();
+            if (r.getBagages() != null) r.getBagages().size();
+        });
+        return reservations;
+    }
 
-}
+    // =========================================================
+    // BAGAGES — Déclaration à la réservation
+    // =========================================================
+
+    /**
+     * Ajoute des bagages à une réservation existante.
+     * Calcule automatiquement le surplus selon poids et volume (L×W×H).
+     * Met à jour le prixTotal de la réservation.
+     */
+    @Transactional
+    public List<BagageResponseDTO> ajouterBagages(Long reservationId, List<BagageRequest> bagageRequests) {
+
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable : " + reservationId));
+
+        if (bagageRequests == null || bagageRequests.isEmpty()) {
+            throw new IllegalArgumentException("La liste de bagages ne peut pas être vide");
+        }
+
+        List<Bagage> bagagesSauvegardes = new ArrayList<>();
+        double totalSurplus = 0.0;
+
+        for (BagageRequest req : bagageRequests) {
+            if (req.getPoidsKg() == null || req.getPoidsKg() <= 0) {
+                throw new IllegalArgumentException("Le poids du bagage doit être positif");
+            }
+
+            double volume = calculerVolume(req.getDimensionCm());
+            double surplus = calculerSurplus(req.getPoidsKg(), volume);
+            TypeBagage type = req.getTypeBagage() != null
+                    ? req.getTypeBagage()
+                    : detecterType(req.getPoidsKg(), volume);
+
+            Bagage bagage = new Bagage();
+            bagage.setReservation(reservation);
+            bagage.setPoidsKg(req.getPoidsKg());
+            bagage.setDimensionCm(req.getDimensionCm());
+            bagage.setTypeBagage(type);
+            bagage.setSurplusPrix(surplus);
+            bagage.setScannéArrivee(false);
+            bagage.setPerdu(false);
+            bagage.setEndommage(false);
+            // qrCodeBagage = null → sera généré au scan du chauffeur
+
+            bagagesSauvegardes.add(bagageRepository.save(bagage));
+            totalSurplus += surplus;
+        }
+
+        // Mettre à jour le prix total de la réservation
+        reservation.setPrixTotal(reservation.getPrixTotal() + totalSurplus);
+        reservationRepository.save(reservation);
+
+        return bagagesSauvegardes.stream()
+                .map(this::toBagageDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // ── Formule de tarification ────────────────────────────────
+
+    /**
+     * Calcule le volume en cm³ à partir du format "LxWxH".
+     * Retourne 0 si le format est invalide.
+     */
+    private double calculerVolume(String dimensionCm) {
+        if (dimensionCm == null || dimensionCm.isBlank()) return 0;
+        String[] parts = dimensionCm.split("x");
+        if (parts.length != 3) return 0;
+        try {
+            double l = Double.parseDouble(parts[0].trim());
+            double w = Double.parseDouble(parts[1].trim());
+            double h = Double.parseDouble(parts[2].trim());
+            return l * w * h;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Calcule le surplus en DH selon le poids (kg) et le volume (cm³).
+     * Prend le maximum des deux barèmes.
+     *
+     * Barème poids :
+     *   ≤ 15 kg        → 0 DH
+     *   15 < x ≤ 20 kg → 50 DH
+     *   20 < x ≤ 30 kg → 75 DH
+     *   30 < x ≤ 40 kg → 100 DH
+     *   > 40 kg        → 150 DH
+     *
+     * Barème volume (cm³) :
+     *   ≤ 60 000       → 0 DH   (ex: 45x35x38)
+     *   60k – 120k     → 50 DH  (ex: 60x40x30)
+     *   120k – 200k    → 75 DH  (ex: 70x50x40)
+     *   200k – 300k    → 100 DH (ex: 80x60x50)
+     *   > 300k         → 150 DH (ex: 90x70x50)
+     */
+    private double calculerSurplus(double poidsKg, double volume) {
+        // Barème poids
+        double surplusPoids;
+        if      (poidsKg > 40) surplusPoids = 150;
+        else if (poidsKg > 30) surplusPoids = 100;
+        else if (poidsKg > 20) surplusPoids = 75;
+        else if (poidsKg > 15) surplusPoids = 50;
+        else                   surplusPoids = 0;
+
+        // Barème volume
+        double surplusVolume;
+        if      (volume > 300_000) surplusVolume = 150;
+        else if (volume > 200_000) surplusVolume = 100;
+        else if (volume > 120_000) surplusVolume = 75;
+        else if (volume > 60_000)  surplusVolume = 50;
+        else                       surplusVolume = 0;
+
+        return Math.max(surplusPoids, surplusVolume);
+    }
+
+    /**
+     * Détecte automatiquement le type de bagage selon poids + volume :
+     *   CABINE        : poids ≤ 15 kg ET volume ≤ 60 000 cm³
+     *   SURDIMENSIONNE: poids > 30 kg OU volume > 200 000 cm³
+     *   SOUTE         : tous les autres cas
+     */
+    private TypeBagage detecterType(double poidsKg, double volume) {
+        if (poidsKg > 30 || volume > 200_000) return TypeBagage.SURDIMENSIONNE;
+        if (poidsKg <= 15 && volume <= 60_000) return TypeBagage.CABINE;
+        return TypeBagage.SOUTE;
+    }
+
+    private BagageResponseDTO toBagageDTO(Bagage bagage) {
+        BagageResponseDTO dto = new BagageResponseDTO();
+        dto.setId(bagage.getId());
+        dto.setTypeBagage(bagage.getTypeBagage());
+        dto.setPoidsKg(bagage.getPoidsKg());
+        dto.setDimensionCm(bagage.getDimensionCm());
+        dto.setSurplusPrix(bagage.getSurplusPrix());
+        dto.setQrCodeBagage(bagage.getQrCodeBagage()); // null jusqu'au scan
+        dto.setReservationId(bagage.getReservation().getId());
+        return dto;
+    }
+
+}

@@ -12,7 +12,7 @@ import Footer from '@/components/layout/Footer';
 
 export default function HistoriquePage() {
   const { user } = useAuth();
-  const { locale } = useParams();
+  const locale = 'fr';
   const [trajets, setTrajets] = useState<Trajet[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +81,7 @@ export default function HistoriquePage() {
                 </p>
               </div>
               <Link
-                href={`/${locale}/chauffeur/dashboard`}
+                href={`/fr/chauffeur/dashboard`}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 ← Retour
@@ -152,7 +152,7 @@ export default function HistoriquePage() {
 
                     <div className="pt-2 border-t">
                       <Link
-                        href={`/${locale}/chauffeur/trajets/${trajet.id}/manifeste`}
+                        href={`/fr/chauffeur/trajets/${trajet.id}/manifeste`}
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         📋 Voir le manifeste

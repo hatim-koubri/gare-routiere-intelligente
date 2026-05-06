@@ -24,4 +24,5 @@ public class ReservationResponseDTO {
     private List<String> membres;
     private TrajetResponseDTO trajet;
     private List<TicketDTO> tickets;
+    private List<BagageResponseDTO> bagages;
 }

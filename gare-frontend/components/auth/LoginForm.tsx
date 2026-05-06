@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useTranslations } from '@/lib/hooks/useTranslations';
@@ -16,7 +16,6 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const { locale } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl');
@@ -29,7 +28,7 @@ export default function LoginForm() {
 
     try {
       await login(email, password);
-      router.push(returnUrl ? decodeURIComponent(returnUrl) : `/${locale}/dashboard`);
+      router.push(returnUrl ? decodeURIComponent(returnUrl) : '/fr/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur de connexion');
     } finally {
@@ -79,7 +78,7 @@ export default function LoginForm() {
       
       <div className="mt-12 pt-8 border-t border-[var(--ink)]/10 font-body text-[15px] text-[var(--muted)] text-center">
         {t.common.noAccount}{' '}
-        <Link href={`/${locale}/auth/register`} className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
+        <Link href="/fr/auth/register" className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
           Créer un compte
         </Link>
       </div>

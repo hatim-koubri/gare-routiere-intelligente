@@ -1,3 +1,4 @@
+// app/[locale]/reservation/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,8 +9,8 @@ import { apiClient } from '@/lib/api/client';
 import { storage } from '@/lib/utils/storage';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { UserPlus, UserMinus, AlertCircle } from 'lucide-react';
-
+import { UserPlus, UserMinus, AlertCircle, ArrowLeft, Briefcase, Plus, X } from 'lucide-react';
+import { BagageRequest } from '@/types';
 interface TrajetDTO {
   id: number;
   dateDepart: string;
@@ -50,7 +51,7 @@ export default function ReservationPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const params = useParams();
-  const locale = params?.locale as string ?? 'fr';
+  const locale = 'fr';
   const trajetId = searchParams.get('trajetId');
 
   const [trajet, setTrajet] = useState<TrajetDTO | null>(null);
@@ -58,20 +59,18 @@ export default function ReservationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [typeGroupe, setTypeGroupe] = useState<'MOI_SEUL' | 'MOI_PLUS_ACCOMPAGNANTS' | 'AUTRE_PERSONNE'>('MOI_SEUL');
   const [membres, setMembres] = useState<MembreForm[]>([]);
+  const [bagages, setBagages] = useState<BagageRequest[]>([]);
+  const [showBagages, setShowBagages] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('[DEBUG] useEffect déclenché — user:', user ? `✅ ${user.email}` : '❌ non connecté');
-
     if (!user) {
-      const returnUrl = `/${locale}/reservation?trajetId=${trajetId}`;
-      console.log('[DEBUG] Redirection login avec returnUrl:', returnUrl);
-      router.push(`/${locale}/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      const returnUrl = `/fr/reservation?trajetId=${trajetId}`;
+      router.push(`/fr/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
     if (trajetId) {
-      console.log('[DEBUG] Lancement loadTrajet pour trajetId:', trajetId);
       loadTrajet();
     }
   }, [trajetId, user]);
@@ -79,20 +78,10 @@ export default function ReservationPage() {
   const loadTrajet = async () => {
     try {
       const token = storage.getToken();
-      console.log('[DEBUG] Token au moment de loadTrajet:', token ? `✅ ${token.substring(0, 20)}...` : '❌ absent');
-      console.log('[DEBUG] User au moment de loadTrajet:', user);
-      console.log('[DEBUG] Appel API:', `/voyageur/trajets/${trajetId}`);
-
       const response = await apiClient.get(`/voyageur/trajets/${trajetId}`);
-      console.log('[DEBUG] Réponse trajet:', response.data);
       setTrajet(response.data);
     } catch (error: any) {
-      console.error('[DEBUG] Erreur loadTrajet:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-        headers: error.config?.headers,
-      });
+      console.error('Erreur loadTrajet:', error);
       setError('Trajet introuvable');
     } finally {
       setLoading(false);
@@ -106,6 +95,53 @@ export default function ReservationPage() {
     updated[index] = { ...updated[index], [field]: value };
     setMembres(updated);
   };
+
+  // ----- Gestion des bagages -----
+  const defaultBagage = (): BagageRequest => ({
+    poidsKg: 10,
+    dimensionCm: '60x40x30',
+  });
+
+  const ajouterBagage = () => setBagages([...bagages, defaultBagage()]);
+  const supprimerBagage = (index: number) => setBagages(bagages.filter((_, i) => i !== index));
+  const updateBagage = (index: number, field: keyof BagageRequest, value: any) => {
+    const updated = [...bagages];
+    updated[index] = { ...updated[index], [field]: value };
+    setBagages(updated);
+  };
+
+  const calculerSurplusEstime = (bagage: BagageRequest) => {
+    if (!bagage.poidsKg || !bagage.dimensionCm) return 0;
+    
+    let surplusPoids = 0;
+    if (bagage.poidsKg > 40) surplusPoids = 150;
+    else if (bagage.poidsKg > 30) surplusPoids = 100;
+    else if (bagage.poidsKg > 20) surplusPoids = 75;
+    else if (bagage.poidsKg > 15) surplusPoids = 50;
+
+    let volume = 0;
+    const parts = bagage.dimensionCm.split('x');
+    if (parts.length === 3) {
+      const l = parseFloat(parts[0]) || 0;
+      const w = parseFloat(parts[1]) || 0;
+      const h = parseFloat(parts[2]) || 0;
+      volume = l * w * h;
+    }
+    
+    let surplusVolume = 0;
+    if (volume > 300000) surplusVolume = 150;
+    else if (volume > 200000) surplusVolume = 100;
+    else if (volume > 120000) surplusVolume = 75;
+    else if (volume > 60000) surplusVolume = 50;
+
+    return Math.max(surplusPoids, surplusVolume);
+  };
+
+  const getSurplusTotalBagages = () => {
+    if (!showBagages) return 0;
+    return bagages.reduce((total, b) => total + calculerSurplusEstime(b), 0);
+  };
+  // ---------------------------------
 
   const getNbPassagers = () => {
     if (typeGroupe === 'MOI_SEUL') return 1;
@@ -173,25 +209,31 @@ export default function ReservationPage() {
         membres: membresData,
       });
 
-      // ✅ STOCKER LES INFOS TRAJET COMPLÈTES
+      // Si des bagages sont déclarés, on les ajoute
+      let surplusBagagesFinal = 0;
+      if (showBagages && bagages.length > 0) {
+        const bagagesResponse = await reservationApi.ajouterBagages(reservation.id, bagages);
+        surplusBagagesFinal = bagagesResponse.reduce((sum, b) => sum + (b.surplusPrix || 0), 0);
+      }
+
+      // Stocker les infos complètes du trajet
       sessionStorage.setItem('reservation_temp', JSON.stringify({
         reservationId: reservation.id,
         trajetId: trajet.id,
         typeGroupe,
         membres: membresData,
         nbPassagers: membresData.length,
-        prixTotal: reservation.prixTotal,
-        // ⚠️ INFOS TRAJET POUR LES PAGES SUIVANTES
+        prixTotal: reservation.prixTotal + surplusBagagesFinal,
         villeDepart: trajet.villeDepart,
         villeArrivee: trajet.villeArrivee,
         dateDepart: trajet.dateDepart,
-        compagnie: trajet.compagnieNom,
+        compagnieNom: trajet.compagnieNom,
         busMatricule: trajet.busMatricule,
         quaiNumero: trajet.quaiNumero,
         selectedSieges: [],
       }));
 
-      router.push(`/${locale}/plan-bus?trajetId=${trajet.id}&reservationId=${reservation.id}`);
+      router.push(`/fr/plan-bus?trajetId=${trajet.id}&reservationId=${reservation.id}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la création de la réservation');
     } finally {
@@ -212,7 +254,7 @@ export default function ReservationPage() {
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
         </div>
         <Footer />
@@ -224,11 +266,11 @@ export default function ReservationPage() {
     return (
       <>
         <Header />
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <p className="text-gray-600 font-medium">Trajet non trouvé</p>
-            <button onClick={() => router.push(`/${locale}/recherche`)} className="mt-4 text-orange-500 hover:underline text-sm">
+            <button onClick={() => router.push(`/fr/recherche`)} className="mt-4 text-orange-500 hover:underline text-sm">
               ← Retour à la recherche
             </button>
           </div>
@@ -244,7 +286,15 @@ export default function ReservationPage() {
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-2xl mx-auto px-4 space-y-6">
 
-          {/* ── Étapes ── */}
+          {/* Bouton retour */}
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-gray-500 hover:text-orange-600 text-sm transition"
+          >
+            <ArrowLeft size={16} /> Retour
+          </button>
+
+          {/* Étapes */}
           <div className="flex items-center gap-2 text-sm">
             <span className="bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
             <span className="font-medium text-orange-600">Passagers</span>
@@ -256,7 +306,7 @@ export default function ReservationPage() {
             <span className="text-gray-400">Paiement</span>
           </div>
 
-          {/* ── Résumé trajet ── */}
+          {/* Résumé trajet */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Votre trajet</p>
             <div className="flex items-center gap-4 mb-3">
@@ -286,7 +336,7 @@ export default function ReservationPage() {
             </div>
           </div>
 
-          {/* ── Type de groupe ── */}
+          {/* Type de groupe */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-base font-bold text-gray-800 mb-4">👥 Qui voyage ?</h2>
             <div className="space-y-3">
@@ -326,7 +376,7 @@ export default function ReservationPage() {
             </div>
           </div>
 
-          {/* ── Passagers ── */}
+          {/* Passagers */}
           {(typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS' || typeGroupe === 'AUTRE_PERSONNE') && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
@@ -429,7 +479,100 @@ export default function ReservationPage() {
             </div>
           )}
 
-          {/* ── Récapitulatif prix ── */}
+          {/* Bagages */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-500">
+                  <Briefcase size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-800">Bagages spéciaux / soute</h2>
+                  <p className="text-xs text-gray-500">Ajoutez vos bagages encombrants (gratuit jusqu'à 15kg)</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={showBagages}
+                  onChange={(e) => {
+                    setShowBagages(e.target.checked);
+                    if (!e.target.checked) setBagages([]);
+                    else if (bagages.length === 0) ajouterBagage();
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </label>
+            </div>
+
+            {showBagages && (
+              <div className="mt-6 space-y-4">
+                {bagages.map((bagage, index) => (
+                  <div key={index} className="border border-gray-200 rounded-xl p-4 relative bg-gray-50/50">
+                    <button
+                      onClick={() => supprimerBagage(index)}
+                      className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition"
+                    >
+                      <X size={16} />
+                    </button>
+                    <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                      <Briefcase size={14} className="text-gray-400" /> Bagage {index + 1}
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Poids estimé (kg)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="0.5"
+                            value={bagage.poidsKg}
+                            onChange={(e) => updateBagage(index, 'poidsKg', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 pr-8"
+                          />
+                          <span className="absolute right-3 top-2 text-gray-400 text-sm">kg</span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Dimensions L×l×H (cm)</label>
+                        <select
+                          value={bagage.dimensionCm}
+                          onChange={(e) => updateBagage(index, 'dimensionCm', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
+                        >
+                          <option value="50x35x25">Cabine (50×35×25) - ~45L</option>
+                          <option value="60x40x30">Moyen (60×40×30) - ~70L</option>
+                          <option value="70x50x40">Grand (70×50×40) - ~140L</option>
+                          <option value="80x60x50">Très grand (80×60×50) - ~240L</option>
+                          <option value="90x70x50">Surdimensionné (&gt;250L)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {calculerSurplusEstime(bagage) > 0 && (
+                      <div className="mt-3 text-xs flex items-center justify-between bg-orange-50 text-orange-700 p-2 rounded-lg">
+                        <span>⚠️ Ce bagage générera un surplus (estimé)</span>
+                        <span className="font-bold">+{calculerSurplusEstime(bagage)} DH</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  onClick={ajouterBagage}
+                  className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition flex items-center justify-center gap-2"
+                >
+                  <Plus size={16} /> Ajouter un autre bagage
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Récapitulatif prix */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <h2 className="text-base font-bold text-gray-800 mb-3">💰 Récapitulatif</h2>
             <div className="space-y-2 text-sm">
@@ -441,14 +584,22 @@ export default function ReservationPage() {
                 <span>Nombre de passagers</span>
                 <span>{getNbPassagers()}</span>
               </div>
+              {showBagages && bagages.length > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span>Surplus bagages estimé</span>
+                  <span>{getSurplusTotalBagages() > 0 ? `+${getSurplusTotalBagages()} DH` : 'Gratuit'}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-gray-100 text-base">
                 <span>Total estimé</span>
-                <span className="text-orange-500">{getPrixTotal()} DH</span>
+                <span className="text-orange-500">
+                  {parseInt(getPrixTotal().toString()) + getSurplusTotalBagages()} DH
+                </span>
               </div>
             </div>
           </div>
 
-          {/* ── Erreur ── */}
+          {/* Erreur */}
           {error && error !== 'Trajet introuvable' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-600 text-sm">
               <AlertCircle size={18} />
@@ -456,7 +607,7 @@ export default function ReservationPage() {
             </div>
           )}
 
-          {/* ── Bouton continuer ── */}
+          {/* Bouton continuer */}
           <button
             onClick={handleContinue}
             disabled={submitting}

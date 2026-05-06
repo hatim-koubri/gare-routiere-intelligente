@@ -2,6 +2,7 @@ package ma.emsi.gare.service;
 
 import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.RechercheTrajetRequest;
+import ma.emsi.gare.dto.response.ComparaisonCompagnieDTO;
 import ma.emsi.gare.dto.response.TrajetResponseDTO;
 import ma.emsi.gare.enums.StatutTrajet;
 import ma.emsi.gare.mapper.GareMapper;
@@ -120,6 +121,80 @@ public class VoyageurRechercheService {
                 .toList();
 
         return gareMapper.toTrajetDTOList(filtres);
+    }
+
+    public List<TrajetResponseDTO> recommanderTrajets(Long voyageurId) {
+
+        // 1. récupérer historique
+        var trajetsHistoriques = trajetRepository.findByVoyageurId(voyageurId);
+
+        if (trajetsHistoriques.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. prendre le trajet le plus fréquent (simplifié = dernier)
+        var dernierTrajet = trajetsHistoriques.get(0);
+
+        String villeDepart = dernierTrajet.getLigne().getVilleDepart();
+        String villeArrivee = dernierTrajet.getLigne().getVilleArrivee();
+
+        // 3. chercher trajets futurs similaires
+        var maintenant = LocalDateTime.now();
+
+        var trajets = trajetRepository.findByVillePeriodeEtCompagnie(
+                villeDepart,
+                villeArrivee,
+                maintenant,
+                maintenant.plusDays(30),
+                List.of(StatutTrajet.PLANIFIE),
+                null
+        );
+
+        return gareMapper.toTrajetDTOList(trajets);
+    }
+
+    public List<ComparaisonCompagnieDTO> comparerCompagnies(String villeDepart, String villeArrivee) {
+
+        var maintenant = LocalDateTime.now();
+
+        var trajets = trajetRepository.findByVillePeriodeEtCompagnie(
+                villeDepart,
+                villeArrivee,
+                maintenant,
+                maintenant.plusDays(30),
+                List.of(StatutTrajet.PLANIFIE),
+                null
+        );
+
+        return trajets.stream()
+                .collect(
+                        java.util.stream.Collectors.toMap(
+                                t -> t.getLigne().getCompagnie().getId(), // clé = compagnie unique
+                                t -> {
+
+                                    String compagnie = t.getLigne().getCompagnie().getNom();
+                                    double prix = t.getLigne().getPrixBase();
+
+                                    long duree = java.time.Duration.between(
+                                            t.getDateDepart(),
+                                            t.getDateArriveePrevue()
+                                    ).toMinutes();
+
+                                    double note = t.getLigne().getCompagnie().getNoteMoyenne();
+
+                                    return new ComparaisonCompagnieDTO(
+                                            compagnie,
+                                            prix,
+                                            duree,
+                                            note
+                                    );
+                                },
+                                (existing, replacement) -> existing // éviter doublons
+                        )
+                )
+                .values()
+                .stream()
+                .toList();
     }
 
 }

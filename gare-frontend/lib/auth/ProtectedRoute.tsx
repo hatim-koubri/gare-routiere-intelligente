@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from './AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, ReactNode } from 'react';
 import { Role } from '@/types';
 
@@ -13,17 +13,16 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const { locale } = useParams();
 
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push(`/${locale}/auth/login`);
+        router.push(`/fr/auth/login`);
       } else if (allowedRoles && !allowedRoles.includes(user.role)) {
-        router.push(`/${locale}/dashboard`);
+        router.push(`/fr/dashboard`);
       }
     }
-  }, [user, isLoading, router, allowedRoles, locale]);
+  }, [user, isLoading, router, allowedRoles]);
 
   if (isLoading) {
     return (

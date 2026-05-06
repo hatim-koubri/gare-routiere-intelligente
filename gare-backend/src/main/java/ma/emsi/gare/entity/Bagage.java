@@ -2,6 +2,7 @@ package ma.emsi.gare.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import ma.emsi.gare.enums.TypeBagage;
 
 @Entity
 @Table(name = "bagages")
@@ -13,6 +14,10 @@ public class Bagage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_bagage")
+    private TypeBagage typeBagage;
 
     @Column(name = "qr_code_bagage", unique = true)
     private String qrCodeBagage;
@@ -38,4 +43,4 @@ public class Bagage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reservation_id", nullable = false)
     private Reservation reservation;
-}
+}

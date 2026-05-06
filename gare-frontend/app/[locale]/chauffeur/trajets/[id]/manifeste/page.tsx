@@ -1,25 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { useParams } from 'next/navigation';
 import { ProtectedRoute } from '@/lib/auth/ProtectedRoute';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
 import { apiClient } from '@/lib/api/client';
 import { Role, Arret } from '@/types';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
+import {
+  ArrowLeft, MapPin, Clock, Users, CheckCircle2, Hourglass,
+  AlertTriangle, Route, TrendingUp, Baby, Hash, Tag,
+  ChevronRight, ShieldAlert, CircleDot, Circle,
+} from 'lucide-react';
+
+const INCIDENT_CONFIG: Record<string, { label: string; className: string }> = {
+  PANNE:    { label: 'Panne',    className: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
+  RETARD:   { label: 'Retard',   className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
+  ACCIDENT: { label: 'Accident', className: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' },
+  AUTRE:    { label: 'Autre',    className: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200' },
+};
 
 export default function ManifestePage() {
-  const { id, locale } = useParams();
-  const router = useRouter();
+  const { id } = useParams();
   const [manifeste, setManifeste] = useState<any>(null);
   const [arrets, setArrets] = useState<Arret[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [prochainArret, setProchainArret] = useState<Arret | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadManifeste();
@@ -42,16 +51,12 @@ export default function ManifestePage() {
       const response = await apiClient.get(`/chauffeur/trajets/${id}/arrets`);
       const arretsData = Array.isArray(response.data) ? response.data : [];
       setArrets(arretsData);
-      
-      if (arretsData.length > 0) {
-        setProchainArret(arretsData[0]);
-      }
+      if (arretsData.length > 0) setProchainArret(arretsData[0]);
     } catch (error) {
       console.error('Erreur chargement arrêts', error);
     }
   };
 
-  // ✅ CORRECTION ICI - Utiliser l'endpoint chauffeur
   const loadIncidents = async () => {
     try {
       const response = await apiClient.get(`/chauffeur/trajets/${id}/incidents`);
@@ -64,187 +69,217 @@ export default function ManifestePage() {
     }
   };
 
-  const getNombreEmbarques = () => {
-    if (!manifeste?.passagers) return 0;
-    return manifeste.passagers.filter((p: any) => p.statut === 'UTILISE').length;
-  };
+  const getNombreEmbarques = () =>
+    manifeste?.passagers?.filter((p: any) => p.statut === 'UTILISE').length ?? 0;
 
-  const total = manifeste?.nbPassagers || 0;
+  const total     = manifeste?.nbPassagers ?? 0;
   const embarques = getNombreEmbarques();
   const enAttente = total - embarques;
-  const tauxEmbarquement = total > 0 ? Math.round((embarques / total) * 100) : 0;
+  const taux      = total > 0 ? Math.round((embarques / total) * 100) : 0;
 
-  const embarquesAngle = (embarques / total) * 360;
-  const radius = 80;
+  const radius        = 54;
   const circumference = 2 * Math.PI * radius;
-  const embarquesDash = (embarquesAngle / 360) * circumference;
+  const dashOffset    = circumference - (taux / 100) * circumference;
 
-  const PieChart = () => (
-    <div className="relative w-48 h-48 mx-auto">
-      <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="20" />
-        <circle cx="100" cy="100" r={radius} fill="none" stroke="#10B981" strokeWidth="20" 
-          strokeDasharray={`${embarquesDash} ${circumference}`} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-gray-800">{tauxEmbarquement}%</span>
-        <span className="text-xs text-gray-500">embarquement</span>
-      </div>
-    </div>
-  );
-
-  const getTypeBadge = (type: string) => {
-    const colors: Record<string, string> = {
-      PANNE: 'bg-red-100 text-red-800',
-      RETARD: 'bg-yellow-100 text-yellow-800',
-      ACCIDENT: 'bg-orange-100 text-orange-800',
-      AUTRE: 'bg-gray-100 text-gray-800',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
+  const passagersFiltres = (manifeste?.passagers ?? []).filter((p: any) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      p.nom?.toLowerCase().includes(q) ||
+      p.prenom?.toLowerCase().includes(q) ||
+      String(p.siege)?.toLowerCase().includes(q)
+    );
+  });
 
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={[Role.CHAUFFEUR]}>
-        <Header />
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            <p className="text-sm text-slate-400 font-medium">Chargement du manifeste...</p>
+          </div>
         </div>
-        <Footer />
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute allowedRoles={[Role.CHAUFFEUR]}>
-      <Header />
-      <div className="min-h-screen bg-gray-100 py-8">
-        <div className="container mx-auto px-4">
-          <div className="mb-6">
-            <Link href={`/${locale}/chauffeur/dashboard`} className="text-blue-600 hover:underline">
-              ← Retour au tableau de bord
-            </Link>
-          </div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 pb-16">
 
-          {error ? (
-            <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error}</div>
-          ) : manifeste ? (
+          {/* ── Retour ── */}
+          <Link
+            href="/fr/chauffeur/trajets"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 font-medium transition-colors"
+          >
+            <ArrowLeft size={15} /> Retour aux trajets
+          </Link>
+
+          {/* ── Erreur ── */}
+          {error && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm font-medium">
+              <AlertTriangle size={17} className="flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {manifeste && (
             <>
-              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h1 className="text-2xl font-bold mb-2">Manifeste de voyage</h1>
-                <p className="text-gray-600">{manifeste.ligne}</p>
-                <p className="text-gray-600">Départ: {new Date(manifeste.dateDepart).toLocaleString()}</p>
+              {/* ══ HEADER CARD ══ */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 flex items-start justify-between flex-wrap gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-1">Manifeste de voyage</p>
+                    <h1 className="text-2xl font-bold text-slate-900">{manifeste.ligne}</h1>
+                    <div className="flex items-center gap-2 mt-1.5 text-sm text-slate-400">
+                      <Clock size={13} />
+                      <span>Départ : {new Date(manifeste.dateDepart).toLocaleString('fr-FR')}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                    <Hash size={13} className="text-slate-400" />
+                    <span className="text-sm font-semibold text-slate-600">Trajet #{id}</span>
+                  </div>
+                </div>
+                <div className="h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400" />
               </div>
 
-              {/* Prochain arrêt */}
+              {/* ══ PROCHAIN ARRÊT ══ */}
               {prochainArret && (
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-6 mb-6 text-white">
-                  <div className="flex items-center justify-between">
+                <div className="relative bg-indigo-600 rounded-2xl shadow-lg overflow-hidden">
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute rounded-full w-40 h-40 bg-white -top-10 -right-10" />
+                    <div className="absolute rounded-full w-24 h-24 bg-white bottom-0 left-20" />
+                  </div>
+                  <div className="relative px-6 py-5 flex items-center justify-between flex-wrap gap-4">
                     <div>
-                      <p className="text-sm opacity-80 mb-1">📍 PROCHAIN ARRÊT</p>
-                      <p className="text-2xl font-bold">{prochainArret.ville}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm opacity-80">Heure estimée</p>
-                      <p className="text-xl font-bold">À déterminer</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Section graphique */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="text-lg font-semibold mb-4 text-center">Taux d'embarquement</h3>
-                  <PieChart />
-                  <div className="flex justify-center gap-6 mt-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                      <span className="text-sm">Embarqués ({embarques})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-                      <span className="text-sm">En attente ({enAttente})</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                    <p className="text-sm text-gray-500">Total passagers</p>
-                    <p className="text-3xl font-bold text-blue-600">{total}</p>
-                  </div>
-                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                    <p className="text-sm text-gray-500">Embarqués</p>
-                    <p className="text-3xl font-bold text-green-600">{embarques}</p>
-                  </div>
-                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                    <p className="text-sm text-gray-500">En attente</p>
-                    <p className="text-3xl font-bold text-yellow-600">{enAttente}</p>
-                  </div>
-                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                    <p className="text-sm text-gray-500">Taux d'embarquement</p>
-                    <p className="text-3xl font-bold text-purple-600">{tauxEmbarquement}%</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Barre de progression */}
-              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div className="mb-2 flex justify-between text-sm">
-                  <span>Progression d'embarquement</span>
-                  <span>{tauxEmbarquement}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div className="bg-green-500 h-4 rounded-full transition-all duration-500"
-                    style={{ width: `${tauxEmbarquement}%` }} />
-                </div>
-              </div>
-
-              {/* Section Incidents */}
-              {incidents.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <span className="text-red-500">⚠️</span> Incidents signalés
-                  </h3>
-                  <div className="space-y-3">
-                    {incidents.map((incident) => (
-                      <div key={incident.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeBadge(incident.type)}`}>
-                              {incident.type}
-                            </span>
-                            <p className="mt-2 text-gray-700">{incident.description}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">
-                              {new Date(incident.dateIncident).toLocaleString()}
-                            </p>
-                            <span className={`inline-block mt-1 text-xs ${incident.resolu ? 'text-green-600' : 'text-red-600'}`}>
-                              {incident.resolu ? '✓ Résolu' : '⏳ En cours'}
-                            </span>
-                          </div>
-                        </div>
+                      <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">Prochain arrêt</p>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={20} className="text-white" />
+                        <p className="text-2xl font-bold text-white">{prochainArret.ville}</p>
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                      <Clock size={14} className="text-indigo-200" />
+                      <span className="text-white text-sm font-semibold">À venir</span>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Parcours */}
+              {/* ══ KPIs + DONUT ══ */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                {/* Donut embarquement */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center">
+                  <p className="text-sm font-semibold text-slate-700 mb-5">Taux d'embarquement</p>
+
+                  <div className="relative w-36 h-36">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 136 136">
+                      <circle cx="68" cy="68" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="16" />
+                      <circle cx="68" cy="68" r={radius} fill="none"
+                        stroke={taux === 100 ? '#16a34a' : taux > 50 ? '#4f46e5' : '#f59e0b'}
+                        strokeWidth="16"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashOffset}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 1s ease' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-bold text-slate-900">{taux}%</span>
+                      <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">embarqués</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-6 mt-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span className="text-xs text-slate-500">Embarqués ({embarques})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                      <span className="text-xs text-slate-500">En attente ({enAttente})</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Compteurs */}
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Total passagers', value: total,     color: 'text-indigo-600', bg: 'bg-indigo-50',  icon: <Users size={18} className="text-indigo-600" /> },
+                    { label: 'Embarqués',        value: embarques, color: 'text-emerald-600',bg: 'bg-emerald-50', icon: <CheckCircle2 size={18} className="text-emerald-600" /> },
+                    { label: 'En attente',        value: enAttente, color: 'text-amber-600', bg: 'bg-amber-50',   icon: <Hourglass size={18} className="text-amber-600" /> },
+                    { label: 'Taux',              value: `${taux}%`,color: 'text-violet-600',bg: 'bg-violet-50',  icon: <TrendingUp size={18} className="text-violet-600" /> },
+                  ].map(({ label, value, color, bg, icon }) => (
+                    <div key={label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${bg}`}>{icon}</div>
+                      <div>
+                        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">{label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ══ BARRE DE PROGRESSION ══ */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-slate-700">Progression d'embarquement</span>
+                  <span className="text-sm font-bold text-indigo-600">{taux}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-3 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${taux}%`,
+                      background: taux === 100
+                        ? '#16a34a'
+                        : 'linear-gradient(90deg, #4f46e5, #7c3aed)',
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 font-medium">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* ══ PARCOURS ══ */}
               {arrets.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                  <h3 className="text-lg font-semibold mb-4">📍 Parcours</h3>
-                  <div className="flex justify-between items-center">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-5">
+                    <Route size={16} className="text-indigo-500" />
+                    <p className="text-sm font-semibold text-slate-700">Parcours du trajet</p>
+                  </div>
+                  <div className="flex items-center overflow-x-auto pb-2 gap-0">
                     {arrets.map((arret, idx) => (
-                      <div key={idx} className="text-center flex-1">
-                        <div className={`w-3 h-3 rounded-full mx-auto mb-2 ${
-                          idx === 0 ? 'bg-green-500 ring-4 ring-green-200' : 'bg-gray-300'
-                        }`} />
-                        <p className="text-xs font-medium">{arret.ville}</p>
-                        {idx === 0 && (
-                          <span className="text-[10px] text-green-600">🚌 Prochain</span>
+                      <div key={idx} className="flex items-center flex-shrink-0">
+                        <div className="flex flex-col items-center">
+                          {idx === 0 ? (
+                            <CircleDot size={22} className="text-indigo-600 mb-1.5" />
+                          ) : idx === arrets.length - 1 ? (
+                            <MapPin size={22} className="text-emerald-500 mb-1.5" />
+                          ) : (
+                            <Circle size={16} className="text-slate-300 mb-1.5 mt-0.5" />
+                          )}
+                          <p className="text-xs font-semibold text-slate-700 text-center max-w-[80px]">{arret.ville}</p>
+                          {idx === 0 && (
+                            <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wide mt-0.5">Départ</span>
+                          )}
+                          {idx === arrets.length - 1 && (
+                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">Arrivée</span>
+                          )}
+                        </div>
+                        {idx < arrets.length - 1 && (
+                          <div className="flex items-center mx-1 mb-5">
+                            <div className="h-0.5 w-8 bg-slate-200 rounded-full" />
+                            <ChevronRight size={12} className="text-slate-300 -ml-1" />
+                          </div>
                         )}
                       </div>
                     ))}
@@ -252,46 +287,148 @@ export default function ManifestePage() {
                 </div>
               )}
 
-              {/* Tableau des passagers */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prénom</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siège</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catégorie</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enfant genoux</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {manifeste.passagers.map((passager: any, index: number) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">{passager.nom}</td>
-                        <td className="px-6 py-4">{passager.prenom}</td>
-                        <td className="px-6 py-4">{passager.siege}</td>
-                        <td className="px-6 py-4">{passager.categorie}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            passager.statut === 'UTILISE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {passager.statut === 'UTILISE' ? '✅ Embarqué' : '⏳ En attente'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">{passager.enfantSurGenoux ? 'Oui' : 'Non'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* ══ INCIDENTS ══ */}
+              {incidents.length > 0 && (
+                <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ShieldAlert size={16} className="text-red-500" />
+                    <p className="text-sm font-semibold text-slate-700">Incidents signalés</p>
+                    <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 ring-1 ring-red-200">
+                      {incidents.length}
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {incidents.map((inc) => {
+                      const cfg = INCIDENT_CONFIG[inc.type] ?? INCIDENT_CONFIG.AUTRE;
+                      return (
+                        <div key={inc.id} className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                          <AlertTriangle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${cfg.className}`}>
+                                {cfg.label}
+                              </span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                inc.resolu
+                                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                  : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                              }`}>
+                                {inc.resolu ? 'Résolu' : 'En cours'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 leading-snug">{inc.description}</p>
+                          </div>
+                          <p className="text-[10px] text-slate-400 flex-shrink-0 text-right">
+                            {new Date(inc.dateIncident).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ══ LISTE DES PASSAGERS ══ */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+                {/* En-tête liste */}
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <Users size={16} className="text-indigo-500" />
+                    <p className="text-sm font-semibold text-slate-700">Liste des passagers</p>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200">
+                      {total}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Rechercher un passager..."
+                    className="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white w-56 transition-all"
+                  />
+                </div>
+
+                {/* Tableau responsive */}
+                {passagersFiltres.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm">Aucun passager trouvé</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 text-left">
+                          {['Nom', 'Prénom', 'Siège', 'Catégorie', 'Statut', 'Enfant'].map((h) => (
+                            <th key={h} className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {passagersFiltres.map((p: any, idx: number) => (
+                          <tr
+                            key={idx}
+                            className={`hover:bg-indigo-50/30 transition-colors ${
+                              p.statut === 'UTILISE' ? '' : 'bg-amber-50/20'
+                            }`}
+                          >
+                            <td className="px-5 py-3.5 font-semibold text-slate-800">{p.nom}</td>
+                            <td className="px-5 py-3.5 text-slate-600">{p.prenom}</td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                                <Hash size={10} /> {p.siege ?? 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-violet-50 text-violet-700 text-xs font-semibold ring-1 ring-violet-200">
+                                <Tag size={10} /> {p.categorie}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              {p.statut === 'UTILISE' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold ring-1 ring-emerald-200">
+                                  <CheckCircle2 size={11} /> Embarqué
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold ring-1 ring-amber-200">
+                                  <Hourglass size={11} /> En attente
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              {p.enfantSurGenoux ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-semibold ring-1 ring-amber-200">
+                                  <Baby size={10} /> Oui
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 text-xs">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Footer table */}
+                <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                  <span>{passagersFiltres.length} passager(s) affiché(s)</span>
+                  <span>{embarques} embarqué(s) · {enAttente} en attente</span>
+                </div>
               </div>
+
             </>
-          ) : (
-            <div className="text-center py-12 text-gray-500">Aucun manifeste trouvé</div>
           )}
+
+          {!manifeste && !error && (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              Aucun manifeste disponible pour ce trajet
+            </div>
+          )}
+
         </div>
       </div>
-      <Footer />
     </ProtectedRoute>
   );
 }

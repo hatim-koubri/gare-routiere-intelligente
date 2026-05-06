@@ -3,6 +3,8 @@ package ma.emsi.gare.controller.voyageur;
 import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.ReservationRequest;
 import ma.emsi.gare.dto.request.VerrouillageSiegeRequest;
+import ma.emsi.gare.dto.request.BagageRequest;
+import ma.emsi.gare.dto.response.BagageResponseDTO;
 import ma.emsi.gare.dto.response.ReservationResponseDTO;
 import ma.emsi.gare.dto.response.SiegeResponseDTO;
 import ma.emsi.gare.dto.response.TrajetResponseDTO;
@@ -13,15 +15,21 @@ import ma.emsi.gare.entity.Voyageur;
 import ma.emsi.gare.repository.ReservationRepository;
 import ma.emsi.gare.repository.TicketRepository;
 import ma.emsi.gare.repository.VoyageurRepository;
+import ma.emsi.gare.service.EmailService;
 import ma.emsi.gare.service.PdfService;
 import ma.emsi.gare.service.ReservationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import ma.emsi.gare.dto.request.ModificationReservationRequest;
+import ma.emsi.gare.dto.request.ChangementSiegeRequest;
+import ma.emsi.gare.dto.request.DeclarationBagageRequest;
+
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/voyageur/reservations")
@@ -33,6 +41,8 @@ public class VoyageurReservationController {
     private final VoyageurRepository voyageurRepository;
     private final TicketRepository ticketRepository;
     private final PdfService pdfService;
+
+    private final EmailService emailService;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -52,7 +62,7 @@ public class VoyageurReservationController {
         Voyageur voyageur = voyageurRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Voyageur non trouvé"));
 
-        List<Reservation> reservations = reservationRepository.findByVoyageurId(voyageur.getId());
+        List<Reservation> reservations = reservationService.getReservationsForVoyageur(voyageur.getId());
 
         return reservations.stream()
                 .map(this::convertToDTO)
@@ -76,6 +86,72 @@ public class VoyageurReservationController {
     public void verrouillerSieges(@RequestBody VerrouillageSiegeRequest request) {
         reservationService.verrouillerSieges(request);
     }
+
+    @DeleteMapping("/{id}/annuler")
+    public double annulerReservation(@PathVariable Long id) {
+        return reservationService.annulerReservation(id);
+    }
+
+    @PutMapping("/{id}/modifier")
+    public ReservationResponseDTO modifierReservation(
+            @PathVariable Long id,
+            @RequestBody ModificationReservationRequest request
+    ) {
+        return reservationService.modifierReservation(id, request);
+    }
+
+    @PutMapping("/{id}/changer-sieges")
+    public ReservationResponseDTO changerSieges(
+            @PathVariable Long id,
+            @RequestBody ChangementSiegeRequest request
+    ) {
+        return reservationService.changerSieges(id, request.getNouveauxSieges());
+    }
+
+    /**
+     * Ajoute des bagages à une réservation existante.
+     * Le surplus est calculé automatiquement selon poids + dimensions (volume).
+     * POST /api/voyageur/reservations/{id}/bagages
+     */
+    @PostMapping("/{id}/bagages")
+    public ResponseEntity<List<BagageResponseDTO>> ajouterBagages(
+            @PathVariable Long id,
+            @RequestBody List<BagageRequest> bagageRequests,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        Voyageur voyageur = voyageurRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Voyageur non trouvé"));
+
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
+
+        if (!reservation.getVoyageur().getId().equals(voyageur.getId())) {
+            throw new RuntimeException("Accès non autorisé à cette réservation");
+        }
+
+        List<BagageResponseDTO> bagages = reservationService.ajouterBagages(id, bagageRequests);
+        return ResponseEntity.ok(bagages);
+    }
+
+    @PostMapping("/bagage/declarer")
+    public void declarerBagage(@RequestBody DeclarationBagageRequest request) {
+        reservationService.declarerBagage(
+                request.getQrCodeBagage(),
+                request.getType()
+        );
+    }
+
+
+    @GetMapping("/test-email")
+    public String testEmail() {
+        byte[] fakePdf = new byte[0];
+
+        emailService.envoyerTicket("test@mail.com", fakePdf);
+
+        return "Email envoyé (ou tentative)";
+    }
+
 
     // ✅ Endpoint pour télécharger un ticket en PDF (version mise à jour)
     @GetMapping("/{reservationId}/ticket/{ticketId}")
@@ -129,7 +205,8 @@ public class VoyageurReservationController {
                 heureDepart,
                 dateDepart,
                 villeDepart,
-                villeArrivee
+                villeArrivee,
+                reservation.getBagages()
         );
 
         return ResponseEntity.ok()
@@ -201,6 +278,48 @@ public class VoyageurReservationController {
             dto.setNombrePassagers(tickets.size());
         }
 
+        // Ajouter les bagages
+        if (reservation.getBagages() != null && !reservation.getBagages().isEmpty()) {
+            List<BagageResponseDTO> bagages = reservation.getBagages().stream()
+                    .map(b -> {
+                        BagageResponseDTO bDTO = new BagageResponseDTO();
+                        bDTO.setId(b.getId());
+                        bDTO.setPoidsKg(b.getPoidsKg());
+                        bDTO.setDimensionCm(b.getDimensionCm());
+                        bDTO.setTypeBagage(b.getTypeBagage());
+                        bDTO.setSurplusPrix(b.getSurplusPrix());
+                        bDTO.setQrCodeBagage(b.getQrCodeBagage());
+                        return bDTO;
+                    })
+                    .collect(Collectors.toList());
+            dto.setBagages(bagages);
+        }
+
         return dto;
     }
+    // Ajoutez cette méthode après getMesReservations() ou avant la fin de la classe
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ReservationResponseDTO> getReservationById(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+
+        // Vérifier que le voyageur existe
+        Voyageur voyageur = voyageurRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Voyageur non trouvé"));
+
+        // Récupérer la réservation
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
+
+        // Vérifier que la réservation appartient bien au voyageur
+        if (!reservation.getVoyageur().getId().equals(voyageur.getId())) {
+            throw new RuntimeException("Accès non autorisé à cette réservation");
+        }
+
+        return ResponseEntity.ok(convertToDTO(reservation));
+    }
+
 }

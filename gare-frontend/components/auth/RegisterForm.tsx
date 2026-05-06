@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Role } from '@/types';
 import { Input } from '@/components/ui/Input';
@@ -25,7 +25,6 @@ export default function RegisterForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
-  const { locale } = useParams();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,7 +51,7 @@ export default function RegisterForm() {
     try {
       const { confirmPassword, ...registerData } = formData;
       await register(registerData);
-      router.push(`/${locale}/dashboard`);
+      router.push('/fr/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur d'inscription");
     } finally {
@@ -113,7 +112,7 @@ export default function RegisterForm() {
       
       <div className="mt-12 pt-8 border-t border-[var(--ink)]/10 font-body text-[15px] text-[var(--muted)] text-center">
         Déjà un compte ?{' '}
-        <Link href={`/${locale}/auth/login`} className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
+        <Link href="/fr/auth/login" className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">
           Se connecter
         </Link>
       </div>

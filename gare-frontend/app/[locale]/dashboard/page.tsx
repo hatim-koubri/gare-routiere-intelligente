@@ -3,20 +3,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useParams } from 'next/navigation';
 
 export default function DashboardRouterPage() {
   const router = useRouter();
-  const { locale } = useParams();
+  const locale = 'fr';
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthAndRedirect = () => {
-      const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('auth_user');
       
       if (!token || !userStr) {
-        router.push(`/${locale}/auth/login`);
+        router.push(`/fr/auth/login`);
         return;
       }
       
@@ -26,30 +25,30 @@ export default function DashboardRouterPage() {
         // Rediriger selon le rôle
         switch (user.role) {
           case 'ADMIN':
-            router.push(`/${locale}/admin/dashboard`);
+            router.push(`/fr/admin/dashboard`);
             break;
           case 'CHAUFFEUR':
-            router.push(`/${locale}/chauffeur/dashboard`);
+            router.push(`/fr/chauffeur/dashboard`);
             break;
           case 'VOYAGEUR':
-            router.push(`/${locale}/voyageur/dashboard`);
+            router.push(`/fr/voyageur/dashboard`);
             break;
           case 'RESPONSABLE_COMPAGNIE':
-            router.push(`/${locale}/responsable/dashboard`);
+            router.push(`/fr/responsable/dashboard`);
             break;
           default:
-            router.push(`/${locale}/auth/login`);
+            router.push(`/fr/auth/login`);
         }
       } catch (error) {
         console.error('Erreur de redirection:', error);
-        router.push(`/${locale}/auth/login`);
+        router.push(`/fr/auth/login`);
       } finally {
         setIsLoading(false);
       }
     };
     
     checkAuthAndRedirect();
-  }, [router, locale]);
+  }, [router]);
 
   if (isLoading) {
     return (

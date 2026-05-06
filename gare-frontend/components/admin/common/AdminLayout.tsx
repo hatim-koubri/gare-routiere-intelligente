@@ -1,54 +1,76 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Role } from '@/types';
 import AdminSidebar from './AdminSidebar';
-import Header from '@/components/layout/Header';
-import { motion } from 'framer-motion';
+
+const pageTitles: Record<string, string> = {
+  '/fr/admin': 'Tableau de bord',
+  '/fr/admin/compagnies': 'Compagnies',
+  '/fr/admin/bus': 'Flotte de bus',
+  '/fr/admin/lignes': 'Lignes',
+  '/fr/admin/trajets': 'Trajets',
+  '/fr/admin/quais': 'Quais',
+  '/fr/admin/chauffeurs': 'Chauffeurs',
+  '/fr/admin/ocr': 'Scanner OCR',
+  '/fr/admin/annonces': 'Annonces',
+  '/fr/admin/promotions': 'Promotions',
+};
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const { locale } = useParams();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== Role.ADMIN)) {
-      router.push(`/${locale}/dashboard`);
+      router.push('/fr/dashboard');
     }
-  }, [user, isLoading, router, locale]);
+  }, [user, isLoading, router]);
 
-  if (!user || user.role !== Role.ADMIN) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm">Chargement…</p>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-indigo-500/30 relative overflow-hidden transition-colors duration-700">
-      {/* Dynamic Background Mesh */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
-          <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-emerald-500/10 blur-[150px] rounded-full animate-pulse" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-emerald-600/5 blur-[130px] rounded-full animate-pulse" 
-               style={{ animationDelay: '2s' }} />
-      </div>
-      
-      {/* Noise Overlay for texture */}
-      <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none" />
+  if (!user || user.role !== Role.ADMIN) return null;
 
-      <div className="flex flex-row flex-nowrap h-screen w-full overflow-hidden relative z-10">
-        <AdminSidebar />
-        <main className="flex-1 flex flex-col min-w-0 h-full bg-transparent overflow-hidden">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8"
-          >
-            <div className="max-w-[1700px] mx-auto">
-                {children}
+  const pageTitle = Object.entries(pageTitles).find(
+    ([key]) => key === pathname || (key !== '/fr/admin' && pathname.startsWith(key))
+  )?.[1] ?? 'Administration';
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Topbar */}
+        <header className="flex-shrink-0 bg-white border-b border-slate-100 px-6 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-5 bg-emerald-600 rounded-full" />
+            <h2 className="text-sm font-semibold text-slate-700">{pageTitle}</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400 hidden sm:block">
+              {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
+              <span className="text-white text-xs font-bold">
+                {user.prenom?.[0]}{user.nom?.[0]}
+              </span>
             </div>
-          </motion.div>
+          </div>
+        </header>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7">
+          <div className="max-w-[1500px] mx-auto">{children}</div>
         </main>
       </div>
     </div>

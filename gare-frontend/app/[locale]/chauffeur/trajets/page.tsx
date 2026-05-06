@@ -1,196 +1,230 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
 import { Trajet } from '@/types';
 import Link from 'next/link';
+import {
+  MapPin, ArrowRight, Bus, Building2, ParkingCircle, Clock,
+  Users, Timer, FileText, QrCode, Luggage, Flag, AlertTriangle,
+  CalendarDays, RefreshCw, ChevronRight,
+} from 'lucide-react';
+
+const STATUT_CONFIG: Record<string, { label: string; className: string; dot: string }> = {
+  PLANIFIE: { label: 'Planifié',  className: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200', dot: 'bg-indigo-500' },
+  EN_COURS: { label: 'En cours',  className: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', dot: 'bg-emerald-500' },
+  TERMINE:  { label: 'Terminé',   className: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200', dot: 'bg-slate-400' },
+  ANNULE:   { label: 'Annulé',    className: 'bg-red-50 text-red-600 ring-1 ring-red-200', dot: 'bg-red-500' },
+  RETARDE:  { label: 'Retardé',   className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200', dot: 'bg-amber-500' },
+};
 
 export default function ChauffeurTrajetsPage() {
   const { user } = useAuth();
-  const { locale } = useParams();
   const [trajets, setTrajets] = useState<Trajet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadTrajets();
-  }, []);
+  useEffect(() => { loadTrajets(); }, []);
 
-  const loadTrajets = async () => {
-    setLoading(true);
+  const loadTrajets = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
       const data = await chauffeurTrajetApi.getTrajetsJour();
       console.log('=== TRAJETS PAGE ===');
       console.log('Données reçues:', data);
-      setTrajets(Array.isArray(data) ? data : []);
+      // Trier par date de départ croissante (le plus proche en premier)
+      const sorted = Array.isArray(data)
+        ? [...data].sort((a, b) => new Date(a.dateDepart).getTime() - new Date(b.dateDepart).getTime())
+        : [];
+      setTrajets(sorted);
     } catch (error) {
       console.error('Erreur chargement trajets', error);
       setTrajets([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const getStatutColor = (statut: string) => {
-    const colors: Record<string, string> = {
-      PLANIFIE: 'bg-blue-100 text-blue-800',
-      EN_COURS: 'bg-green-100 text-green-800',
-      TERMINE: 'bg-gray-100 text-gray-800',
-      ANNULE: 'bg-red-100 text-red-800',
-      RETARDE: 'bg-yellow-100 text-yellow-800',
-    };
-    return colors[statut] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getVilleDepart = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.villeDepart || anyTrajet.ligne?.villeDepart || '?';
-  };
-
-  const getVilleArrivee = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.villeArrivee || anyTrajet.ligne?.villeArrivee || '?';
-  };
-
-  const getCompagnieNom = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.compagnieNom || anyTrajet.ligne?.compagnie?.nom || 'N/A';
-  };
-
-  const getBusMatricule = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.busMatricule || anyTrajet.bus?.matricule || 'N/A';
-  };
-
-  const getNbSieges = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.nbSieges || anyTrajet.bus?.nbSieges || 0;
-  };
-
-  const getQuaiNumero = (trajet: Trajet) => {
-    const anyTrajet = trajet as any;
-    return anyTrajet.quaiNumero || anyTrajet.quai?.numero || 'N/A';
-  };
-
-  const getDateDepart = (trajet: Trajet) => {
-    if (trajet.dateDepart) {
-      return new Date(trajet.dateDepart).toLocaleString();
-    }
-    return 'N/A';
-  };
+  const getVilleDepart   = (t: Trajet) => (t as any).villeDepart  || (t as any).ligne?.villeDepart  || '?';
+  const getVilleArrivee  = (t: Trajet) => (t as any).villeArrivee || (t as any).ligne?.villeArrivee || '?';
+  const getCompagnieNom  = (t: Trajet) => (t as any).compagnieNom || (t as any).ligne?.compagnie?.nom || 'N/A';
+  const getBusMatricule  = (t: Trajet) => (t as any).busMatricule || (t as any).bus?.matricule || 'N/A';
+  const getNbSieges      = (t: Trajet) => (t as any).nbSieges || (t as any).bus?.nbSieges || 0;
+  const getQuaiNumero    = (t: Trajet) => (t as any).quaiNumero || (t as any).quai?.numero || 'N/A';
+  const getDateDepart    = (t: Trajet) => t.dateDepart ? new Date(t.dateDepart).toLocaleString('fr-FR') : 'N/A';
+  const getStatut        = (s: string) => STATUT_CONFIG[s] || { label: s, className: 'bg-slate-100 text-slate-500', dot: 'bg-slate-400' };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-      </div>
-    );
-  }
-
-  if (trajets.length === 0) {
-    return (
-      <div>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Mes trajets</h1>
-          <p className="text-gray-600 mt-1">
-            Bonjour {user?.prenom} {user?.nom}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
-          Aucun trajet prévu pour aujourd'hui
-        </div>
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <p className="text-sm text-slate-400 font-medium">Chargement des trajets...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Mes trajets</h1>
-        <p className="text-gray-600 mt-1">
-          Bonjour {user?.prenom} {user?.nom}
-        </p>
+    <div className="space-y-6 pb-12">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-1">Espace Chauffeur</p>
+          <h1 className="text-2xl font-bold text-slate-900">Mes Trajets à venir</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Aujourd'hui → {new Date(Date.now() + 29 * 86400000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+          </p>
+        </div>
+        <button
+          onClick={() => loadTrajets(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+        >
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+          Actualiser
+        </button>
       </div>
 
-      <div className="grid gap-6">
-        {trajets.map((trajet) => (
-          <div key={trajet.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold">
-                    {getVilleDepart(trajet)} → {getVilleArrivee(trajet)}
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    {getCompagnieNom(trajet)} • Bus {getBusMatricule(trajet)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">
-                    {getDateDepart(trajet)}
-                  </div>
-                  <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${getStatutColor(trajet.statut)}`}>
-                    {trajet.statut}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6">
-                <div>
-                  <span className="text-gray-500">Sièges:</span>
-                  <span className="font-semibold ml-2">{getNbSieges(trajet)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Réservations:</span>
-                  <span className="font-semibold ml-2">{trajet.nbReservations || 0}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Quai:</span>
-                  <span className="font-semibold ml-2">{getQuaiNumero(trajet)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Retard:</span>
-                  <span className="font-semibold ml-2">{trajet.retardMinutes || 0} min</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href={`/${locale}/chauffeur/trajets/${trajet.id}/manifeste`}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
-                >
-                  📋 Manifeste
-                </Link>
-                <Link
-                  href={`/${locale}/chauffeur/scanner/ticket?trajetId=${trajet.id}`}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-                >
-                  🎫 Scanner ticket
-                </Link>
-                <Link
-                  href={`/${locale}/chauffeur/scanner/bagage?trajetId=${trajet.id}`}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm"
-                >
-                  🧳 Scanner bagage
-                </Link>
-                <Link
-                  href={`/${locale}/chauffeur/trajets/${trajet.id}/jalons`}
-                  className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 text-sm"
-                >
-                  📍 Jalons
-                </Link>
-                <Link
-                  href={`/${locale}/chauffeur/incidents?trajetId=${trajet.id}`}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm"
-                >
-                  ⚠️ Incident
-                </Link>
-              </div>
-            </div>
+      {/* ── Résumé ── */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total', value: trajets.length, color: 'text-slate-900', bg: 'bg-slate-50' },
+          { label: 'En cours', value: trajets.filter(t => t.statut === 'EN_COURS').length, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Planifiés', value: trajets.filter(t => t.statut === 'PLANIFIE').length, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        ].map(({ label, value, color, bg }) => (
+          <div key={label} className={`${bg} rounded-2xl border border-slate-100 px-4 py-3 text-center`}>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
           </div>
         ))}
       </div>
+
+      {/* ── Liste des trajets ── */}
+      {trajets.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CalendarDays size={28} className="text-slate-300" />
+          </div>
+          <p className="text-slate-500 font-medium">Aucun trajet prévu pour les 7 prochains jours</p>
+          <p className="text-xs text-slate-400 mt-1">Revenez plus tard ou contactez votre responsable</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {trajets.map((trajet, idx) => {
+            const statut = getStatut(trajet.statut);
+            return (
+              <div
+                key={trajet.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-200 overflow-hidden"
+                style={{ animationDelay: `${idx * 60}ms` }}
+              >
+                {/* Card header */}
+                <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4 flex-wrap">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${statut.className}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statut.dot}`} />
+                        {statut.label}
+                      </span>
+                      {trajet.dateDepart && new Date(trajet.dateDepart).toDateString() === new Date().toDateString() ? (
+                        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white uppercase tracking-wider">
+                          Aujourd'hui
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 capitalize">
+                          {trajet.dateDepart ? new Date(trajet.dateDepart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }) : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={15} className="text-slate-400 flex-shrink-0" />
+                      <h3 className="text-lg font-bold text-slate-900">
+                        {getVilleDepart(trajet)}
+                      </h3>
+                      <ArrowRight size={16} className="text-slate-300" />
+                      <h3 className="text-lg font-bold text-slate-900">
+                        {getVilleArrivee(trajet)}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <Clock size={11} />
+                      <span>{getDateDepart(trajet)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-slate-400 font-medium">Trajet #</p>
+                    <p className="text-sm font-bold text-slate-700">{trajet.id}</p>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="mx-6 border-t border-slate-100" />
+
+                {/* Infos grille */}
+                <div className="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <InfoCell icon={<Building2 size={13} />} label="Compagnie" value={getCompagnieNom(trajet)} />
+                  <InfoCell icon={<Bus size={13} />} label="Matricule" value={`Bus ${getBusMatricule(trajet)}`} />
+                  <InfoCell icon={<ParkingCircle size={13} />} label="Quai" value={`Quai ${getQuaiNumero(trajet)}`} />
+                  <InfoCell icon={<Users size={13} />} label="Sièges" value={`${trajet.nbReservations || 0} / ${getNbSieges(trajet)}`} />
+                </div>
+
+                {/* Retard éventuel */}
+                {(trajet.retardMinutes || 0) > 0 && (
+                  <div className="mx-6 mb-4 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700 font-medium">
+                    <Timer size={13} />
+                    Retard de {trajet.retardMinutes} min
+                  </div>
+                )}
+
+                {/* Divider */}
+                <div className="mx-6 border-t border-slate-100" />
+
+                {/* Actions */}
+                <div className="px-6 py-4 flex flex-wrap gap-2">
+                  <ActionBtn href={`/fr/chauffeur/trajets/${trajet.id}/manifeste`} icon={<FileText size={14} />} label="Manifeste" color="indigo" />
+                  <ActionBtn href={`/fr/chauffeur/scanner/ticket?trajetId=${trajet.id}`} icon={<QrCode size={14} />} label="Scanner ticket" color="emerald" />
+                  <ActionBtn href={`/fr/chauffeur/scanner/bagage?trajetId=${trajet.id}`} icon={<Luggage size={14} />} label="Scanner bagage" color="violet" />
+                  <ActionBtn href={`/fr/chauffeur/trajets/${trajet.id}/jalons`} icon={<Flag size={14} />} label="Jalons" color="amber" />
+                  <ActionBtn href={`/fr/chauffeur/incidents?trajetId=${trajet.id}`} icon={<AlertTriangle size={14} />} label="Incident" color="red" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
+  );
+}
+
+function InfoCell({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 text-slate-400 mb-0.5">
+        {icon}
+        <span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span>
+      </div>
+      <p className="text-sm font-semibold text-slate-800 truncate">{value}</p>
+    </div>
+  );
+}
+
+const COLOR_MAP: Record<string, string> = {
+  indigo:  'bg-indigo-600 hover:bg-indigo-700',
+  emerald: 'bg-emerald-600 hover:bg-emerald-700',
+  violet:  'bg-violet-600 hover:bg-violet-700',
+  amber:   'bg-amber-500 hover:bg-amber-600',
+  red:     'bg-red-500 hover:bg-red-600',
+};
+
+function ActionBtn({ href, icon, label, color }: { href: string; icon: React.ReactNode; label: string; color: string }) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs font-semibold transition-all duration-150 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${COLOR_MAP[color]}`}
+    >
+      {icon}
+      {label}
+    </Link>
   );
 }

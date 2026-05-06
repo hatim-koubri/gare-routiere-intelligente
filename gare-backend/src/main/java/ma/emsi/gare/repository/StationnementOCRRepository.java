@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.Query;
+
 public interface StationnementOCRRepository
         extends JpaRepository<StationnementOCR, Long> {
 
@@ -15,4 +17,11 @@ public interface StationnementOCRRepository
     List<StationnementOCR> findByStatut(StatutStationnement statut);
     List<StationnementOCR> findByCompagnieId(Long compagnieId);
     List<StationnementOCR> findByCorrectionManuelleTrue();
+
+    @Query("""
+    SELECT COALESCE(SUM(s.montantFacture), 0)
+    FROM StationnementOCR s
+    WHERE s.montantFacture IS NOT NULL
+""")
+    double calculerRecettesStationnement();
 }

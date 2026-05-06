@@ -3,20 +3,37 @@
 import { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '@/components/admin/common/AdminLayout';
 import { adminCompagnieApi } from '@/lib/api/admin/compagnies';
+import { adminBusApi } from '@/lib/api/admin/bus';
 import { Compagnie } from '@/types';
+import { CompagnieCard } from '@/components/ui/compagnie-card';
+import {
+  Building2, Search, Plus, LayoutGrid, List,
+  Mail, Phone, X, RefreshCw, CheckCircle2, XCircle
+} from 'lucide-react';
+
+const CARD_GRADIENTS = [
+  'from-emerald-500 to-teal-600',
+  'from-cyan-500 to-blue-600',
+  'from-violet-500 to-purple-600',
+  'from-amber-500 to-orange-600',
+  'from-rose-500 to-pink-600',
+  'from-indigo-500 to-blue-700',
+];
+
+type StatusFilter = 'all' | 'active' | 'inactive';
+type ViewMode = 'cards' | 'table';
 
 export default function CompagniesPage() {
   const [compagnies, setCompagnies] = useState<Compagnie[]>([]);
+  const [busData, setBusData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [formData, setFormData] = useState({
-    nom: '',
-    code: '',
-    email: '',
-    telephone: '',
-    description: '',
+    nom: '', code: '', email: '', telephone: '', description: '',
   });
 
   useEffect(() => {
@@ -27,9 +44,13 @@ export default function CompagniesPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await adminCompagnieApi.getAll();
-      setCompagnies(Array.isArray(data) ? data : []);
-    } catch (error: any) {
+      const [comp, bus] = await Promise.all([
+        adminCompagnieApi.getAll(),
+        adminBusApi.getAll().catch(() => []),
+      ]);
+      setCompagnies(Array.isArray(comp) ? comp : []);
+      setBusData(Array.isArray(bus) ? bus : []);
+    } catch {
       setError('Impossible de charger les compagnies');
     } finally {
       setLoading(false);
@@ -43,163 +64,300 @@ export default function CompagniesPage() {
       setShowModal(false);
       setFormData({ nom: '', code: '', email: '', telephone: '', description: '' });
       loadCompagnies();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Erreur lors de la création');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur lors de la création');
     }
   };
 
-  const filteredCompagnies = useMemo(() => {
-    return compagnies.filter(c =>
-      c.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.code.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [compagnies, searchQuery]);
+  const filtered = useMemo(() => {
+    return compagnies.filter(c => {
+      const matchSearch =
+        c.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.code.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus =
+        statusFilter === 'all' ? true :
+        statusFilter === 'active' ? c.actif :
+        !c.actif;
+      return matchSearch && matchStatus;
+    });
+  }, [compagnies, searchQuery, statusFilter]);
+
+  const stats = useMemo(() => ({
+    total: compagnies.length,
+    actives: compagnies.filter(c => c.actif).length,
+    inactives: compagnies.filter(c => !c.actif).length,
+  }), [compagnies]);
+
+  const getInitials = (nom: string) =>
+    nom.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <AdminLayout>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">🏢 Compagnies</h1>
-          <p className="text-sm text-gray-500 mt-1">{compagnies.length} compagnie(s) enregistrée(s)</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          + Nouvelle Compagnie
-        </button>
-      </div>
+      <div className="space-y-6 pb-10">
 
-      {/* Recherche */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Rechercher par nom ou code..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {/* Contenu */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Chargement...</div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 font-medium">{error}</p>
-          <button onClick={loadCompagnies} className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
-            Réessayer
-          </button>
-        </div>
-      ) : filteredCompagnies.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-white rounded-lg shadow">
-          Aucune compagnie trouvée
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Téléphone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredCompagnies.map((compagnie) => (
-                <tr key={compagnie.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{compagnie.nom}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                      {compagnie.code}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{compagnie.email || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{compagnie.telephone || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${compagnie.actif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {compagnie.actif ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Modal création */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nouvelle Compagnie</h2>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                <input
-                  type="text"
-                  value={formData.telephone}
-                  onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-                  Créer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
-                >
-                  Annuler
-                </button>
-              </div>
-            </form>
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Compagnies</h1>
+            <p className="text-slate-500 text-sm mt-0.5">{stats.total} compagnie{stats.total > 1 ? 's' : ''} enregistrée{stats.total > 1 ? 's' : ''}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadCompagnies}
+              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:border-emerald-300 transition"
+            >
+              <RefreshCw size={15} />
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm"
+            >
+              <Plus size={15} /> Nouvelle compagnie
+            </button>
           </div>
         </div>
-      )}
+
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-3 gap-4">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`rounded-2xl border p-5 text-left transition-all ${
+              statusFilter === 'all'
+                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'
+            }`}
+          >
+            <div className={`text-3xl font-bold ${statusFilter === 'all' ? 'text-white' : 'text-slate-800'}`}>{stats.total}</div>
+            <div className={`text-xs mt-0.5 font-medium ${statusFilter === 'all' ? 'text-emerald-100' : 'text-slate-500'}`}>Total compagnies</div>
+          </button>
+          <button
+            onClick={() => setStatusFilter('active')}
+            className={`rounded-2xl border p-5 text-left transition-all ${
+              statusFilter === 'active'
+                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                : 'bg-white border-slate-100 shadow-sm hover:border-emerald-200'
+            }`}
+          >
+            <div className={`flex items-center gap-2 mb-1`}>
+              <CheckCircle2 size={16} className={statusFilter === 'active' ? 'text-emerald-200' : 'text-emerald-500'} />
+            </div>
+            <div className={`text-3xl font-bold ${statusFilter === 'active' ? 'text-white' : 'text-emerald-600'}`}>{stats.actives}</div>
+            <div className={`text-xs font-medium ${statusFilter === 'active' ? 'text-emerald-100' : 'text-slate-500'}`}>Actives</div>
+          </button>
+          <button
+            onClick={() => setStatusFilter('inactive')}
+            className={`rounded-2xl border p-5 text-left transition-all ${
+              statusFilter === 'inactive'
+                ? 'bg-rose-600 border-rose-600 text-white shadow-sm'
+                : 'bg-white border-slate-100 shadow-sm hover:border-rose-100'
+            }`}
+          >
+            <div className="mb-1">
+              <XCircle size={16} className={statusFilter === 'inactive' ? 'text-rose-200' : 'text-rose-400'} />
+            </div>
+            <div className={`text-3xl font-bold ${statusFilter === 'inactive' ? 'text-white' : 'text-rose-500'}`}>{stats.inactives}</div>
+            <div className={`text-xs font-medium ${statusFilter === 'inactive' ? 'text-rose-100' : 'text-slate-500'}`}>Inactives</div>
+          </button>
+        </div>
+
+        {/* ── Barre recherche + toggle vue ── */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par nom ou code…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {/* Toggle vue */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <List size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Résultat filtre ── */}
+        <p className="text-xs text-slate-400 -mt-2">
+          {filtered.length} résultat{filtered.length > 1 ? 's' : ''}
+          {searchQuery && <> pour « <span className="font-medium text-slate-600">{searchQuery}</span> »</>}
+          {statusFilter !== 'all' && <> · Filtre : <span className="font-medium text-slate-600">{statusFilter === 'active' ? 'Actives' : 'Inactives'}</span></>}
+        </p>
+
+        {/* ── États loading / error / empty ── */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-4">
+            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-slate-400 text-sm">Chargement des compagnies…</p>
+          </div>
+        ) : error ? (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center">
+            <p className="text-rose-600 font-medium text-sm">{error}</p>
+            <button onClick={loadCompagnies} className="mt-3 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-rose-700 transition">
+              Réessayer
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-14 text-center">
+            <Building2 size={36} className="text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-500 text-sm">Aucune compagnie trouvée</p>
+          </div>
+
+        /* ── Vue Cartes ── */
+        ) : viewMode === 'cards' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filtered.map((c, i) => (
+              <CompagnieCard
+                key={c.id}
+                index={i}
+                compagnieId={c.id}
+                nom={c.nom}
+                code={c.code}
+                email={c.email}
+                telephone={c.telephone}
+                description={c.description}
+                actif={c.actif}
+                nbBus={busData.filter((b: any) => Number(b.compagnieId) === Number(c.id)).length}
+              />
+            ))}
+          </div>
+
+        /* ── Vue Tableau ── */
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  {['Compagnie', 'Code', 'Email', 'Téléphone', 'Statut'].map(h => (
+                    <th key={h} className="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.map((c, i) => (
+                  <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 bg-gradient-to-br ${CARD_GRADIENTS[i % CARD_GRADIENTS.length]} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                          <span className="text-white text-xs font-bold">{getInitials(c.nom)}</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800 text-sm">{c.nom}</p>
+                          {c.description && <p className="text-xs text-slate-400 truncate max-w-[180px]">{c.description}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="font-mono text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg">
+                        {c.code}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{c.email || '—'}</td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{c.telephone || '—'}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        c.actif ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${c.actif ? 'bg-emerald-500' : 'bg-rose-400'}`} />
+                        {c.actif ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ── Modal création ── */}
+        {showModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <Building2 size={16} className="text-emerald-600" />
+                  </div>
+                  <h2 className="text-base font-bold text-slate-900">Nouvelle compagnie</h2>
+                </div>
+                <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6">
+                <form onSubmit={handleCreate} className="space-y-4">
+                  {[
+                    { label: 'Nom', key: 'nom', type: 'text', required: true, placeholder: 'Ex: CTM Voyages' },
+                    { label: 'Code', key: 'code', type: 'text', required: true, placeholder: 'Ex: CTM' },
+                    { label: 'Email', key: 'email', type: 'email', required: false, placeholder: 'contact@compagnie.ma' },
+                    { label: 'Téléphone', key: 'telephone', type: 'text', required: false, placeholder: '+212 5XX-XXXXXX' },
+                  ].map(field => (
+                    <div key={field.key}>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                        {field.label}{field.required && ' *'}
+                      </label>
+                      <input
+                        type={field.type}
+                        required={field.required}
+                        placeholder={field.placeholder}
+                        value={(formData as any)[field.key]}
+                        onChange={e => setFormData({ ...formData, [field.key]: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Description</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Description de la compagnie…"
+                      value={formData.description}
+                      onChange={e => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition"
+                    >
+                      Créer la compagnie
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </AdminLayout>
   );
 }

@@ -38,7 +38,7 @@ public class ChauffeurService {
     // =========================================================
     public List<TrajetResponseDTO> getTrajetsJour(Long chauffeurId) {
         LocalDateTime debutJour = LocalDateTime.now().toLocalDate().atStartOfDay();
-        LocalDateTime finJour = debutJour.plusDays(1);
+        LocalDateTime finJour = debutJour.plusDays(30); // Afficher les 30 prochains jours
 
         // ✅ Inclure RETARDE en plus
         List<StatutTrajet> statutsActifs = List.of(

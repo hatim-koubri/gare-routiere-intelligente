@@ -80,21 +80,19 @@ public class AdminPromoAnnonceService {
     // ===== T2-12 — Annonces bilingues =====
 
     public Annonce creerAnnonce(AnnonceRequest request) {
+
         Annonce annonce = new Annonce();
+
         annonce.setTitreFr(request.getTitreFr());
         annonce.setTitreAr(request.getTitreAr());
+
         annonce.setContenuFr(request.getContenuFr());
         annonce.setContenuAr(request.getContenuAr());
+
         annonce.setDateDebut(request.getDateDebut());
         annonce.setDateFin(request.getDateFin());
-        annonce.setActive(true);
 
-        if (request.getCompagnieId() != null) {
-            Compagnie compagnie = compagnieRepository
-                    .findById(request.getCompagnieId())
-                    .orElseThrow(() -> new RuntimeException("Compagnie non trouvée"));
-            annonce.setCompagnie(compagnie);
-        }
+        annonce.setActive(true);
 
         return annonceRepository.save(annonce);
     }

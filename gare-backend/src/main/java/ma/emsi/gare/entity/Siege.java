@@ -30,6 +30,12 @@ public class Siege {
     @Column(name = "bloque", nullable = false)
     private boolean bloque = false;
 
+    @Column(name = "motif_blocage")
+    private String motifBlocage;
+
+    @Column(name = "date_blocage")
+    private LocalDateTime dateBlocage;
+
     // ← NOUVEAU — pour l'algorithme de placement
     @Column(name = "genre_occupant")
     private String genreOccupant; // HOMME, FEMME, null si libre

@@ -13,4 +13,6 @@ public interface CodePromoRepository extends JpaRepository<CodePromo, Long> {
 
     List<CodePromo> findByActifTrueAndDateExpirationAfter(
             LocalDateTime maintenant);
+
+    long countByCompagnieIdAndActifTrue(Long compagnieId);
 }

@@ -1,19 +1,18 @@
-package ma.emsi.gare.dto.request;
+package ma.emsi.gare.dto.response;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Data
-public class AnnonceRequest {
+public class AnnonceResponseDTO {
 
-    @NotBlank
+    private Long id;
+
     private String titreFr;
 
     private String titreAr;
 
-    @NotBlank
     private String contenuFr;
 
     private String contenuAr;
@@ -21,4 +20,10 @@ public class AnnonceRequest {
     private LocalDateTime dateDebut;
 
     private LocalDateTime dateFin;
+
+    private boolean active;
+
+    private Long compagnieId;
+
+    private String compagnieNom;
 }

@@ -141,4 +141,12 @@ public interface TrajetRepository extends JpaRepository<Trajet, Long> {
         AND s.occupe = true
     """)
     long countSiegesOccupes(@Param("trajetId") Long trajetId);
+
+
+    @Query("""
+    SELECT COUNT(t)
+    FROM Trajet t
+    WHERE t.ligne.compagnie.id = :compagnieId
+""")
+    long countByCompagnieId(@Param("compagnieId") Long compagnieId);
 }

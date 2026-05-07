@@ -38,4 +38,11 @@ public interface ReservationRepository
     // Vérifier si voyageur a déjà réservé ce trajet
     boolean existsByVoyageurIdAndTrajetId(
             Long voyageurId, Long trajetId);
+
+    @Query("""
+    SELECT COUNT(r)
+    FROM Reservation r
+    WHERE r.trajet.ligne.compagnie.id = :compagnieId
+""")
+    long countByCompagnieId(@Param("compagnieId") Long compagnieId);
 }

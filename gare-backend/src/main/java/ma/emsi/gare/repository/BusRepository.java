@@ -11,4 +11,7 @@ public interface BusRepository extends JpaRepository<Bus, Long> {
     List<Bus> findByCompagnieId(Long compagnieId);
     List<Bus> findByCompagnieIdAndActifTrue(Long compagnieId);
     List<Bus> findByEnMaintenanceTrue();
+    boolean existsByIdAndCompagnieId(Long busId, Long compagnieId);
+    long countByCompagnieIdAndActifTrue(Long compagnieId);
+
 }

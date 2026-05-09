@@ -21,4 +21,6 @@ public class AnnonceRequest {
     private LocalDateTime dateDebut;
 
     private LocalDateTime dateFin;
+
+    private Long compagnieId;
 }

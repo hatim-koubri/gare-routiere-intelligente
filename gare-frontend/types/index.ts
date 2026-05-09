@@ -20,8 +20,13 @@ export enum TypeNotification {
   CHANGEMENT_QUAI = 'CHANGEMENT_QUAI',
   CONFIRMATION_RESERVATION = 'CONFIRMATION_RESERVATION',
   RAPPEL_DEPART = 'RAPPEL_DEPART',
+  TRAJET_DEMARRE = 'TRAJET_DEMARRE',
+  TRAJET_TERMINE = 'TRAJET_TERMINE',
   INCIDENT = 'INCIDENT',
-  ALERTE_GARE = 'ALERTE_GARE'
+  ALERTE_GARE = 'ALERTE_GARE',
+  JALON_ARRIVEE = 'JALON_ARRIVEE',
+  JALON_DEPART = 'JALON_DEPART',
+  TICKET_VALIDE = 'TICKET_VALIDE'
 }
 
 // Auth Types
@@ -144,6 +149,10 @@ export interface Compagnie {
   telephone?: string;
   email?: string;
   actif: boolean;
+  noteMoyenne?: number;
+  nbAvis?: number;
+  nombreBus?: number;
+  nombreQuais?: number;
 }
 
 // Ligne
@@ -273,6 +282,7 @@ export interface Chauffeur {
   numeroPermis?: string;
   dateEmbauche?: string;
   enConge: boolean;
+  actif: boolean;
   compagnieId: number;
   compagnieNom?: string;
 }
@@ -308,11 +318,12 @@ export interface Annonce {
   dateFin?: string;
   active: boolean;
   compagnieId?: number;
+  compagnieNom?: string;
 }
 
 // Tarification
 export interface TarificationConfig {
-  reductionTrentejours: number;
+  reductionTrenteJours: number;
   reductionQuinzeJours: number;
   supplementJourMeme: number;
   seuilHaut: number;
@@ -399,6 +410,152 @@ export interface ManifestePassager {
   enfantSurGenoux: boolean;
 }
 
+// Statuts
+export type StatutReclamation = 'OUVERTE' | 'EN_COURS' | 'RESOLUE' | 'REJETEE';
+export type StatutRemboursement = 'EN_ATTENTE' | 'ACCEPTE' | 'REFUSE';
+
+export interface ReponseReclamationRequest {
+  statut?: string;
+  reponseResponsable: string;
+}
+
+export interface NotificationTrajetRequest {
+  trajetId: number;
+  type: TypeNotification;
+  message: string;
+}
+
+export interface TarificationConfigRequest {
+  reductionTrenteJours: number;
+  reductionQuinzeJours: number;
+  supplementJourMeme: number;
+  seuilHaut: number;
+  supplementHaut: number;
+  seuilBas: number;
+  reductionBas: number;
+}
+
+export interface CompagnieStats {
+  totalTrajets: number;
+  totalReservations: number;
+  totalVentes: number;
+  tauxRemplissageMoyen: number;
+  totalBusActifs: number;
+  totalCodesPromoActifs: number;
+}
+
+export interface ChauffeurRequest {
+  nom: string;
+  prenom: string;
+  email: string;
+  password: string;
+  telephone?: string;
+  numeroPermis?: string;
+  dateEmbauche?: string;
+}
+
+export interface ChauffeurUpdateRequest {
+  nom: string;
+  prenom: string;
+  telephone?: string;
+  numeroPermis?: string;
+  dateEmbauche?: string;
+}
+
+export interface AnnonceRequest {
+  titreFr: string;
+  titreAr?: string;
+  contenuFr: string;
+  contenuAr?: string;
+  dateDebut?: string;
+  dateFin?: string;
+}
+
+export interface AvisResponseDTO {
+  id: number;
+  voyageurId: number;
+  voyageurNom: string;
+  voyageurPrenom: string;
+  trajetId: number;
+  notePonctualite: number;
+  noteConfort: number;
+  noteChauffeur: number;
+  commentaire: string;
+  dateAvis: string;
+  compagnieId: number;
+  compagnieNom: string;
+  villeDepart: string;
+  villeArrivee: string;
+  dateDepart: string;
+}
+
+export interface SiegeBlocage {
+  id: number;
+  numeroSiege: string;
+  occupe: boolean;
+  bloque: boolean;
+  verrouilleTemporaire: boolean;
+  motifBlocage?: string;
+  dateBlocage?: string;
+  verrouilleParReservationId?: number;
+  genreOccupant?: string;
+  enfantSurGenoux?: boolean;
+  numeroRangee: number;
+  positionRangee: string;
+}
+
+export interface BlocageSiegeRequest {
+  trajetId: number;
+  numeroSiege: string;
+  motifBlocage: string;
+}
+
+// Préférences non satisfaites (responsable)
+export interface PreferenceNonSatisfaite {
+  membreId: number;
+  nom: string;
+  prenom: string;
+  siege: string;
+  genre: string;
+  voisinSiege: string;
+  voisinGenre: string;
+  probleme: string;
+  trajetId: number;
+}
+
+// Messagerie
+export interface MessageResponse {
+  id: number;
+  sujet?: string;
+  contenu: string;
+  expediteurId: number;
+  expediteurNom: string;
+  expediteurPrenom?: string;
+  destinataireId: number;
+  destinataireNom: string;
+  destinatairePrenom?: string;
+  lu: boolean;
+  dateEnvoi: string;
+  dateLecture?: string;
+}
+
+export interface EnvoyerMessageRequest {
+  contenu: string;
+  destinataireId?: number;
+  sujet?: string;
+}
+
+// Justificatif (admin)
+export interface VoyageurJustificatif {
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  categorieTarifaire: string;
+  justificatifUrl: string;
+  valide: boolean;
+}
+
 // Validation ticket
 export interface ValidationTicketResponse {
   valide: boolean;
@@ -469,6 +626,8 @@ export interface RechercheTrajetRequest {
   heureDepartMin?: number;
   heureDepartMax?: number;
   nbArretsMax?: number;
+  compagnieId?: number;
+  noteMin?: number;
 }
 
 export interface TrajetRechercheDTO {
@@ -494,6 +653,13 @@ export interface MembreGroupeRequest {
   categorieTarifaire?: string;
   lienOrganisateur?: string;
   enfantSurGenoux?: boolean;
+  accepteSexeOppose?: boolean;
+  preferencePosition?: string;
+  prefereCoteMembreId?: number;
+  numeroSiege?: string;
+  numeroCarte?: string;
+  dateExpiration?: string;
+  cvv?: string;
   compteExistantId?: number;
 }
 
@@ -507,9 +673,13 @@ export interface MembreGroupeDTO {
   categorieTarifaire: string;
   lienOrganisateur: string;
   enfantSurGenoux: boolean;
+  accepteSexeOppose: boolean;
+  preferencePosition?: string;
+  prefereCoteMembreId?: number;
   prixTicket: number;
   numeroSiege?: string;
   qrCode?: string;
+  ticketId?: number;
 }
 
 export interface ReservationRequest {
@@ -534,6 +704,10 @@ export interface SiegePlanDTO {
   bloque: boolean;
   verrouilleTemporaire: boolean;
   verrouilleParReservationId?: number;
+  genreOccupant?: string;
+  enfantSurGenoux?: boolean;
+  numeroRangee?: number;
+  positionRangee?: string;
 }
 
 // Paiement
@@ -596,4 +770,63 @@ export interface DashboardVoyageurData {
   reservations: ReservationHistorique[];
   prochainsTrajets: ReservationHistorique[];
   historique: ReservationHistorique[];
+}
+
+export enum TypeReclamation {
+  RETARD = 'RETARD',
+  BAGAGE_PERDU = 'BAGAGE_PERDU',
+  BAGAGE_ENDOMMAGE = 'BAGAGE_ENDOMMAGE',
+  SERVICE_CLIENT = 'SERVICE_CLIENT',
+  AUTRE = 'AUTRE'
+}
+
+// Réclamation
+export interface Reclamation {
+  id: number;
+  sujet: string;
+  description: string;
+  type: TypeReclamation;
+  statut: StatutReclamation;
+  dateCreation: string;
+  dateResolution?: string;
+  reponse?: string;
+  reponseResponsable?: string;
+  trajetInfo?: string;
+  reservationId?: number;
+  voyageurId: number;
+  voyageurNom?: string;
+  voyageurPrenom?: string;
+}
+
+export interface CreerReclamationRequest {
+  sujet: string;
+  description: string;
+  type: string;
+  reservationId?: number;
+}
+
+// Remboursement
+export interface Remboursement {
+  id: number;
+  reservationId: number;
+  montant: number;
+  motif: string;
+  statut: StatutRemboursement;
+  partiel: boolean;
+  dateDemande: string;
+  dateTraitement?: string;
+  voyageurId?: number;
+  voyageurNom?: string;
+  voyageurPrenom?: string;
+  trajetInfo?: string;
+}
+
+export interface RemboursementResponse {
+  id: number;
+  reservationId: number;
+  montant: number;
+  motif: string;
+  statut: 'EN_ATTENTE' | 'ACCEPTE' | 'REFUSE';
+  dateDemande: string;
+  dateTraitement?: string;
 }

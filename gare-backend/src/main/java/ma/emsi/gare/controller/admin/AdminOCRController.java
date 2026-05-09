@@ -10,7 +10,6 @@ import ma.emsi.gare.mapper.GareMapper;
 import ma.emsi.gare.repository.StationnementOCRRepository;
 import ma.emsi.gare.service.OCRService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,7 +19,6 @@ import java.util.List;
 @RequestMapping("/api/admin/ocr")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminOCRController {
 
     private final OCRService ocrService;

@@ -24,4 +24,7 @@ public interface StationnementOCRRepository
     WHERE s.montantFacture IS NOT NULL
 """)
     double calculerRecettesStationnement();
+
+    @Query("SELECT s FROM StationnementOCR s LEFT JOIN FETCH s.quai LEFT JOIN FETCH s.compagnie ORDER BY s.quai.numero ASC, s.heureEntree DESC")
+    List<StationnementOCR> findAllWithQuaiAndCompagnieOrdered();
 }

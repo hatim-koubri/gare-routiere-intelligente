@@ -2,418 +2,176 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter, useParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Home, Printer, MapPin, Calendar, Clock, Bus, Users, CreditCard, Building, Ticket, User, CheckCircle, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react';
-import { motion } from 'framer-motion';
-import QRCode from 'qrcode';
-import { useRef } from 'react';
-
-interface TicketData {
-  paiementId: number;
-  reservationId: number;
-  montant: number;
-  methodePaiement: string;
-  transactionId: string;
-  datePaiement: string;
-  confirme: boolean;
-  statutReservation: string;
-}
-
-interface Passager {
-  nom: string;
-  prenom: string;
-  siege?: string;
-  categorieTarifaire?: string;
-  enfantSurGenoux?: boolean;
-}
+import { Home, ChevronLeft, ChevronRight, Briefcase, Sparkles, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatedTicket } from "@/components/ui/ticket-confirmation-card";
+import { cn } from '@/lib/utils';
 
 export default function ConfirmationPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const params = useParams();
-  const locale = 'fr';
   const reservationId = searchParams.get('reservationId');
 
-  const [paiementData, setPaiementData] = useState<TicketData | null>(null);
+  const [paiementData, setPaiementData] = useState<any>(null);
   const [confirmationData, setConfirmationData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentTicketIndex, setCurrentTicketIndex] = useState(0);
-  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const storedPaiement = sessionStorage.getItem('paiement_response');
-    const storedReservationInfo = sessionStorage.getItem('reservation_info');
+    const storedReservationInfo = sessionStorage.getItem('trajet_info');
     
-    if (storedPaiement) {
-      setPaiementData(JSON.parse(storedPaiement));
-    }
-    
-    if (storedReservationInfo) {
-      const data = JSON.parse(storedReservationInfo);
-      setConfirmationData(data);
-      console.log('Données reservation_info:', data);
-    }
+    if (storedPaiement) setPaiementData(JSON.parse(storedPaiement));
+    if (storedReservationInfo) setConfirmationData(JSON.parse(storedReservationInfo));
     
     setLoading(false);
   }, []);
 
-  const handlePrint = () => window.print();
-  
-  // Utiliser la liste de tickets reçue du backend s'ils existent, sinon fallback
-  const tousLesPassagers = confirmationData?.tickets || [];
+  const tousLesPassagers = confirmationData?.tickets || confirmationData?.membres || [];
   const currentPassager = tousLesPassagers[currentTicketIndex];
-  const trajetInfo = confirmationData?.trajet || {};
+  const trajetInfo = confirmationData || {};
   
-  useEffect(() => {
-    if (currentPassager?.qrCode && qrCanvasRef.current) {
-      QRCode.toCanvas(qrCanvasRef.current, currentPassager.qrCode, {
-        width: 150,
-        margin: 1,
-        color: { dark: '#0f172a', light: '#ffffff' }
-      });
-    }
-  }, [currentPassager, currentTicketIndex]);
-
-  // Calcul du prix unitaire
-  const getPrixUnitaire = () => {
-    if (currentPassager?.prix) return currentPassager.prix;
-    const prixTotal = paiementData?.montant || confirmationData?.prixTotal || 0;
-    const nbPassagers = tousLesPassagers.length || 1;
-    return prixTotal / nbPassagers;
-  };
-  
-  const prixUnitaire = getPrixUnitaire();
-  
-  const nextTicket = () => {
-    if (tousLesPassagers.length > 1) {
-      setCurrentTicketIndex((prev) => (prev + 1) % tousLesPassagers.length);
-    }
-  };
-  
-  const prevTicket = () => {
-    if (tousLesPassagers.length > 1) {
-      setCurrentTicketIndex((prev) => (prev - 1 + tousLesPassagers.length) % tousLesPassagers.length);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
-
-  const formatTime = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
-        </div>
-        <Footer />
-      </>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4"><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full" /><p className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">Finalisation...</p></div>;
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 selection:bg-emerald-500/30 overflow-x-hidden">
       <Header />
-      <main className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4 space-y-6">
-
-          {/* Message de succès */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center"
-          >
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-green-700">Paiement réussi !</h1>
-            <p className="text-green-600 text-sm mt-1">Votre réservation est confirmée</p>
-          </motion.div>
-
-          {/* Navigation entre tickets (si plusieurs passagers) */}
-          {tousLesPassagers.length > 1 && (
-            <div className="flex items-center justify-between gap-2">
-              <button
-                onClick={prevTicket}
-                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <div className="text-center">
-                <span className="text-sm text-gray-500">
-                  Ticket {currentTicketIndex + 1} sur {tousLesPassagers.length}
-                </span>
-                <div className="flex gap-1 justify-center mt-1">
-                  {tousLesPassagers.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentTicketIndex(idx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        idx === currentTicketIndex ? 'bg-orange-500 w-4' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={nextTicket}
-                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-          )}
-
-          {/* Ticket pour le passager actuel */}
-          <motion.div
-            key={currentTicketIndex}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-lg"
-          >
-            {/* En-tête du ticket */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-white/80 text-xs">Billet électronique</p>
-                  <p className="text-white font-bold text-sm">Réservation #{confirmationData?.reservationId || reservationId}</p>
-                </div>
-                <Ticket className="w-8 h-8 text-white/80" />
-              </div>
+      
+      <main>
+        {/* ── WOW Hero Header ── */}
+        <section className="relative pt-20 pb-32 overflow-hidden bg-slate-900">
+            <div className="absolute inset-0 z-0 opacity-40">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.15),transparent_70%)]" />
             </div>
 
-            {/* Corps du ticket */}
-            <div className="p-5 space-y-4">
-              {/* Trajet */}
-              <div className="flex items-center justify-between">
-                <div className="text-center flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Départ</p>
-                  <p className="text-lg font-bold text-gray-800">{trajetInfo?.villeDepart || '?'}</p>
-                  <p className="text-sm text-gray-600">{trajetInfo?.dateDepart && formatTime(trajetInfo.dateDepart)}</p>
-                </div>
-                <div className="flex-1 flex flex-col items-center">
-                  <div className="w-full flex items-center gap-1">
-                    <div className="h-px bg-gray-300 flex-1" />
-                    <span className="text-xs text-gray-400">→</span>
-                    <div className="h-px bg-gray-300 flex-1" />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{trajetInfo?.duree || 'Direct'}</p>
-                </div>
-                <div className="text-center flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Arrivée</p>
-                  <p className="text-lg font-bold text-gray-800">{trajetInfo?.villeArrivee || '?'}</p>
-                  <p className="text-sm text-gray-600">{trajetInfo?.dateArriveePrevue ? formatTime(trajetInfo.dateArriveePrevue) : 'N/A'}</p>
-                </div>
-              </div>
-
-              {/* Date */}
-              <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                <Calendar className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Date</span>
-                <span className="text-sm font-medium text-gray-800 ml-auto">
-                  {trajetInfo?.dateDepart ? formatDate(trajetInfo.dateDepart) : 'N/A'}
-                </span>
-              </div>
-
-              {/* Passager */}
-              <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Passager</span>
-                <span className="text-sm font-medium text-gray-800 ml-auto">
-                  {currentPassager?.prenomPassager} {currentPassager?.nomPassager}
-                </span>
-              </div>
-
-              {/* Siège */}
-              <div className="flex items-center gap-3">
-                <Ticket className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Siège</span>
-                <span className="text-sm font-bold text-orange-600 ml-auto">{currentPassager?.numeroSiege || 'N/A'}</span>
-              </div>
-
-              {/* Compagnie */}
-              <div className="flex items-center gap-3">
-                <Building className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Compagnie</span>
-                <span className="text-sm font-medium text-gray-800 ml-auto">{trajetInfo?.compagnieNom || 'N/A'}</span>
-              </div>
-
-              {/* Bus */}
-              <div className="flex items-center gap-3">
-                <Bus className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Bus</span>
-                <span className="text-sm font-medium text-gray-800 ml-auto">{trajetInfo?.busMatricule || 'N/A'}</span>
-              </div>
-
-              {/* Quai */}
-              <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Quai</span>
-                <span className="text-sm font-medium text-gray-800 ml-auto">
-                  {trajetInfo?.quaiNumero ? `Quai ${trajetInfo.quaiNumero}` : 'N/A'}
-                </span>
-              </div>
-
-              {/* Prix */}
-              <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                <CreditCard className="w-4 h-4 text-orange-500" />
-                <span className="text-sm font-bold text-gray-800">Prix du billet</span>
-                <span className="text-lg font-black text-orange-500 ml-auto">
-                  {Math.round(prixUnitaire).toLocaleString()} MAD
-                </span>
-              </div>
-
-              {/* Bagages (si existants sur la réservation) */}
-              {confirmationData?.bagages && confirmationData.bagages.length > 0 && (
-                <div className="flex items-center gap-3 pt-1">
-                  <Briefcase className="w-4 h-4 text-orange-500" />
-                  <span className="text-sm text-gray-600">Bagages liés à la réservation</span>
-                  <span className="text-sm font-medium text-gray-800 ml-auto">
-                    {confirmationData.bagages.length} bagage(s)
-                  </span>
-                </div>
-              )}
-
-              {/* Vrai QR Code */}
-              <div className="mt-3 pt-3 border-t border-dashed border-gray-200 text-center">
-                <div className="flex flex-col items-center justify-center">
-                  <canvas ref={qrCanvasRef} className="mx-auto" />
-                  <p className="text-xs text-gray-400 mt-2 font-mono break-all">
-                    {currentPassager?.qrCode || 'XXXX-XXXX-XXXX'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer du ticket */}
-            <div className="bg-gray-50 px-5 py-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 text-center">
-                Présentez-vous 30 minutes avant le départ
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Récapitulatif du paiement et bagages */}
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
-            >
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-orange-500" />
-                Récapitulatif du paiement
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Total payé</span>
-                  <span className="font-bold text-gray-800">{paiementData?.montant?.toLocaleString() || 0} MAD</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Méthode</span>
-                  <span className="font-medium text-gray-800">{paiementData?.methodePaiement || 'CARTE'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Transaction</span>
-                  <span className="text-xs font-mono text-gray-500 break-all max-w-[200px] text-right">
-                    {paiementData?.transactionId || 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Date</span>
-                  <span className="text-sm text-gray-600">
-                    {paiementData?.datePaiement ? new Date(paiementData.datePaiement).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR')}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-gray-100">
-                  <span className="text-gray-500">Nombre de billets</span>
-                  <span className="font-medium text-gray-800">{tousLesPassagers.length}</span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Récapitulatif Bagages */}
-            {confirmationData?.bagages && confirmationData.bagages.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="bg-orange-50/50 rounded-2xl border border-orange-100 p-5 shadow-sm"
-              >
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-orange-500" />
-                  Bagages déclarés
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <p className="text-xs text-gray-500 mb-2">Ces bagages sont associés à votre réservation. Présentez-vous au chauffeur pour qu'il les étiquette (QR Code généré au dépôt).</p>
-                  {confirmationData.bagages.map((b: any, idx: number) => (
-                    <div key={idx} className="flex flex-col gap-1 pb-2 border-b border-orange-100 last:border-0 last:pb-0">
-                      <div className="flex justify-between font-medium text-gray-800">
-                        <span>Bagage {idx + 1} ({b.typeBagage || 'STANDARD'})</span>
-                        <span className={b.surplusPrix > 0 ? "text-orange-600" : "text-green-600"}>
-                          {b.surplusPrix > 0 ? `+${b.surplusPrix} DH` : 'Gratuit'}
-                        </span>
-                      </div>
-                      <div className="flex gap-4 text-xs text-gray-500">
-                        <span>Poids: {b.poidsKg} kg</span>
-                        <span>Dimensions: {b.dimensionCm}</span>
-                      </div>
+            <div className="max-w-7xl mx-auto px-6 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-end gap-10">
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                        <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full mb-6">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em]">Transaction réussie !</span>
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-none">
+                            Félicitations, <br/><span className="text-emerald-500">C'est confirmé !</span>
+                        </h1>
+                    </motion.div>
+                    
+                    <div className="hidden lg:flex items-center gap-8 text-white/40 pb-4">
+                        <div className="flex flex-col items-center gap-2 opacity-50">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-black italic">✓</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Passagers</span>
+                        </div>
+                        <div className="w-10 h-px bg-white/10" />
+                        <div className="flex flex-col items-center gap-2 opacity-50">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-black italic">✓</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Sièges</span>
+                        </div>
+                        <div className="w-10 h-px bg-white/10" />
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-black italic">✓</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Confirmé</span>
+                        </div>
                     </div>
-                  ))}
                 </div>
-              </motion.div>
+            </div>
+            
+            <div className="absolute bottom-0 left-0 w-full h-24 bg-[#f8fafc] dark:bg-slate-950" style={{ clipPath: 'ellipse(70% 100% at 50% 100%)' }} />
+        </section>
+
+        <div className="max-w-7xl mx-auto px-6 -mt-16 relative z-20 flex flex-col items-center pb-32">
+            
+            {/* Multi-Ticket Navigation */}
+            {tousLesPassagers.length > 1 && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-8 mb-12 bg-white dark:bg-slate-950 p-4 rounded-full shadow-xl border border-slate-100 dark:border-slate-800">
+                    <button 
+                        onClick={() => setCurrentTicketIndex(p => (p - 1 + tousLesPassagers.length) % tousLesPassagers.length)} 
+                        className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-emerald-500 transition-all"
+                    >
+                        <ChevronLeft />
+                    </button>
+                    <div className="text-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Passager {currentTicketIndex + 1} / {tousLesPassagers.length}</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            {currentPassager?.nomManuel || user?.nom} {currentPassager?.prenomManuel || user?.prenom}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => setCurrentTicketIndex(p => (p + 1) % tousLesPassagers.length)} 
+                        className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-emerald-500 transition-all"
+                    >
+                        <ChevronRight />
+                    </button>
+                </motion.div>
             )}
-          </div>
 
-          {/* Instructions */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="bg-blue-50 rounded-xl p-4 text-center"
-          >
-            <p className="text-sm text-blue-700">
-              📧 Un email de confirmation vous a été envoyé avec vos tickets.
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Présentez-vous à la gare 30 minutes avant le départ.
-            </p>
-          </motion.div>
+            {/* THE TICKET COMPONENT */}
+            <AnimatePresence mode='wait'>
+                <motion.div 
+                    key={currentTicketIndex}
+                    initial={{ scale: 0.9, opacity: 0, rotateY: 90 }}
+                    animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, rotateY: -90 }}
+                    transition={{ type: 'spring', damping: 15 }}
+                    className="perspective-1000"
+                >
+                    <AnimatedTicket 
+                        ticketId={currentPassager?.qrCode || `TK-${reservationId}-${currentTicketIndex}`}
+                        amount={paiementData?.montant || trajetInfo.prixTotal || 0}
+                        date={new Date(trajetInfo.dateDepart)}
+                        cardHolder={`${user?.prenom || ''} ${user?.nom || ''}`}
+                        last4Digits={paiementData?.last4Digits || "4242"}
+                        barcodeValue={currentPassager?.qrCode || `28937261273650-${reservationId}`}
+                        villeDepart={trajetInfo.villeDepart}
+                        villeArrivee={trajetInfo.villeArrivee}
+                        numeroSiege={currentPassager?.numeroSiege || 'A1'}
+                        compagnieNom={trajetInfo.compagnieNom}
+                        quai={trajetInfo.quaiNumero || '01'}
+                    />
+                </motion.div>
+            </AnimatePresence>
 
-          {/* Actions */}
-          <div className="grid grid-cols-2 gap-3 pb-8">
-            <button
-              onClick={handlePrint}
-              className="flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 transition"
-            >
-              <Printer size={16} /> Imprimer
-            </button>
-            <button
-              onClick={() => router.push(`/fr/voyageur/dashboard`)}
-              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold text-sm transition shadow-lg shadow-orange-200"
-            >
-              <Home size={16} /> Mes voyages
-            </button>
-          </div>
+            {/* Recaps & Actions */}
+            <div className="mt-20 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Info Card */}
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="bg-white dark:bg-slate-950 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center"><Briefcase size={20} /></div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Mes Bagages</h3>
+                        </div>
+                        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                            {trajetInfo.bagages?.length || 0} article(s) enregistré(s). Présentez-vous 30 minutes avant le départ au guichet pour l'étiquetage physique.
+                        </p>
+                    </div>
+                    <button className="mt-8 text-[10px] font-black text-emerald-500 uppercase tracking-widest hover:underline flex items-center gap-2">Consulter la politique bagages →</button>
+                </motion.div>
 
+                {/* Action Card */}
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center"><Home size={20} /></div>
+                            <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Prochaines Étapes</h3>
+                        </div>
+                        <p className="text-sm text-white/40 font-medium leading-relaxed">
+                            Vous pouvez retrouver tous vos tickets dans votre tableau de bord. Un email de confirmation vous a également été envoyé.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-8">
+                        <button onClick={() => router.push('/fr/voyageur/dashboard')} className="bg-white text-slate-900 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.03] transition-all">Tableau de Bord</button>
+                        <button onClick={() => router.push('/fr')} className="bg-white/10 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">Accueil</button>
+                    </div>
+                </motion.div>
+            </div>
         </div>
       </main>
+
       <Footer />
-    </>
+    </div>
   );
 }

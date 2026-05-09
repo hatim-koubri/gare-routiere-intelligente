@@ -7,10 +7,12 @@ import ma.emsi.gare.entity.Quai;
 import ma.emsi.gare.repository.CompagnieRepository;
 import ma.emsi.gare.repository.QuaiRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AdminQuaiService {
 
@@ -19,6 +21,7 @@ public class AdminQuaiService {
 
     private static final int MAX_QUAIS_PAR_COMPAGNIE = 5;
 
+    @Transactional
     public Quai creerQuai(QuaiRequest request) {
         if (quaiRepository.existsByNumero(request.getNumero())) {
             throw new RuntimeException("Numéro de quai déjà existant");
@@ -34,6 +37,7 @@ public class AdminQuaiService {
         return quaiRepository.save(quai);
     }
 
+    @Transactional
     public Quai attribuerQuaiACompagnie(Long quaiId, Long compagnieId) {
         Quai quai = quaiRepository.findById(quaiId)
                 .orElseThrow(() -> new RuntimeException("Quai non trouvé"));
@@ -50,6 +54,7 @@ public class AdminQuaiService {
         return quaiRepository.save(quai);
     }
 
+    @Transactional
     public Quai libererQuai(Long quaiId) {
         Quai quai = quaiRepository.findById(quaiId)
                 .orElseThrow(() -> new RuntimeException("Quai non trouvé"));

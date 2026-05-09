@@ -32,6 +32,42 @@ public class ResponsableRemboursementController {
         return ResponseEntity.ok(remboursements);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<RemboursementResponseDTO>
+    getRemboursement(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+
+        return ResponseEntity.ok(
+                toDto(service.getById(id, authentication))
+        );
+    }
+
+    @PatchMapping("/{id}/accepter")
+    public ResponseEntity<RemboursementResponseDTO>
+    accepter(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+
+        return ResponseEntity.ok(
+                toDto(service.accepter(id, authentication))
+        );
+    }
+
+    @PatchMapping("/{id}/refuser")
+    public ResponseEntity<RemboursementResponseDTO>
+    refuser(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+
+        return ResponseEntity.ok(
+                toDto(service.refuser(id, authentication))
+        );
+    }
+
     @PatchMapping("/{id}/traiter")
     public ResponseEntity<RemboursementResponseDTO>
     traiter(
@@ -94,6 +130,12 @@ public class ResponsableRemboursementController {
                         remboursement.getReservation()
                                 .getVoyageur()
                                 .getNom()
+                );
+
+                dto.setVoyageurPrenom(
+                        remboursement.getReservation()
+                                .getVoyageur()
+                                .getPrenom()
                 );
             }
         }

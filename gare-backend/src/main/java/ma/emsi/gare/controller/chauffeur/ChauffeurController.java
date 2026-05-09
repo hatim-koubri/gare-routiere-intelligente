@@ -56,7 +56,7 @@ public class ChauffeurController {
                 chauffeurService.validerTicketQR(qrCode));
     }
 
-    // US-36 — Scanner bagage
+    // US-36 — Scanner bagage (départ)
     @PostMapping("/bagages/scanner/{bagageId}")
     public ResponseEntity<Map<String, Object>> scannerBagage(
             @PathVariable Long bagageId) {
@@ -64,14 +64,34 @@ public class ChauffeurController {
                 chauffeurService.scannerBagage(bagageId));
     }
 
-    // US-37 — Valider jalon
-    @PostMapping("/jalons/valider")
-    public ResponseEntity<Map<String, Object>> validerJalon(
-            @Valid @RequestBody JalonRequest request,
+    // US-40 — Scanner bagage à l'arrivée (confirmation identité)
+    @PostMapping("/bagages/scanner-arrivee/{bagageId}")
+    public ResponseEntity<Map<String, Object>> scannerBagageArrivee(
+            @PathVariable Long bagageId) {
+        return ResponseEntity.ok(
+                chauffeurService.scannerBagageArrivee(bagageId));
+    }
+
+    // US-37 — Arrivée à un arrêt
+    @PostMapping("/jalons/{trajetId}/arriver/{arretId}")
+    public ResponseEntity<Map<String, Object>> arriverArret(
+            @PathVariable Long trajetId,
+            @PathVariable Long arretId,
             Authentication auth) {
         Long chauffeurId = getUserId(auth);
         return ResponseEntity.ok(
-                chauffeurService.validerJalon(request, chauffeurId));
+                chauffeurService.arriverArret(trajetId, arretId, chauffeurId));
+    }
+
+    // US-37 — Départ d'un arrêt
+    @PostMapping("/jalons/{trajetId}/depart/{arretId}")
+    public ResponseEntity<Map<String, Object>> departirArret(
+            @PathVariable Long trajetId,
+            @PathVariable Long arretId,
+            Authentication auth) {
+        Long chauffeurId = getUserId(auth);
+        return ResponseEntity.ok(
+                chauffeurService.departirArret(trajetId, arretId, chauffeurId));
     }
 
     // US-41 — Bouton DÉPART
@@ -82,6 +102,16 @@ public class ChauffeurController {
         Long chauffeurId = getUserId(auth);
         return ResponseEntity.ok(
                 chauffeurService.declencherDepart(trajetId, chauffeurId));
+    }
+
+    // US-33b — Terminer un trajet
+    @PostMapping("/trajets/{trajetId}/terminer")
+    public ResponseEntity<Map<String, Object>> terminerTrajet(
+            @PathVariable Long trajetId,
+            Authentication auth) {
+        Long chauffeurId = getUserId(auth);
+        return ResponseEntity.ok(
+                chauffeurService.terminerTrajet(trajetId, chauffeurId));
     }
 
     // US-42 — Signaler incident
@@ -99,11 +129,8 @@ public class ChauffeurController {
         return user.getId();
     }
     @GetMapping("/trajets/{trajetId}/arrets")
-    public ResponseEntity<List<Arret>> getArretsByTrajet(@PathVariable Long trajetId) {
-        Trajet trajet = trajetRepository.findById(trajetId)
-                .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
-        List<Arret> arrets = trajet.getLigne().getArrets();
-        return ResponseEntity.ok(arrets);
+    public ResponseEntity<Map<String, Object>> getArretsByTrajet(@PathVariable Long trajetId) {
+        return ResponseEntity.ok(chauffeurService.getArretsWithValidation(trajetId));
     }
     // Récupérer les incidents d'un trajet (pour chauffeur)
     @GetMapping("/trajets/{trajetId}/incidents")

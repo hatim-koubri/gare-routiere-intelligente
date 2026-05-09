@@ -24,7 +24,7 @@ export default function PromotionsPage() {
     compagnieId: 0,
   });
   const [tarifConfig, setTarifConfig] = useState<TarificationConfig>({
-    reductionTrentejours: 20,
+    reductionTrenteJours: 20,
     reductionQuinzeJours: 10,
     supplementJourMeme: 10,
     seuilHaut: 80,
@@ -258,12 +258,12 @@ export default function PromotionsPage() {
                 <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">30 jours à l'avance</p>
-                    <span className="text-2xl font-black text-emerald-600">-{tarifConfig.reductionTrentejours}%</span>
+                    <span className="text-2xl font-black text-emerald-600">-{tarifConfig.reductionTrenteJours}%</span>
                   </div>
                   <p className="text-xs text-emerald-600/70 mb-4">Réservation très anticipée</p>
                   <input type="range" min={0} max={50} step={1}
-                    value={tarifConfig.reductionTrentejours}
-                    onChange={(e) => setTarifConfig({ ...tarifConfig, reductionTrentejours: parseFloat(e.target.value) })}
+                    value={tarifConfig.reductionTrenteJours}
+                    onChange={(e) => setTarifConfig({ ...tarifConfig, reductionTrenteJours: parseFloat(e.target.value) })}
                     className="w-full accent-emerald-600 cursor-pointer" />
                   <div className="flex justify-between text-[10px] text-emerald-500 mt-1"><span>0%</span><span>50%</span></div>
                 </div>

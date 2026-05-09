@@ -48,6 +48,17 @@ public class ResponsableAnnonceController {
         );
     }
 
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<AnnonceResponseDTO>
+    toggle(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                toDto(service.toggleEtat(id, authentication))
+        );
+    }
+
     @PatchMapping("/{id}/etat")
     public ResponseEntity<AnnonceResponseDTO>
     changerEtat(

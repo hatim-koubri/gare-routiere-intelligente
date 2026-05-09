@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {
   LayoutDashboard, Bus, Building2, SquareStack, Megaphone,
-  Tag, LogOut, Users, ScanEye, MapPin, Calendar,
+  Tag, LogOut, Users, ScanEye, MapPin, Calendar, FileText, Mail,
   ChevronRight, Home, Shield
 } from 'lucide-react';
 
@@ -21,6 +21,8 @@ const menu = [
   { name: 'OCR', icon: ScanEye, href: '/fr/admin/ocr' },
   { name: 'Annonces', icon: Megaphone, href: '/fr/admin/annonces' },
   { name: 'Promotions', icon: Tag, href: '/fr/admin/promotions' },
+  { name: 'Messages', icon: Mail, href: '/fr/admin/messages' },
+  { name: 'Justificatifs', icon: FileText, href: '/fr/admin/justificatifs' },
 ];
 
 export default function AdminSidebar() {

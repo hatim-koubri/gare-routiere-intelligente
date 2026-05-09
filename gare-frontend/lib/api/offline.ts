@@ -1,6 +1,17 @@
 import { apiClient } from './client';
 import { HoraireOfflineResponse } from '@/types';
 
+const downloadBlob = (data: any, filename: string) => {
+  const url = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export const offlineApi = {
   getHoraires: async (jours: number = 7): Promise<HoraireOfflineResponse> => {
     const response = await apiClient.get<HoraireOfflineResponse>(`/offline/horaires/${jours}`);
@@ -11,15 +22,21 @@ export const offlineApi = {
     const response = await apiClient.get(`/offline/horaires/download?jours=${jours}`, {
       responseType: 'blob',
     });
-    
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `horaires_${jours}jours.json`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    downloadBlob(response.data, `horaires_${jours}jours.json`);
+  },
+
+  downloadHorairesPDF: async (jours: number = 7): Promise<void> => {
+    const response = await apiClient.get(`/offline/horaires/export/pdf?jours=${jours}`, {
+      responseType: 'blob',
+    });
+    downloadBlob(response.data, `horaires_${jours}jours.pdf`);
+  },
+
+  downloadHorairesExcel: async (jours: number = 7): Promise<void> => {
+    const response = await apiClient.get(`/offline/horaires/export/excel?jours=${jours}`, {
+      responseType: 'blob',
+    });
+    downloadBlob(response.data, `horaires_${jours}jours.xlsx`);
   },
 
   saveHorairesOffline: async (jours: number = 7): Promise<void> => {

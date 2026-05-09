@@ -8,6 +8,8 @@ public class RechercheTrajetRequest {
     private String villeDepart;
     private String villeArrivee;
     private LocalDate date;
+    private LocalDate dateDebut;
+    private LocalDate dateFin;
     private Long compagnieId;
 
     private Double prixMin;
@@ -15,4 +17,5 @@ public class RechercheTrajetRequest {
     private Integer heureDepartMin;
     private Integer heureDepartMax;
     private Integer nbArretsMax;
+    private Double noteMin;
 }

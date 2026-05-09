@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 public class JalonRequest {
     @NotNull private Long trajetId;
+    private Long arretId;
     @NotBlank private String ville;
     @NotNull private Integer ordre;
 }

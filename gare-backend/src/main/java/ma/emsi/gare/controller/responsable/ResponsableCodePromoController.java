@@ -31,6 +31,16 @@ public class ResponsableCodePromoController {
         return ResponseEntity.ok(toDto(promo));
     }
 
+    @PatchMapping("/{id}/activer")
+    public ResponseEntity<CodePromoResponseDTO> activer(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        CodePromo promo = responsableCodePromoService
+                .activer(id, authentication);
+        return ResponseEntity.ok(toDto(promo));
+    }
+
     @PatchMapping("/{id}/desactiver")
     public ResponseEntity<CodePromoResponseDTO> desactiver(
             @PathVariable Long id,

@@ -16,12 +16,12 @@ public class ResponsableStatsController {
 
     @GetMapping
     public ResponseEntity<CompagnieStatsDTO> dashboard(
+            @RequestParam(required = false) String periode,
             Authentication authentication
     ) {
-
         return ResponseEntity.ok(
                 responsableStatsService
-                        .getDashboardStats(authentication)
+                        .getDashboardStats(authentication, periode)
         );
     }
 }

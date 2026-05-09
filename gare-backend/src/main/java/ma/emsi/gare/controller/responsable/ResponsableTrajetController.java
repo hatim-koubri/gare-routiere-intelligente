@@ -43,6 +43,24 @@ public class ResponsableTrajetController {
         return ResponseEntity.ok(trajets);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ResponsableTrajetResponseDTO> getTrajetById(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Trajet trajet = responsableTrajetService.getTrajetById(id, authentication);
+        return ResponseEntity.ok(toDto(trajet));
+    }
+
+    @PatchMapping("/{id}/annuler")
+    public ResponseEntity<ResponsableTrajetResponseDTO> annulerTrajet(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Trajet trajet = responsableTrajetService.annulerTrajet(id, authentication);
+        return ResponseEntity.ok(toDto(trajet));
+    }
+
     private ResponsableTrajetResponseDTO toDto(Trajet trajet) {
         ResponsableTrajetResponseDTO dto = new ResponsableTrajetResponseDTO();
 
@@ -70,6 +88,7 @@ public class ResponsableTrajetController {
 
         dto.setDateDepart(trajet.getDateDepart());
         dto.setDateArriveePrevue(trajet.getDateArriveePrevue());
+        dto.setDateArriveeReelle(trajet.getDateArriveeReelle());
         dto.setStatut(trajet.getStatut().name());
         dto.setRetardMinutes(trajet.getRetardMinutes());
         dto.setNbReservations(trajet.getNbReservations());

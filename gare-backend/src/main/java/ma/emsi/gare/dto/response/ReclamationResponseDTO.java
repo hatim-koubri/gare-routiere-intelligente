@@ -2,6 +2,7 @@ package ma.emsi.gare.dto.response;
 
 import lombok.Data;
 import ma.emsi.gare.enums.StatutReclamation;
+import ma.emsi.gare.enums.TypeReclamation;
 
 import java.time.LocalDateTime;
 
@@ -9,6 +10,8 @@ import java.time.LocalDateTime;
 public class ReclamationResponseDTO {
 
     private Long id;
+
+    private TypeReclamation type;
 
     private String sujet;
 
@@ -22,6 +25,8 @@ public class ReclamationResponseDTO {
 
     private Long voyageurId;
     private String voyageurNom;
+    private String voyageurPrenom;
 
     private Long reservationId;
+    private String trajetInfo;
 }

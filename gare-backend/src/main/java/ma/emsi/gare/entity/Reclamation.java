@@ -3,6 +3,7 @@ package ma.emsi.gare.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import ma.emsi.gare.enums.StatutReclamation;
+import ma.emsi.gare.enums.TypeReclamation;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +17,10 @@ public class Reclamation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TypeReclamation type;
 
     @Column(nullable = false)
     private String sujet;

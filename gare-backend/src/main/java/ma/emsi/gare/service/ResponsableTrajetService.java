@@ -86,6 +86,39 @@ public class ResponsableTrajetService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public Trajet getTrajetById(Long id, Authentication authentication) {
+        Compagnie compagnie = getCompagnie(authentication);
+        Trajet trajet = trajetRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Trajet introuvable"));
+
+        if (!trajet.getLigne().getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce trajet n'appartient pas à votre compagnie");
+        }
+
+        return trajet;
+    }
+
+    public Trajet annulerTrajet(Long id, Authentication authentication) {
+        Compagnie compagnie = getCompagnie(authentication);
+        Trajet trajet = trajetRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Trajet introuvable"));
+
+        if (!trajet.getLigne().getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce trajet n'appartient pas à votre compagnie");
+        }
+
+        if (trajet.getNbReservations() != null && trajet.getNbReservations() > 0) {
+            throw new IllegalStateException(
+                    "Impossible d'annuler un trajet avec des réservations actives (" +
+                    trajet.getNbReservations() + " réservation(s))"
+            );
+        }
+
+        trajet.setStatut(StatutTrajet.ANNULE);
+        return trajetRepository.save(trajet);
+    }
+
     private Compagnie getCompagnie(Authentication authentication) {
 
         Object principal = authentication.getPrincipal();

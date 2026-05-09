@@ -6,6 +6,7 @@ import ma.emsi.gare.dto.response.ComparaisonCompagnieDTO;
 import ma.emsi.gare.dto.response.TrajetResponseDTO;
 import ma.emsi.gare.enums.StatutTrajet;
 import ma.emsi.gare.mapper.GareMapper;
+import ma.emsi.gare.repository.AvisRepository;
 import ma.emsi.gare.repository.TrajetRepository;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class VoyageurRechercheService {
 
     private final TrajetRepository trajetRepository;
     private final GareMapper gareMapper;
+    private final AvisRepository avisRepository;
 
     public List<TrajetResponseDTO> rechercherTrajetsDirects(RechercheTrajetRequest request) {
 
@@ -28,7 +30,7 @@ public class VoyageurRechercheService {
         LocalDateTime debut = request.getDate().atStartOfDay();
         LocalDateTime fin = request.getDate().atTime(23, 59, 59);
 
-        return gareMapper.toTrajetDTOList(
+        var dtos = gareMapper.toTrajetDTOList(
                 trajetRepository.findByVillePeriodeEtCompagnie(
                         request.getVilleDepart(),
                         request.getVilleArrivee(),
@@ -38,6 +40,8 @@ public class VoyageurRechercheService {
                         request.getCompagnieId()
                 )
         );
+        enrichirAvecNoteCompagnie(dtos);
+        return dtos;
     }
 
     public List<List<TrajetResponseDTO>> rechercherAvecCorrespondances(RechercheTrajetRequest request) {
@@ -85,10 +89,10 @@ public class VoyageurRechercheService {
                     continue;
                 }
 
-                resultats.add(List.of(
-                        gareMapper.toTrajetDTO(trajet1),
-                        gareMapper.toTrajetDTO(trajet2)
-                ));
+                var dto1 = gareMapper.toTrajetDTO(trajet1);
+                var dto2 = gareMapper.toTrajetDTO(trajet2);
+                enrichirAvecNoteCompagnie(List.of(dto1, dto2));
+                resultats.add(List.of(dto1, dto2));
             }
         }
 
@@ -96,12 +100,23 @@ public class VoyageurRechercheService {
     }
 
     public List<TrajetResponseDTO> rechercherAvecFiltres(RechercheTrajetRequest request) {
-        if (request.getVilleDepart() == null || request.getVilleArrivee() == null || request.getDate() == null) {
-            throw new RuntimeException("Ville de départ, ville d'arrivée et date sont obligatoires");
+        if (request.getVilleDepart() == null || request.getVilleArrivee() == null) {
+            throw new RuntimeException("Ville de départ et ville d'arrivée sont obligatoires");
         }
 
-        LocalDateTime debut = request.getDate().atStartOfDay();
-        LocalDateTime fin = request.getDate().atTime(23, 59, 59);
+        LocalDateTime debut;
+        LocalDateTime fin;
+
+        if (request.getDateDebut() != null && request.getDateFin() != null) {
+            debut = request.getDateDebut().atStartOfDay();
+            fin = request.getDateFin().atTime(23, 59, 59);
+        } else if (request.getDate() != null) {
+            debut = request.getDate().atStartOfDay();
+            fin = request.getDate().atTime(23, 59, 59);
+        } else {
+            debut = LocalDateTime.now();
+            fin = debut.plusMonths(1);
+        }
 
         var trajets = trajetRepository.findByVillePeriodeEtCompagnie(
                 request.getVilleDepart(),
@@ -120,7 +135,16 @@ public class VoyageurRechercheService {
                 .filter(t -> request.getNbArretsMax() == null || t.getLigne().getArrets().size() <= request.getNbArretsMax())
                 .toList();
 
-        return gareMapper.toTrajetDTOList(filtres);
+        var dtos = gareMapper.toTrajetDTOList(filtres);
+        enrichirAvecNoteCompagnie(dtos);
+
+        if (request.getNoteMin() != null) {
+            dtos = dtos.stream()
+                    .filter(dto -> dto.getCompagnieNoteMoyenne() >= request.getNoteMin())
+                    .toList();
+        }
+
+        return dtos;
     }
 
     public List<TrajetResponseDTO> recommanderTrajets(Long voyageurId) {
@@ -150,7 +174,20 @@ public class VoyageurRechercheService {
                 null
         );
 
-        return gareMapper.toTrajetDTOList(trajets);
+        var dtos = gareMapper.toTrajetDTOList(trajets);
+        enrichirAvecNoteCompagnie(dtos);
+        return dtos;
+    }
+
+    private void enrichirAvecNoteCompagnie(List<TrajetResponseDTO> dtos) {
+        for (TrajetResponseDTO dto : dtos) {
+            if (dto.getCompagnieId() != null) {
+                Double avg = avisRepository.avgNoteByCompagnieId(dto.getCompagnieId());
+                Long count = avisRepository.countByCompagnieId(dto.getCompagnieId());
+                dto.setCompagnieNoteMoyenne(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+                dto.setCompagnieNbAvis(count != null ? count.intValue() : 0);
+            }
+        }
     }
 
     public List<ComparaisonCompagnieDTO> comparerCompagnies(String villeDepart, String villeArrivee) {

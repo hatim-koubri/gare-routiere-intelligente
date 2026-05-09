@@ -25,4 +25,6 @@ public class RemboursementResponseDTO {
     private Long voyageurId;
 
     private String voyageurNom;
+
+    private String voyageurPrenom;
 }

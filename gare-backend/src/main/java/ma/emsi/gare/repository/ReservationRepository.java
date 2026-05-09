@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReservationRepository
@@ -25,10 +26,12 @@ public interface ReservationRepository
 
     long countByStatut(ma.emsi.gare.enums.StatutReservation statut);
 
-    // Historique complet avec tickets
+    // Historique complet avec tickets, voyageur et trajet
     @Query("""
         SELECT r FROM Reservation r
         LEFT JOIN FETCH r.tickets
+        LEFT JOIN FETCH r.voyageur
+        LEFT JOIN FETCH r.trajet
         WHERE r.voyageur.id = :voyageurId
         ORDER BY r.dateReservation DESC
     """)
@@ -45,4 +48,23 @@ public interface ReservationRepository
     WHERE r.trajet.ligne.compagnie.id = :compagnieId
 """)
     long countByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    @Query("""
+    SELECT COUNT(r)
+    FROM Reservation r
+    WHERE r.trajet.ligne.compagnie.id = :compagnieId
+    AND r.dateReservation BETWEEN :debut AND :fin
+""")
+    long countByCompagnieIdAndDateReservationBetween(
+            @Param("compagnieId") Long compagnieId,
+            @Param("debut") LocalDateTime debut,
+            @Param("fin") LocalDateTime fin
+    );
+
+    @Query("""
+    SELECT r FROM Reservation r
+    WHERE r.statut = 'EN_ATTENTE'
+    AND r.dateReservation < :expiration
+""")
+    List<Reservation> findExpiredEnAttente(@Param("expiration") LocalDateTime expiration);
 }

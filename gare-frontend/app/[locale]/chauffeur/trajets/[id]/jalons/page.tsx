@@ -1,81 +1,87 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { ProtectedRoute } from '@/lib/auth/ProtectedRoute';
-import { chauffeurJalonApi } from '@/lib/api/chauffeur/jalons';
+import { chauffeurJalonApi, JalonsData } from '@/lib/api/chauffeur/jalons';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
-import { apiClient } from '@/lib/api/client';
-import { Role, Arret } from '@/types';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import { Role, Trajet } from '@/types';
 import Link from 'next/link';
+import {
+  ArrowLeft, MapPin, Clock, CheckCircle2, Loader2,
+  Circle, CircleDot, LogOut, Timer,
+} from 'lucide-react';
 
 export default function JalonsPage() {
   const { id } = useParams();
-  const locale = 'fr';
-  const router = useRouter();
-  const [trajet, setTrajet] = useState<any>(null);
-  const [arrets, setArrets] = useState<Arret[]>([]);
+  const [trajet, setTrajet] = useState<Trajet | null>(null);
+  const [jalonsData, setJalonsData] = useState<JalonsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [validating, setValidating] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [actionType, setActionType] = useState<'arriver' | 'departir' | null>(null);
 
   useEffect(() => {
-    loadTrajetEtArrets();
+    loadData();
   }, [id]);
 
-  const loadTrajetEtArrets = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Récupérer les détails du trajet
-      const trajetsData = await chauffeurTrajetApi.getTrajetsJour();
+      const [trajetsData, jData] = await Promise.all([
+        chauffeurTrajetApi.getTrajetsJour(),
+        chauffeurJalonApi.getArrets(Number(id)),
+      ]);
       const found = trajetsData.find((t: any) => t.id === Number(id));
       setTrajet(found || null);
-      
-      if (found) {
-        // 2. Récupérer les arrêts via le nouvel endpoint chauffeur
-        try {
-          const arretsResponse = await apiClient.get(`/chauffeur/trajets/${id}/arrets`);
-          console.log('Arrêts récupérés:', arretsResponse.data);
-          setArrets(Array.isArray(arretsResponse.data) ? arretsResponse.data : []);
-        } catch (error) {
-          console.error('Erreur récupération arrêts:', error);
-          setArrets([]);
-        }
-      } else {
-        setArrets([]);
-      }
+      setJalonsData(jData);
     } catch (error) {
-      console.error('Erreur chargement trajet', error);
+      console.error('Erreur chargement jalons', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleValiderJalon = async (arret: Arret) => {
-    setValidating(arret.ordre || 0);
+  const handleArriver = async (arretId: number) => {
+    setActionLoading(arretId);
+    setActionType('arriver');
     try {
-      await chauffeurJalonApi.validerJalon({
-        trajetId: Number(id),
-        ville: arret.ville,
-        ordre: arret.ordre || 0,
-      });
-      alert(`✅ Jalon "${arret.ville}" validé avec succès !`);
-      loadTrajetEtArrets();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Erreur lors de la validation');
+      await chauffeurJalonApi.arriverArret(Number(id), arretId);
+      await loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur');
     } finally {
-      setValidating(null);
+      setActionLoading(null);
+      setActionType(null);
     }
   };
 
-  // Calcul des temps de passage estimés
-  const getHeurePassage = (arret: Arret) => {
+  const handleDepartir = async (arretId: number) => {
+    setActionLoading(arretId);
+    setActionType('departir');
+    try {
+      await chauffeurJalonApi.departirArret(Number(id), arretId);
+      await loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur');
+    } finally {
+      setActionLoading(null);
+      setActionType(null);
+    }
+  };
+
+  const isArrived = (arretId: number) => jalonsData?.arrives?.includes(arretId) ?? false;
+  const isDeparted = (arretId: number) => jalonsData?.partis?.includes(arretId) ?? false;
+
+  const stops = jalonsData?.arrets ?? [];
+  const arrivedCount = jalonsData?.arrives?.length ?? 0;
+  const totalStops = stops.length;
+  const progressPct = totalStops > 0 ? Math.round((arrivedCount / totalStops) * 100) : 0;
+
+  const getHeurePassage = (arret: any) => {
     if (!trajet?.dateDepart) return 'N/A';
     const dateDepart = new Date(trajet.dateDepart);
     if (arret.heurePrevueOffsetMinutes) {
       dateDepart.setMinutes(dateDepart.getMinutes() + arret.heurePrevueOffsetMinutes);
-      return dateDepart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     return dateDepart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -83,103 +89,176 @@ export default function JalonsPage() {
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={[Role.CHAUFFEUR]}>
-        <Header />
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            <p className="text-sm text-slate-400 font-medium">Chargement des jalons...</p>
+          </div>
         </div>
-        <Footer />
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute allowedRoles={[Role.CHAUFFEUR]}>
-      <Header />
-      <div className="min-h-screen bg-gray-100 py-8">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <div className="mb-6">
-            <Link href={`/fr/chauffeur/dashboard`} className="text-blue-600 hover:underline">
-              ← Retour
-            </Link>
-          </div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 pb-16">
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h1 className="text-2xl font-bold mb-2">Jalons du trajet</h1>
-            <p className="text-gray-600 mb-4">
-              {trajet?.villeDepart || '?'} → {trajet?.villeArrivee || '?'}
+          <Link
+            href="/fr/chauffeur/trajets"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 font-medium transition-colors"
+          >
+            <ArrowLeft size={15} /> Retour aux trajets
+          </Link>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h1 className="text-xl font-bold text-slate-900">Jalons du trajet</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              #{id} — {trajet?.villeDepart || '?'} → {trajet?.villeArrivee || '?'}
             </p>
-            
             {trajet?.dateDepart && (
-              <p className="text-sm text-gray-500 mb-4">
-                Départ: {new Date(trajet.dateDepart).toLocaleString()}
+              <p className="text-xs text-slate-400 mt-1">
+                Départ : {new Date(trajet.dateDepart).toLocaleString('fr-FR')}
               </p>
             )}
+          </div>
 
-            <div className="space-y-3">
-              {arrets.length > 0 ? (
-                arrets.map((arret, index) => (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-indigo-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-indigo-700">{totalStops}</p>
+              <p className="text-xs font-semibold text-indigo-600 mt-1">Arrêts</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-700">{arrivedCount}</p>
+              <p className="text-xs font-semibold text-emerald-600 mt-1">Arrivées</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-amber-700">{progressPct}%</p>
+              <p className="text-xs font-semibold text-amber-600 mt-1">Progression</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-slate-700">Progression du trajet</span>
+              <span className="text-sm font-bold text-indigo-600">{progressPct}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full transition-all duration-700"
+                style={{
+                  width: `${progressPct}%`,
+                  background: progressPct === 100
+                    ? '#16a34a'
+                    : 'linear-gradient(90deg, #4f46e5, #7c3aed)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {stops.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-14 text-center">
+                <MapPin size={36} className="text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 text-sm font-medium">Aucun arrêt programmé</p>
+              </div>
+            ) : (
+              stops.map((arret, idx) => {
+                const arrived = isArrived(arret.id);
+                const departed = isDeparted(arret.id);
+                const isLoading = actionLoading === arret.id;
+
+                return (
                   <div
-                    key={index}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    key={arret.id}
+                    className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${
+                      arrived && departed
+                        ? 'border-emerald-200 bg-emerald-50/30'
+                        : arrived
+                        ? 'border-indigo-200 bg-indigo-50/30'
+                        : 'border-slate-200'
+                    }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
-                        {arret.ordre}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-lg">{arret.ville}</p>
-                        <div className="flex gap-4 text-sm text-gray-500">
-                          <span>⏰ Heure: {getHeurePassage(arret)}</span>
-                          {arret.dureePauseMinutes && arret.dureePauseMinutes > 0 ? (
-                            <span>⏸️ Pause: {arret.dureePauseMinutes} min</span>
-                          ) : null}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        {idx === 0 ? (
+                          <CircleDot size={24} className="text-indigo-600 flex-shrink-0" />
+                        ) : idx === stops.length - 1 ? (
+                          <MapPin size={24} className="text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <Circle size={20} className="text-slate-300 flex-shrink-0" />
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-slate-800">{arret.ville}</p>
+                            {arrived && departed && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold ring-1 ring-emerald-200">
+                                <CheckCircle2 size={10} /> Terminé
+                              </span>
+                            )}
+                            {arrived && !departed && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold ring-1 ring-indigo-200">
+                                <Clock size={10} /> Arrêté
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Clock size={11} /> {getHeurePassage(arret)}
+                            </span>
+                            {arret.dureePauseMinutes && arret.dureePauseMinutes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Timer size={11} /> {arret.dureePauseMinutes} min pause
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => handleValiderJalon(arret)}
-                      disabled={validating === arret.ordre}
-                      className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
-                    >
-                      {validating === arret.ordre ? 'Validation...' : '✅ Valider'}
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <p className="mb-2">📌 Aucun arrêt programmé pour ce trajet</p>
-                  <p className="text-sm">Ajoutez des arrêts à la ligne dans l'interface admin.</p>
-                </div>
-              )}
-            </div>
 
-            {/* Ligne de progression */}
-            {arrets.length > 0 && (
-              <div className="mt-8 pt-4 border-t">
-                <div className="flex justify-between text-sm text-gray-500 mb-2">
-                  <span>🏁 Départ</span>
-                  <span>📍 Progression</span>
-                  <span>🏁 Arrivée</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: '0%' }}
-                  />
-                </div>
-                <div className="flex justify-between mt-3">
-                  {arrets.map((arret, idx) => (
-                    <div key={idx} className="text-center text-xs text-gray-400">
-                      {arret.ville}
+                      <div className="flex gap-2 flex-shrink-0">
+                        {!arrived && (
+                          <button
+                            onClick={() => handleArriver(arret.id)}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:bg-slate-300 transition-all"
+                          >
+                            {isLoading && actionType === 'arriver' ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle2 size={14} />
+                            )}
+                            Arrivé
+                          </button>
+                        )}
+                        {arrived && !departed && (
+                          <button
+                            onClick={() => handleDepartir(arret.id)}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:bg-slate-300 transition-all"
+                          >
+                            {isLoading && actionType === 'departir' ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <LogOut size={14} />
+                            )}
+                            Partir
+                          </button>
+                        )}
+                        {arrived && departed && (
+                          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold">
+                            <CheckCircle2 size={14} /> Fait
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                );
+              })
             )}
           </div>
+
         </div>
       </div>
-      <Footer />
     </ProtectedRoute>
   );
 }

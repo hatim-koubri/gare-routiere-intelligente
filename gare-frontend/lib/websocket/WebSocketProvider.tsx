@@ -42,15 +42,21 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(true);
       
       // S'abonner au topic en fonction du rôle
-      if (user.role === 'ADMIN') {
+      if (user.role === 'ADMIN' || user.role === 'RESPONSABLE_COMPAGNIE') {
         stompClient.subscribe('/topic/admin', (message) => {
           setLastMessage(JSON.parse(message.body));
         });
         stompClient.subscribe('/topic/ocr', (message) => {
           setLastMessage(JSON.parse(message.body));
         });
-      } else if (user.role === 'CHAUFFEUR') {
+      }
+      if (user.role === 'CHAUFFEUR') {
         stompClient.subscribe(`/queue/chauffeur/${user.id}`, (message) => {
+          setLastMessage(JSON.parse(message.body));
+        });
+      }
+      if (user.role === 'VOYAGEUR') {
+        stompClient.subscribe(`/queue/voyageur/${user.email}`, (message) => {
           setLastMessage(JSON.parse(message.body));
         });
       }

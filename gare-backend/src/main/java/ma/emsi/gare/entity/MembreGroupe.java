@@ -3,6 +3,7 @@ package ma.emsi.gare.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import ma.emsi.gare.enums.CategorieTarifaire;
+import ma.emsi.gare.enums.LienOrganisateur;
 
 @Entity
 @Table(name = "membres_groupe")
@@ -43,13 +44,22 @@ public class MembreGroupe {
     private CategorieTarifaire categorieTarifaire
             = CategorieTarifaire.NORMAL;
 
-    // CONJOINT, FAMILLE, AMI, COLLEGUE
+    @Enumerated(EnumType.STRING)
     @Column(name = "lien_organisateur")
-    private String lienOrganisateur;
+    private LienOrganisateur lienOrganisateur;
 
     // Enfant sur genoux (gratuit) ou siège séparé
     @Column(name = "enfant_sur_genoux")
     private boolean enfantSurGenoux = false;
+
+    @Column(name = "accepte_sexe_oppose")
+    private boolean accepteSexeOppose = true;
+
+    @Column(name = "preference_position")
+    private String preferencePosition;
+
+    @Column(name = "prefere_cote_membre_id")
+    private Long prefereCoteMembreId;
 
     // Siège attribué après algorithme placement
     @Column(name = "siege_attribue")

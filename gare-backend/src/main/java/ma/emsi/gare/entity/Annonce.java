@@ -8,10 +8,13 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "annonces")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = {"compagnie"})
+@EqualsAndHashCode(exclude = {"compagnie"})
 public class Annonce {
 
     @Id

@@ -13,9 +13,13 @@ public class MessageResponseDTO {
 
     private String expediteurNom;
 
+    private String expediteurPrenom;
+
     private Long destinataireId;
 
     private String destinataireNom;
+
+    private String destinatairePrenom;
 
     private String contenu;
 

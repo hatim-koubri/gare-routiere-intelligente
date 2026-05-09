@@ -21,7 +21,7 @@ public class ReservationResponseDTO {
     private String typeGroupe;
     private Integer nombrePassagers;
 
-    private List<String> membres;
+    private List<MembreGroupeDTO> membres;
     private TrajetResponseDTO trajet;
     private List<TicketDTO> tickets;
     private List<BagageResponseDTO> bagages;

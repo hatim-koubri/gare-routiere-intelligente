@@ -49,4 +49,15 @@ export const adminCompagnieApi = {
     const response = await apiClient.post('/admin/compagnies', data);
     return response.data;
   },
+
+  ajouterResponsable: async (compagnieId: number, data: {
+    nom: string;
+    prenom: string;
+    email: string;
+    password: string;
+    telephone?: string;
+  }): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/admin/compagnies/${compagnieId}/responsables`, data);
+    return response.data;
+  },
 };

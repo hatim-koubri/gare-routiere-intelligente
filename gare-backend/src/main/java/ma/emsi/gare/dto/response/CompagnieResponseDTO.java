@@ -11,6 +11,7 @@ public class CompagnieResponseDTO {
     private String telephone;
     private String email;
     private Double noteMoyenne;
+    private Integer nbAvis;
     private boolean actif;
     private int nombreBus;
     private int nombreQuais;

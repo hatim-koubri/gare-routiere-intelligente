@@ -2,6 +2,7 @@ package ma.emsi.gare.service;
 
 import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.ChauffeurCreateRequest;
+import ma.emsi.gare.dto.request.ChauffeurUpdateRequest;
 import ma.emsi.gare.entity.Chauffeur;
 import ma.emsi.gare.entity.Compagnie;
 import ma.emsi.gare.entity.ResponsableCompagnie;
@@ -78,6 +79,84 @@ public class ResponsableChauffeurService {
         Compagnie compagnie = getCompagnie(authentication);
 
         return chauffeurRepository.findByCompagnieId(compagnie.getId());
+    }
+
+    public Chauffeur modifier(
+            Long id,
+            ChauffeurUpdateRequest request,
+            Authentication authentication
+    ) {
+        Compagnie compagnie = getCompagnie(authentication);
+
+        Chauffeur chauffeur = chauffeurRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Chauffeur introuvable"));
+
+        if (!chauffeur.getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce chauffeur ne fait pas partie de votre compagnie");
+        }
+
+        if (!chauffeur.getNumeroPermis().equals(request.getNumeroPermis())
+                && chauffeurRepository.existsByNumeroPermis(request.getNumeroPermis())) {
+            throw new IllegalArgumentException("Numéro permis déjà utilisé");
+        }
+
+        chauffeur.setNom(request.getNom());
+        chauffeur.setPrenom(request.getPrenom());
+        chauffeur.setTelephone(request.getTelephone());
+        chauffeur.setNumeroPermis(request.getNumeroPermis());
+        chauffeur.setDateEmbauche(request.getDateEmbauche());
+
+        return chauffeurRepository.save(chauffeur);
+    }
+
+    public Chauffeur toggleConge(Long id, Authentication authentication) {
+        Compagnie compagnie = getCompagnie(authentication);
+
+        Chauffeur chauffeur = chauffeurRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Chauffeur introuvable"));
+
+        if (!chauffeur.getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce chauffeur ne fait pas partie de votre compagnie");
+        }
+
+        if (!chauffeur.isActif()) {
+            throw new IllegalArgumentException("Impossible de mettre en congé un chauffeur inactif");
+        }
+
+        chauffeur.setEnConge(!chauffeur.isEnConge());
+
+        return chauffeurRepository.save(chauffeur);
+    }
+
+    public Chauffeur activer(Long id, Authentication authentication) {
+        Compagnie compagnie = getCompagnie(authentication);
+
+        Chauffeur chauffeur = chauffeurRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Chauffeur introuvable"));
+
+        if (!chauffeur.getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce chauffeur ne fait pas partie de votre compagnie");
+        }
+
+        chauffeur.setActif(true);
+
+        return chauffeurRepository.save(chauffeur);
+    }
+
+    public Chauffeur desactiver(Long id, Authentication authentication) {
+        Compagnie compagnie = getCompagnie(authentication);
+
+        Chauffeur chauffeur = chauffeurRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Chauffeur introuvable"));
+
+        if (!chauffeur.getCompagnie().getId().equals(compagnie.getId())) {
+            throw new IllegalArgumentException("Ce chauffeur ne fait pas partie de votre compagnie");
+        }
+
+        chauffeur.setActif(false);
+        chauffeur.setEnConge(false);
+
+        return chauffeurRepository.save(chauffeur);
     }
 
     private Compagnie getCompagnie(Authentication authentication) {

@@ -10,11 +10,15 @@ import ma.emsi.gare.repository.AnnonceRepository;
 import ma.emsi.gare.repository.CodePromoRepository;
 import ma.emsi.gare.repository.CompagnieRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AdminPromoAnnonceService {
 
@@ -24,6 +28,7 @@ public class AdminPromoAnnonceService {
 
     // ===== T2-11 — Codes Promo =====
 
+    @Transactional
     public CodePromo creerCodePromo(CodePromoRequest request) {
         if (codePromoRepository.existsByCode(request.getCode())) {
             throw new RuntimeException("Code promo déjà existant");
@@ -65,6 +70,7 @@ public class AdminPromoAnnonceService {
         return promo;
     }
 
+    @Transactional
     public CodePromo desactiverCodePromo(Long id) {
         CodePromo promo = codePromoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Code promo non trouvé"));
@@ -77,8 +83,16 @@ public class AdminPromoAnnonceService {
                 LocalDateTime.now());
     }
 
+    public List<CodePromo> getPromosByCompagnie(Long compagnieId) {
+        if (compagnieId == null || compagnieId == 0) {
+            return codePromoRepository.findAll();
+        }
+        return codePromoRepository.findByCompagnieId(compagnieId);
+    }
+
     // ===== T2-12 — Annonces bilingues =====
 
+    @Transactional
     public Annonce creerAnnonce(AnnonceRequest request) {
 
         Annonce annonce = new Annonce();
@@ -94,6 +108,13 @@ public class AdminPromoAnnonceService {
 
         annonce.setActive(true);
 
+        if (request.getCompagnieId() != null) {
+            Compagnie compagnie = compagnieRepository
+                    .findById(request.getCompagnieId())
+                    .orElseThrow(() -> new RuntimeException("Compagnie non trouvée"));
+            annonce.setCompagnie(compagnie);
+        }
+
         return annonceRepository.save(annonce);
     }
 
@@ -101,6 +122,17 @@ public class AdminPromoAnnonceService {
         return annonceRepository.findAnnoncesActives(LocalDateTime.now());
     }
 
+    public List<Annonce> getAnnoncesByCompagnie(Long compagnieId) {
+        if (compagnieId == null || compagnieId == 0) {
+            return annonceRepository.findAll();
+        }
+        List<Annonce> result = new ArrayList<>();
+        result.addAll(annonceRepository.findByCompagnieId(compagnieId));
+        result.addAll(annonceRepository.findByCompagnieIsNull());
+        return result;
+    }
+
+    @Transactional
     public Annonce desactiverAnnonce(Long id) {
         Annonce annonce = annonceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Annonce non trouvée"));

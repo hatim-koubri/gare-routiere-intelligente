@@ -9,10 +9,13 @@ import java.util.List;
 
 @Entity
 @Table(name = "lignes")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = {"compagnie", "arrets", "trajets"})
+@EqualsAndHashCode(exclude = {"compagnie", "arrets", "trajets"})
 public class Ligne {
 
     @Id
@@ -30,6 +33,9 @@ public class Ligne {
 
     @Column(name = "prix_base", nullable = false)
     private Double prixBase;
+
+    @Column(name = "prix_abonnement_mensuel")
+    private Double prixAbonnementMensuel;
 
     @Column(nullable = false)
     private boolean actif = true;

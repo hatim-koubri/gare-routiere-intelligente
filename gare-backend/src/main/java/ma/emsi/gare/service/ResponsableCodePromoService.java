@@ -64,6 +64,23 @@ public class ResponsableCodePromoService {
         return codePromoRepository.save(promo);
     }
 
+    public CodePromo activer(
+            Long id,
+            Authentication authentication
+    ) {
+        CodePromo promo = getPromoResponsable(id, authentication);
+
+        if (promo.getDateExpiration().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException(
+                    "Impossible de réactiver un code promo expiré"
+            );
+        }
+
+        promo.setActif(true);
+
+        return codePromoRepository.save(promo);
+    }
+
     public CodePromo desactiver(
             Long id,
             Authentication authentication

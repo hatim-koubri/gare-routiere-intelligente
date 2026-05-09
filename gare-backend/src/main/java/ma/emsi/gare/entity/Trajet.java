@@ -11,10 +11,13 @@ import java.util.List;
 
 @Entity
 @Table(name = "trajets")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@ToString(exclude = {"ligne", "bus", "chauffeur", "quai", "reservations", "sieges"})
+@EqualsAndHashCode(exclude = {"ligne", "bus", "chauffeur", "quai", "reservations", "sieges"})
 public class Trajet {
 
     @Id
@@ -61,4 +64,5 @@ public class Trajet {
 
     @OneToMany(mappedBy = "trajet", cascade = CascadeType.ALL)
     private List<Siege> sieges = new ArrayList<>();
+
 }

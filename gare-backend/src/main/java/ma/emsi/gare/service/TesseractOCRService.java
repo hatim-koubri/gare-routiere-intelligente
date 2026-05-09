@@ -53,15 +53,47 @@ public class TesseractOCRService {
             String texteOCR = tesseract.doOCR(image);
             log.info("Texte OCR brut: '{}'", texteOCR);
 
-            // Nettoyage agressif
-            String textePropre = nettoyerTexteOCR(texteOCR);
+            // Passe 1 : essayer avec le texte brut (uniquement mis en majuscule + nettoyage spéciaux)
+            String texteSimple = texteOCR
+                    .toUpperCase()
+                    .replaceAll("[^A-Z0-9\\-\\s]", "")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            log.info("Texte brut nettoyé: '{}'", texteSimple);
+
+            String matricule = extraireAvecPatterns(texteSimple);
+            if (matricule != null) {
+                log.info("Matricule extrait (passe 1): '{}'", matricule);
+                return matricule;
+            }
+
+            // Passe 2 : appliquer les corrections de confusion OCR (lettre → chiffre)
+            String texteCorrige = texteSimple
+                    .replace("O", "0")
+                    .replace("I", "1")
+                    .replace("L", "1")
+                    .replace("S", "5")
+                    .replace("B", "8")
+                    .replace("G", "6")
+                    .replace("Z", "2");
+            log.info("Texte corrigé: '{}'", texteCorrige);
+
+            matricule = extraireAvecPatterns(texteCorrige);
+            if (matricule != null) {
+                log.info("Matricule extrait (passe 2): '{}'", matricule);
+                return matricule;
+            }
+
+            // Passe 3 : supprimer les mots parasites (marques, modèles…) et réessayer
+            String textePropre = texteCorrige
+                    .replaceAll("VOYAGEUR|EXPRESS|TOURING|SCANIA|CTM|BUS", "")
+                    .replaceAll("\\s+", " ")
+                    .trim();
             log.info("Texte nettoyé: '{}'", textePropre);
 
-            // Essayer différents patterns
-            String matricule = extraireAvecPatterns(textePropre);
-
+            matricule = extraireAvecPatterns(textePropre);
             if (matricule != null) {
-                log.info("Matricule extrait: '{}'", matricule);
+                log.info("Matricule extrait (passe 3): '{}'", matricule);
                 return matricule;
             }
 
@@ -72,29 +104,6 @@ public class TesseractOCRService {
             log.error("Erreur Tesseract: {}", e.getMessage());
             return null;
         }
-    }
-
-    // ===== Nettoyage du texte OCR =====
-    private String nettoyerTexteOCR(String texte) {
-        if (texte == null) return "";
-
-        return texte
-                .toUpperCase()
-                // Supprimer les caractères spéciaux
-                .replaceAll("[^A-Z0-9\\-\\s]", "")
-                // Supprimer les textes parasites
-                .replaceAll("VOYAGEUR|EXPRESS|TOURING|SCANIA|CTM|BUS", "")
-                // Remplacer les confusions courantes
-                .replace("O", "0")
-                .replace("I", "1")
-                .replace("L", "1")
-                .replace("S", "5")
-                .replace("B", "8")
-                .replace("G", "6")
-                .replace("Z", "2")
-                // Nettoyer les espaces
-                .replaceAll("\\s+", " ")
-                .trim();
     }
 
     // ===== Extraction avec tous les patterns =====

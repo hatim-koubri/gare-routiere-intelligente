@@ -16,8 +16,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +36,8 @@ class ChauffeurServiceTest {
     @Mock private WebSocketNotificationService wsNotifService;
     @Mock private NotificationOfflineService notifOfflineService;
     @Mock private PdfService pdfService;
+    @Mock private JalonValideRepository jalonValideRepository;
+    @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @InjectMocks private ChauffeurService chauffeurService;
 
@@ -58,6 +62,7 @@ class ChauffeurServiceTest {
         bus.setCompagnie(ctm);
 
         Arret arret = new Arret();
+        arret.setId(1L);
         arret.setVille("Settat");
         arret.setOrdre(2);
         arret.setHeurePrevueOffsetMinutes(60);
@@ -66,6 +71,7 @@ class ChauffeurServiceTest {
         ligne.setId(1L);
         ligne.setVilleDepart("Casablanca");
         ligne.setVilleArrivee("Marrakech");
+        ligne.setCompagnie(ctm);
         ligne.setArrets(List.of(arret));
 
         trajet = new Trajet();
@@ -208,44 +214,74 @@ class ChauffeurServiceTest {
     // ===== Tests validation jalon =====
 
     @Test
-    @DisplayName("Valider jalon — sans retard → statut EN_COURS")
-    void validerJalon_SansRetard_EnCours() {
-        // Trajet parti il y a 30 min, arrêt prévu à 60 min → pas encore
+    @DisplayName("Arriver à un arrêt — sans retard → statut EN_COURS")
+    void arriverArret_SansRetard_EnCours() {
         trajet.setDateDepart(LocalDateTime.now().minusMinutes(30));
-        when(trajetRepository.findById(1L))
-                .thenReturn(Optional.of(trajet));
+        when(trajetRepository.findById(1L)).thenReturn(Optional.of(trajet));
         when(trajetRepository.save(any())).thenReturn(trajet);
+        when(jalonValideRepository.existsByTrajetIdAndArretId(1L, 1L)).thenReturn(false);
+        when(jalonValideRepository.findByTrajetIdAndArretId(1L, 1L)).thenReturn(Optional.empty());
+        when(jalonValideRepository.save(any())).thenReturn(null);
 
-        // ✅ Fix : supprimer le stub wsNotifService
-        // (pas appelé car trajet.getReservations() est vide)
-
-        JalonRequest request = new JalonRequest();
-        request.setTrajetId(1L);
-        request.setVille("Settat");
-        request.setOrdre(2);
-
-        Map<String, Object> result =
-                chauffeurService.validerJalon(request, 1L);
+        Map<String, Object> result = chauffeurService.arriverArret(1L, 1L, 1L);
 
         assertThat(result.get("ville")).isEqualTo("Settat");
-        assertThat(result.containsKey("retardMinutes")).isTrue();
+        assertThat(result.containsKey("arriveeLe")).isTrue();
+        assertThat(result.containsKey("retardArriveeMinutes")).isTrue();
     }
 
     @Test
-    @DisplayName("Valider jalon — trajet non trouvé → exception")
-    void validerJalon_TrajetNonTrouve_ThrowsException() {
-        when(trajetRepository.findById(99L))
-                .thenReturn(Optional.empty());
+    @DisplayName("Arriver à un arrêt — trajet non trouvé → exception")
+    void arriverArret_TrajetNonTrouve_Exception() {
+        when(trajetRepository.findById(99L)).thenReturn(Optional.empty());
 
-        JalonRequest request = new JalonRequest();
-        request.setTrajetId(99L);
-        request.setVille("Settat");
-        request.setOrdre(2);
-
-        assertThatThrownBy(() ->
-                chauffeurService.validerJalon(request, 1L))
+        assertThatThrownBy(() -> chauffeurService.arriverArret(99L, 1L, 1L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Trajet non trouvé");
+    }
+
+    @Test
+    @DisplayName("Arriver → Départ d'un arrêt → calcule durée stationnement")
+    void arriverPuisDepartirArret_CalculeDuree() {
+        trajet.setDateDepart(LocalDateTime.now().minusMinutes(30));
+        when(trajetRepository.findById(1L)).thenReturn(Optional.of(trajet));
+        when(trajetRepository.save(any())).thenReturn(trajet);
+
+        JalonValide jalon = JalonValide.builder()
+                .id(1L).trajetId(1L).arretId(1L)
+                .ville("Settat").ordre(2)
+                .arriveeLe(LocalDateTime.now().minusMinutes(10))
+                .retardArriveeMinutes(0)
+                .build();
+
+        when(jalonValideRepository.existsByTrajetIdAndArretId(1L, 1L)).thenReturn(false);
+        when(jalonValideRepository.findByTrajetIdAndArretId(1L, 1L))
+                .thenReturn(Optional.empty())   // first call: arrival
+                .thenReturn(Optional.of(jalon)); // second call: departure
+        when(jalonValideRepository.save(any())).thenReturn(null);
+
+        // Arrivée
+        chauffeurService.arriverArret(1L, 1L, 1L);
+
+        // Départ
+        Map<String, Object> result = chauffeurService.departirArret(1L, 1L, 1L);
+
+        assertThat(result.get("ville")).isEqualTo("Settat");
+        assertThat(result.containsKey("arriveeLe")).isTrue();
+        assertThat(result.containsKey("departLe")).isTrue();
+        assertThat((Integer) result.get("dureeStationnementMinutes")).isGreaterThanOrEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("Départ sans arrivée → exception")
+    void departirSansArrivee_Exception() {
+        when(trajetRepository.findById(1L)).thenReturn(Optional.of(trajet));
+        when(jalonValideRepository.findByTrajetIdAndArretId(1L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> chauffeurService.departirArret(1L, 1L, 1L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("arrivée");
     }
 
     // ===== Tests signalement incident =====
@@ -310,13 +346,14 @@ class ChauffeurServiceTest {
     // ===== Tests déclenchement départ =====
 
     @Test
-    @DisplayName("Déclencher départ → quai libéré + admin notifié")
-    void declencherDepart_Success() {
+    @DisplayName("Déclencher départ → quai libéré + admin notifié + voyageurs notifiés")
+    void declencherDepart_Success() throws JsonProcessingException {
         Quai quai = new Quai();
         quai.setId(1L);
         quai.setNumero(1);
         quai.setDisponible(false);
         trajet.setQuai(quai);
+        trajet.getReservations().add(reservation);
 
         when(trajetRepository.findById(1L))
                 .thenReturn(Optional.of(trajet));
@@ -325,6 +362,10 @@ class ChauffeurServiceTest {
         when(stationnementRepo.findByMatriculeAndStatut(any(), any()))
                 .thenReturn(Optional.empty());
         doNothing().when(wsNotifService).notifierAdmins(any(), any());
+        doNothing().when(wsNotifService).notifierVoyageur(any(), any(), any());
+        when(notifOfflineService.creerNotification(any(), any(), any(), any()))
+                .thenReturn(null);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         Map<String, Object> result =
                 chauffeurService.declencherDepart(1L, 1L);
@@ -333,5 +374,9 @@ class ChauffeurServiceTest {
         assertThat(quai.isDisponible()).isTrue();
         verify(wsNotifService, times(1))
                 .notifierAdmins(eq("TRAJET_DEPART"), any());
+        verify(wsNotifService, times(1))
+                .notifierVoyageur(eq("ahmed@test.ma"), eq("TRAJET_DEMARRE"), any());
+        verify(notifOfflineService, times(1))
+                .creerNotification(eq("ahmed@test.ma"), eq(TypeNotification.TRAJET_DEMARRE), any(), any());
     }
 }

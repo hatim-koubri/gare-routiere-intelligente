@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { notificationsApi } from '@/lib/api/notifications';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { NotificationDTO } from '@/types';
@@ -17,6 +17,16 @@ export default function NotificationSync() {
       loadPendingCount();
     }
   }, [user]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (pendingCount > 0) {
+        handleSync();
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [pendingCount]);
 
   const loadPendingCount = async () => {
     try {

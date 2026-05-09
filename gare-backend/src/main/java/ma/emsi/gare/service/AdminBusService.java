@@ -7,16 +7,19 @@ import ma.emsi.gare.dto.request.BusRequest;
 import ma.emsi.gare.repository.BusRepository;
 import ma.emsi.gare.repository.CompagnieRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AdminBusService {
 
     private final BusRepository busRepository;
     private final CompagnieRepository compagnieRepository;
 
+    @Transactional
     public Bus creerBus(BusRequest request) {
         if (busRepository.existsByMatricule(request.getMatricule())) {
             throw new RuntimeException("Matricule déjà existant : "
@@ -38,6 +41,7 @@ public class AdminBusService {
         return busRepository.save(bus);
     }
 
+    @Transactional
     public Bus modifierBus(Long id, BusRequest request) {
         Bus bus = busRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bus non trouvé"));
@@ -51,6 +55,7 @@ public class AdminBusService {
         return busRepository.save(bus);
     }
 
+    @Transactional
     public Bus desactiverBus(Long id) {
         Bus bus = busRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bus non trouvé"));
@@ -58,6 +63,7 @@ public class AdminBusService {
         return busRepository.save(bus);
     }
 
+    @Transactional
     public void supprimerBus(Long id) {
         if (!busRepository.existsById(id)) {
             throw new RuntimeException("Bus non trouvé");

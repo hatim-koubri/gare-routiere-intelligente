@@ -6,11 +6,13 @@ import ma.emsi.gare.dto.request.OCRCorrectionRequest;
 import ma.emsi.gare.dto.response.OCRDetectionResponse;
 import ma.emsi.gare.entity.*;
 import ma.emsi.gare.enums.StatutStationnement;
+import ma.emsi.gare.enums.StatutTrajet;
 import ma.emsi.gare.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.image.BufferedImage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -27,18 +29,31 @@ public class OCRService {
     private final StationnementOCRRepository stationnementRepo;
     private final WebSocketNotificationService wsNotifService;
     private final NotificationOfflineService notifOfflineService;
+    private final ImagePreprocessingService imagePreprocessingService;
+    private final TesseractOCRService tesseractOCRService;
+    private final TrajetRepository trajetRepository;
 
     // =========================================================
     // T3-01/T3-02/T3-03 — Traitement image OCR
-    // (Simulation académique : upload image → extraction matricule)
+    // (Upload image → prétraitement → Tesseract → extraction matricule)
     // =========================================================
     @Transactional
     public OCRDetectionResponse traiterImageOCR(MultipartFile image) {
         log.info("Traitement image OCR : {}", image.getOriginalFilename());
 
-        // SIMULATION : Dans un vrai déploiement, ici on appelle
-        // le microservice Python YOLOv8 + Tesseract via HTTP
-        // Pour le contexte académique : on simule l'extraction
+        // Étape 1 : Essayer Tesseract OCR réel
+        try {
+            BufferedImage processed = imagePreprocessingService.preprocessImage(image);
+            String matriculeExtrait = tesseractOCRService.extraireMatricule(processed);
+            if (matriculeExtrait != null && !matriculeExtrait.isBlank()) {
+                log.info("OCR Tesseract réussi : {}", matriculeExtrait);
+                return traiterMatriculeExtrait(matriculeExtrait, null);
+            }
+        } catch (Exception e) {
+            log.warn("Tesseract OCR échoué, fallback simulation : {}", e.getMessage());
+        }
+
+        // Étape 2 : Fallback simulation (nom de fichier ou matricule par défaut)
         String matriculeExtrait = simulerExtractionOCR(image);
 
         if (matriculeExtrait == null || matriculeExtrait.isBlank()) {
@@ -81,8 +96,39 @@ public class OCRService {
                 "quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A"
         ));
 
-        // T3-29 — Notifier le chauffeur si on peut l'identifier
-        // (sera complété au Sprint 3 lors du scan QR)
+        // T3-29 — Notifier le chauffeur du trajet actif pour ce bus
+        try {
+            LocalDateTime maintenant = LocalDateTime.now();
+            LocalDateTime debutJour = maintenant.toLocalDate().atStartOfDay();
+            LocalDateTime finJour = debutJour.plusDays(1);
+            List<Trajet> trajetsDuJour = trajetRepository
+                    .findByBusIdAndDateDepartBetweenAndStatutIn(
+                            bus.getId(), debutJour, finJour,
+                            List.of(StatutTrajet.PLANIFIE, StatutTrajet.EN_COURS, StatutTrajet.RETARDE)
+                    );
+            for (Trajet t : trajetsDuJour) {
+                if (t.getChauffeur() != null) {
+                    wsNotifService.notifierChauffeur(
+                            t.getChauffeur().getId(),
+                            "QUAI_ATTRIBUE",
+                            Map.of(
+                                    "trajetId", t.getId(),
+                                    "matricule", matricule,
+                                    "quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A",
+                                    "compagnie", compagnie.getNom(),
+                                    "villeDepart", t.getLigne().getVilleDepart(),
+                                    "villeArrivee", t.getLigne().getVilleArrivee()
+                            )
+                    );
+                    log.info("Chauffeur {} notifié pour le quai {} (trajet {})",
+                            t.getChauffeur().getId(),
+                            quaiAttribue != null ? quaiAttribue.getNumero() : "N/A",
+                            t.getId());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de notifier le chauffeur: {}", e.getMessage());
+        }
 
         log.info("Bus {} détecté → Quai {} → Facturation démarrée",
                 matricule,

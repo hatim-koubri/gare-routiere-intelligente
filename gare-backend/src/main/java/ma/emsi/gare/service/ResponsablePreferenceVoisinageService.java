@@ -23,6 +23,47 @@ public class ResponsablePreferenceVoisinageService {
     private final CompagnieRepository compagnieRepository;
 
     public List<PreferenceNonSatisfaiteDTO>
+    getAllPreferencesNonSatisfaites(
+            Long trajetId,
+            Authentication authentication
+    ) {
+
+        Compagnie compagnie = getCompagnie(authentication);
+
+        List<Trajet> trajets;
+
+        if (trajetId != null) {
+
+            Trajet trajet =
+                    getTrajetResponsable(
+                            trajetId,
+                            authentication
+                    );
+
+            trajets = List.of(trajet);
+
+        } else {
+
+            trajets = trajetRepository
+                    .findByLigneCompagnieId(
+                            compagnie.getId()
+                    );
+        }
+
+        List<PreferenceNonSatisfaiteDTO> result =
+                new ArrayList<>();
+
+        for (Trajet trajet : trajets) {
+
+            result.addAll(
+                    getNonSatisfaitesForTrajet(trajet)
+            );
+        }
+
+        return result;
+    }
+
+    public List<PreferenceNonSatisfaiteDTO>
     getPreferencesNonSatisfaites(
             Long trajetId,
             Authentication authentication
@@ -33,6 +74,12 @@ public class ResponsablePreferenceVoisinageService {
                         trajetId,
                         authentication
                 );
+
+        return getNonSatisfaitesForTrajet(trajet);
+    }
+
+    private List<PreferenceNonSatisfaiteDTO>
+    getNonSatisfaitesForTrajet(Trajet trajet) {
 
         List<PreferenceNonSatisfaiteDTO> result =
                 new ArrayList<>();
@@ -110,7 +157,7 @@ public class ResponsablePreferenceVoisinageService {
                                 "Préférence voisinage non respectée"
                         );
 
-                        dto.setTrajetId(trajetId);
+                        dto.setTrajetId(trajet.getId());
 
                         result.add(dto);
                     }

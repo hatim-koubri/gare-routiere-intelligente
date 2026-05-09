@@ -34,7 +34,7 @@ export default function DashboardRouterPage() {
             router.push(`/fr/voyageur/dashboard`);
             break;
           case 'RESPONSABLE_COMPAGNIE':
-            router.push(`/fr/responsable/dashboard`);
+            router.push(`/fr/responsable`);
             break;
           default:
             router.push(`/fr/auth/login`);

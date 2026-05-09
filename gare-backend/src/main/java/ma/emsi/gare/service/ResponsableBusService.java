@@ -76,6 +76,12 @@ public class ResponsableBusService {
         return busRepository.save(bus);
     }
 
+    public Bus activerBus(Long id, Authentication authentication) {
+        Bus bus = getBusResponsable(id, authentication);
+        bus.setActif(true);
+        return busRepository.save(bus);
+    }
+
     public void supprimerBus(Long id, Authentication authentication) {
         Bus bus = getBusResponsable(id, authentication);
         busRepository.delete(bus);
@@ -84,7 +90,7 @@ public class ResponsableBusService {
     @Transactional(readOnly = true)
     public List<Bus> getMesBus(Authentication authentication) {
         Compagnie compagnie = getCompagnieResponsable(authentication);
-        return busRepository.findByCompagnieIdAndActifTrue(compagnie.getId());
+        return busRepository.findByCompagnieId(compagnie.getId());
     }
 
     @Transactional(readOnly = true)

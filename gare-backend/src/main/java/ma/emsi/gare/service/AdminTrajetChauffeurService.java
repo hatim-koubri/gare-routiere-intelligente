@@ -9,10 +9,12 @@ import ma.emsi.gare.enums.StatutTrajet;
 import ma.emsi.gare.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AdminTrajetChauffeurService {
 
@@ -27,6 +29,7 @@ public class AdminTrajetChauffeurService {
 
     // ===== T2-05 — Trajets =====
 
+    @Transactional
     public Trajet creerTrajet(TrajetRequest request) {
         Ligne ligne = ligneRepository.findById(request.getLigneId())
                 .orElseThrow(() -> new RuntimeException("Ligne non trouvée"));
@@ -56,6 +59,7 @@ public class AdminTrajetChauffeurService {
         return trajetRepository.save(trajet);
     }
 
+    @Transactional
     public Trajet modifierTrajet(Long id, TrajetRequest request) {
         Trajet trajet = trajetRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
@@ -65,6 +69,7 @@ public class AdminTrajetChauffeurService {
         return trajetRepository.save(trajet);
     }
 
+    @Transactional
     public Trajet annulerTrajet(Long id) {
         Trajet trajet = trajetRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
@@ -78,6 +83,7 @@ public class AdminTrajetChauffeurService {
 
     // ===== T2-06 — Créer compte chauffeur =====
 
+    @Transactional
     public Chauffeur creerChauffeur(RegisterRequest request, Long compagnieId) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email déjà utilisé");
@@ -103,6 +109,7 @@ public class AdminTrajetChauffeurService {
 
     // ===== T2-07 — Gestion congés =====
 
+    @Transactional
     public Chauffeur mettreEnConge(Long chauffeurId) {
         Chauffeur chauffeur = chauffeurRepository.findById(chauffeurId)
                 .orElseThrow(() -> new RuntimeException("Chauffeur non trouvé"));
@@ -110,6 +117,7 @@ public class AdminTrajetChauffeurService {
         return (Chauffeur) userRepository.save(chauffeur);
     }
 
+    @Transactional
     public Chauffeur remettreDuConge(Long chauffeurId) {
         Chauffeur chauffeur = chauffeurRepository.findById(chauffeurId)
                 .orElseThrow(() -> new RuntimeException("Chauffeur non trouvé"));

@@ -37,6 +37,71 @@ public class ResponsableRemboursementService {
                 );
     }
 
+    @Transactional(readOnly = true)
+    public Remboursement getById(
+            Long remboursementId,
+            Authentication authentication
+    ) {
+
+        return getRemboursementResponsable(
+                remboursementId,
+                authentication
+        );
+    }
+
+    public Remboursement accepter(
+            Long remboursementId,
+            Authentication authentication
+    ) {
+
+        Remboursement remboursement =
+                getRemboursementResponsable(
+                        remboursementId,
+                        authentication
+                );
+
+        remboursement.setStatut(
+                StatutRemboursement.ACCEPTE
+        );
+
+        remboursement.setDateTraitement(
+                LocalDateTime.now()
+        );
+
+        if (!remboursement.isPartiel()) {
+            Reservation reservation =
+                    remboursement.getReservation();
+            reservation.setStatut(
+                    StatutReservation.REMBOURSEE
+            );
+            reservationRepository.save(reservation);
+        }
+
+        return repository.save(remboursement);
+    }
+
+    public Remboursement refuser(
+            Long remboursementId,
+            Authentication authentication
+    ) {
+
+        Remboursement remboursement =
+                getRemboursementResponsable(
+                        remboursementId,
+                        authentication
+                );
+
+        remboursement.setStatut(
+                StatutRemboursement.REFUSE
+        );
+
+        remboursement.setDateTraitement(
+                LocalDateTime.now()
+        );
+
+        return repository.save(remboursement);
+    }
+
     public Remboursement traiter(
             Long remboursementId,
             TraitementRemboursementRequest request,
@@ -56,15 +121,14 @@ public class ResponsableRemboursementService {
         );
 
         if (request.getStatut()
-                == StatutRemboursement.ACCEPTE) {
+                == StatutRemboursement.ACCEPTE
+                && !remboursement.isPartiel()) {
 
             Reservation reservation =
                     remboursement.getReservation();
-
             reservation.setStatut(
                     StatutReservation.REMBOURSEE
             );
-
             reservationRepository.save(reservation);
         }
 

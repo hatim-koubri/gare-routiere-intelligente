@@ -65,7 +65,7 @@ class ReservationServiceTest {
         membreRequest.setPrenomManuel("Hatim");
         membreRequest.setSexe("HOMME");
         membreRequest.setAge(22);
-        membreRequest.setCategorieTarifaire(CategorieTarifaire.ETUDIANT);
+        membreRequest.setCategorieTarifaire("ETUDIANT");
         membreRequest.setLienOrganisateur("MOI");
         membreRequest.setEnfantSurGenoux(false);
 

@@ -134,6 +134,14 @@ public interface TrajetRepository extends JpaRepository<Trajet, Long> {
             @Param("voyageurId") Long voyageurId
     );
 
+    // OCR → trouver trajet actif d'un bus pour notifier chauffeur
+    List<Trajet> findByBusIdAndDateDepartBetweenAndStatutIn(
+            Long busId,
+            LocalDateTime debut,
+            LocalDateTime fin,
+            List<StatutTrajet> statuts
+    );
+
     // Smart Pricing — compter sièges occupés (T4-09)
     @Query("""
         SELECT COUNT(s) FROM Siege s
@@ -143,10 +151,24 @@ public interface TrajetRepository extends JpaRepository<Trajet, Long> {
     long countSiegesOccupes(@Param("trajetId") Long trajetId);
 
 
+    List<Trajet> findByLigneCompagnieId(Long compagnieId);
+
     @Query("""
     SELECT COUNT(t)
     FROM Trajet t
     WHERE t.ligne.compagnie.id = :compagnieId
 """)
     long countByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    @Query("""
+    SELECT COUNT(t)
+    FROM Trajet t
+    WHERE t.ligne.compagnie.id = :compagnieId
+    AND t.dateDepart BETWEEN :debut AND :fin
+""")
+    long countByCompagnieIdAndDateDepartBetween(
+            @Param("compagnieId") Long compagnieId,
+            @Param("debut") LocalDateTime debut,
+            @Param("fin") LocalDateTime fin
+    );
 }

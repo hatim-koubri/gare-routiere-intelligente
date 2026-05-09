@@ -46,6 +46,17 @@ public class ResponsableLigneController {
         return ResponseEntity.ok(mapper.toLigneDTO(ligne));
     }
 
+    @PatchMapping("/{id}/desactiver")
+    public ResponseEntity<LigneResponseDTO> desactiver(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+
+        Ligne ligne = responsableLigneService.desactiverLigne(id, authentication);
+
+        return ResponseEntity.ok(mapper.toLigneDTO(ligne));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> supprimer(
             @PathVariable Long id,

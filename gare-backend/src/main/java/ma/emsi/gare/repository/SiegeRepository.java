@@ -65,5 +65,5 @@ public interface SiegeRepository extends JpaRepository<Siege, Long> {
     WHERE s.verrouilleTemporaire = true
     AND s.verrouilleAt < :expiration
 """)
-    void libererSiegesExpires(@Param("expiration") LocalDateTime expiration);
+    int libererSiegesExpires(@Param("expiration") LocalDateTime expiration);
 }

@@ -78,6 +78,18 @@ public class ResponsableLigneService {
         return savedLigne;
     }
 
+    public Ligne desactiverLigne(
+            Long id,
+            Authentication authentication
+    ) {
+
+        Ligne ligne = getLigneResponsable(id, authentication);
+
+        ligne.setActif(false);
+
+        return ligneRepository.save(ligne);
+    }
+
     public void supprimerLigne(
             Long id,
             Authentication authentication

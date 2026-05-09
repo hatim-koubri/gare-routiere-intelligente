@@ -37,6 +37,20 @@ public class ResponsableBlocageSiegeController {
         return ResponseEntity.ok(toDto(siege));
     }
 
+    @GetMapping("/{trajetId}")
+    public ResponseEntity<List<SiegeBlocageResponseDTO>> getPlanBus(
+            @PathVariable Long trajetId,
+            Authentication authentication
+    ) {
+        List<SiegeBlocageResponseDTO> sieges = service
+                .getSiegesByTrajet(trajetId, authentication)
+                .stream()
+                .map(this::toDto)
+                .toList();
+
+        return ResponseEntity.ok(sieges);
+    }
+
     @GetMapping("/trajet/{trajetId}")
     public ResponseEntity<List<SiegeBlocageResponseDTO>> getBloques(
             @PathVariable Long trajetId,
@@ -60,6 +74,7 @@ public class ResponsableBlocageSiegeController {
         dto.setPositionRangee(siege.getPositionRangee());
         dto.setOccupe(siege.isOccupe());
         dto.setBloque(siege.isBloque());
+        dto.setVerrouilleTemporaire(siege.isVerrouilleTemporaire());
         dto.setMotifBlocage(siege.getMotifBlocage());
         dto.setDateBlocage(siege.getDateBlocage());
 

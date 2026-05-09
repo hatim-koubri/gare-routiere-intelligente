@@ -14,4 +14,5 @@ public class ReservationRequest {
 
     private List<MembreGroupeRequest> membres;
 
+    private String codePromo;
 }

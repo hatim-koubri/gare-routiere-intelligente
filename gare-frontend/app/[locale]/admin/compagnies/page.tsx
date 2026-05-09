@@ -8,7 +8,7 @@ import { Compagnie } from '@/types';
 import { CompagnieCard } from '@/components/ui/compagnie-card';
 import {
   Building2, Search, Plus, LayoutGrid, List,
-  Mail, Phone, X, RefreshCw, CheckCircle2, XCircle
+  Mail, Phone, X, RefreshCw, CheckCircle2, XCircle, UserPlus
 } from 'lucide-react';
 
 const CARD_GRADIENTS = [
@@ -36,6 +36,15 @@ export default function CompagniesPage() {
     nom: '', code: '', email: '', telephone: '', description: '',
   });
 
+  const [showRespModal, setShowRespModal] = useState(false);
+  const [respCompagnieId, setRespCompagnieId] = useState<number | null>(null);
+  const [respNom, setRespNom] = useState('');
+  const [respPrenom, setRespPrenom] = useState('');
+  const [respEmail, setRespEmail] = useState('');
+  const [respPassword, setRespPassword] = useState('');
+  const [respTelephone, setRespTelephone] = useState('');
+  const [respSending, setRespSending] = useState(false);
+
   useEffect(() => {
     loadCompagnies();
   }, []);
@@ -54,6 +63,34 @@ export default function CompagniesPage() {
       setError('Impossible de charger les compagnies');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openRespModal = (compagnieId: number) => {
+    setRespCompagnieId(compagnieId);
+    setRespNom('');
+    setRespPrenom('');
+    setRespEmail('');
+    setRespPassword('');
+    setRespTelephone('');
+    setShowRespModal(true);
+  };
+
+  const handleAjouterResponsable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!respCompagnieId) return;
+    setRespSending(true);
+    try {
+      await adminCompagnieApi.ajouterResponsable(respCompagnieId, {
+        nom: respNom, prenom: respPrenom, email: respEmail,
+        password: respPassword, telephone: respTelephone || undefined,
+      });
+      setShowRespModal(false);
+      alert('Responsable ajouté avec succès');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur lors de l\'ajout');
+    } finally {
+      setRespSending(false);
     }
   };
 
@@ -110,9 +147,13 @@ export default function CompagniesPage() {
             </button>
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm"
+              className="relative group overflow-hidden bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-500/40 flex items-center gap-2"
             >
-              <Plus size={15} /> Nouvelle compagnie
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus size={16} strokeWidth={3} />
+              </div>
+              <span>Nouvelle compagnie</span>
             </button>
           </div>
         </div>
@@ -227,18 +268,25 @@ export default function CompagniesPage() {
         ) : viewMode === 'cards' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.map((c, i) => (
-              <CompagnieCard
-                key={c.id}
-                index={i}
-                compagnieId={c.id}
-                nom={c.nom}
-                code={c.code}
-                email={c.email}
-                telephone={c.telephone}
-                description={c.description}
-                actif={c.actif}
-                nbBus={busData.filter((b: any) => Number(b.compagnieId) === Number(c.id)).length}
-              />
+              <div key={c.id} className="relative group">
+                <CompagnieCard
+                  index={i}
+                  compagnieId={c.id}
+                  nom={c.nom}
+                  code={c.code}
+                  email={c.email}
+                  telephone={c.telephone}
+                  description={c.description}
+                  actif={c.actif}
+                  nbBus={busData.filter((b: any) => Number(b.compagnieId) === Number(c.id)).length}
+                />
+                <button
+                  onClick={() => openRespModal(c.id)}
+                  className="absolute top-3 right-12 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 shadow-sm"
+                >
+                  <UserPlus size={13} className="inline mr-1" /> Responsable
+                </button>
+              </div>
             ))}
           </div>
 
@@ -248,7 +296,7 @@ export default function CompagniesPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  {['Compagnie', 'Code', 'Email', 'Téléphone', 'Statut'].map(h => (
+                  {['Compagnie', 'Code', 'Email', 'Téléphone', 'Statut', ''].map(h => (
                     <th key={h} className="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -281,6 +329,14 @@ export default function CompagniesPage() {
                         <span className={`w-1.5 h-1.5 rounded-full ${c.actif ? 'bg-emerald-500' : 'bg-rose-400'}`} />
                         {c.actif ? 'Active' : 'Inactive'}
                       </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() => openRespModal(c.id)}
+                        className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition"
+                      >
+                        <UserPlus size={13} /> Responsable
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -348,6 +404,66 @@ export default function CompagniesPage() {
                       onClick={() => setShowModal(false)}
                       className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition"
                     >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modal ajout responsable ── */}
+        {showRespModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <UserPlus size={16} className="text-emerald-600" />
+                  </div>
+                  <h2 className="text-base font-bold text-slate-900">Ajouter un responsable</h2>
+                </div>
+                <button onClick={() => setShowRespModal(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6">
+                <form onSubmit={handleAjouterResponsable} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Prénom *</label>
+                      <input type="text" required placeholder="Jean" value={respPrenom} onChange={e => setRespPrenom(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Nom *</label>
+                      <input type="text" required placeholder="Dupont" value={respNom} onChange={e => setRespNom(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Email *</label>
+                    <input type="email" required placeholder="responsable@compagnie.ma" value={respEmail} onChange={e => setRespEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Mot de passe *</label>
+                    <input type="password" required placeholder="Min. 6 caractères" value={respPassword} onChange={e => setRespPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Téléphone</label>
+                    <input type="text" placeholder="+212 6XX-XXXXXX" value={respTelephone} onChange={e => setRespTelephone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={respSending}
+                      className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition disabled:bg-slate-300">
+                      {respSending ? 'Ajout en cours...' : 'Ajouter le responsable'}
+                    </button>
+                    <button type="button" onClick={() => setShowRespModal(false)}
+                      className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition">
                       Annuler
                     </button>
                   </div>

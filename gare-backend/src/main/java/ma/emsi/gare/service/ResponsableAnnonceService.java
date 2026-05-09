@@ -73,6 +73,18 @@ public class ResponsableAnnonceService {
         return annonceRepository.save(annonce);
     }
 
+    public Annonce toggleEtat(
+            Long id,
+            Authentication authentication
+    ) {
+        Annonce annonce =
+                getAnnonceResponsable(id, authentication);
+
+        annonce.setActive(!annonce.isActive());
+
+        return annonceRepository.save(annonce);
+    }
+
     public Annonce changerEtat(
             Long id,
             boolean active,

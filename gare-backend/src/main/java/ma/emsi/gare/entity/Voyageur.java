@@ -9,10 +9,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "voyageurs")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true, exclude = {"reservations", "avis"})
+@EqualsAndHashCode(callSuper = true, exclude = {"reservations", "avis"})
 public class Voyageur extends User {
 
     @Enumerated(EnumType.STRING)

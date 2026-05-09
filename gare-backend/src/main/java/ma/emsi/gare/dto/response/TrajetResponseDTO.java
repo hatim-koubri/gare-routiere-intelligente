@@ -37,4 +37,6 @@ public class TrajetResponseDTO {
     // Compagnie
     private Long compagnieId;
     private String compagnieNom;
+    private Double compagnieNoteMoyenne;
+    private Integer compagnieNbAvis;
 }

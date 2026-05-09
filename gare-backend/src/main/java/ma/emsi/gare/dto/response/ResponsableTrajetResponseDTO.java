@@ -18,6 +18,7 @@ public class ResponsableTrajetResponseDTO {
     private Integer quaiNumero;
     private LocalDateTime dateDepart;
     private LocalDateTime dateArriveePrevue;
+    private LocalDateTime dateArriveeReelle;
     private String statut;
     private Integer retardMinutes;
     private Integer nbReservations;

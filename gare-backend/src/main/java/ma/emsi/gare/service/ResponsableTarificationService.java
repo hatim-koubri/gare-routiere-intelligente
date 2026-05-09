@@ -71,10 +71,7 @@ public class ResponsableTarificationService {
         Compagnie compagnie = getCompagnie(authentication);
 
         return repository.findByCompagnieId(compagnie.getId())
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Configuration introuvable"
-                        ));
+                .orElse(new TarificationDynamique());
     }
 
     private Compagnie getCompagnie(Authentication authentication) {

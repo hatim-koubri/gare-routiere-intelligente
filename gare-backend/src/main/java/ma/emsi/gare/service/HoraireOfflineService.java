@@ -57,32 +57,44 @@ public class HoraireOfflineService {
     // ===== Conversion Trajet → DTO =====
     private TrajetOfflineDTO convertirTrajet(Trajet trajet) {
 
-        // Calcul sièges disponibles
-        long siegesOccupes = trajet.getSieges().stream()
-                .filter(s -> s.isOccupe() || s.isBloque())
-                .count();
-        int siegesDisponibles = trajet.getBus().getNbSieges() - (int) siegesOccupes;
+        // Calcul sièges disponibles avec null safety
+        int siegesDisponibles = 0;
+        if (trajet.getBus() != null) {
+            long siegesOccupes = trajet.getSieges() != null
+                    ? trajet.getSieges().stream()
+                        .filter(s -> s.isOccupe() || s.isBloque())
+                        .count()
+                    : 0;
+            siegesDisponibles = trajet.getBus().getNbSieges() - (int) siegesOccupes;
+        }
 
-        // Conversion arrêts
+        // Conversion arrêts avec null safety
         List<ArretOfflineDTO> arretsDTO = List.of();
-        if (trajet.getLigne().getArrets() != null) {
+        if (trajet.getLigne() != null && trajet.getLigne().getArrets() != null) {
             arretsDTO = trajet.getLigne().getArrets().stream()
                     .map(arret -> convertirArret(arret, trajet))
                     .toList();
         }
 
+        String villeDepart = trajet.getLigne() != null ? trajet.getLigne().getVilleDepart() : "N/A";
+        String villeArrivee = trajet.getLigne() != null ? trajet.getLigne().getVilleArrivee() : "N/A";
+        String compagnie = trajet.getLigne() != null && trajet.getLigne().getCompagnie() != null
+                ? trajet.getLigne().getCompagnie().getNom() : "N/A";
+        Double prixBase = trajet.getLigne() != null ? trajet.getLigne().getPrixBase() : 0.0;
+
         return TrajetOfflineDTO.builder()
                 .trajetId(trajet.getId())
-                .villeDepart(trajet.getLigne().getVilleDepart())
-                .villeArrivee(trajet.getLigne().getVilleArrivee())
-                .compagnie(trajet.getLigne().getCompagnie().getNom())
+                .villeDepart(villeDepart)
+                .villeArrivee(villeArrivee)
+                .compagnie(compagnie)
+                .prixBase(prixBase)
                 .dateDepart(trajet.getDateDepart().format(FORMATTER))
                 .dateArriveePrevue(
                         trajet.getDateArriveePrevue() != null
                                 ? trajet.getDateArriveePrevue().format(FORMATTER)
                                 : "N/A"
                 )
-                .prixBase(trajet.getLigne().getPrixBase())
+                .prixBase(prixBase)
                 .nbSiegesDisponibles(siegesDisponibles)
                 .statut(trajet.getStatut().name())
                 .arrets(arretsDTO)

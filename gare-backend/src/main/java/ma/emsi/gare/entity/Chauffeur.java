@@ -9,11 +9,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "chauffeurs")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-
-@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true, exclude = {"compagnie", "trajets"})
+@EqualsAndHashCode(callSuper = true, exclude = {"compagnie", "trajets"})
 public class Chauffeur extends User {
 
     @Column(name = "numero_permis", unique = true)

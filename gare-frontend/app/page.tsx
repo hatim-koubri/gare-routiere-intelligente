@@ -3,11 +3,9 @@
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import { ContainerScroll } from '@/components/ui/container-scroll-animation';
-import { Button } from '@/components/ui/Button';
-import { MapPin, Search, ShieldCheck, Clock, CheckCircle2, Ticket, Smartphone, Wifi, Coffee, ChevronRight, Wind, Zap } from 'lucide-react';
+import { MapPin, Search, ShieldCheck, Clock, CheckCircle2, Ticket, Smartphone, Wifi, Coffee, ChevronRight, Wind, Zap, Calendar, ArrowLeftRight } from 'lucide-react';
 import Footer from '@/components/layout/Footer';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function HomePage() {
     const router = useRouter();
@@ -40,31 +38,13 @@ export default function HomePage() {
         router.push(`/fr/recherche?${params.toString()}`);
     };
 
-    // Reference for the TOTAL Hero Section (Video Phase + Tablet Phase)
+    const handleSwap = () => {
+        setDepart(arrivee);
+        setArrivee(depart);
+    };
+
+    // TOTAL Hero Section (Static Phase)
     const heroRef = useRef<HTMLDivElement>(null);
-    const { scrollYProgress } = useScroll({
-        target: heroRef,
-        offset: ["start start", "end end"] 
-    });
-
-    // TOTAL SCROLL DURATION: 400vh
-    
-    // L'introduction vidéo (Video -> Image) (0% à 40%)
-    const videoScale = useTransform(scrollYProgress, [0, 0.4], [1, 4]);
-    const videoOpacity = useTransform(scrollYProgress, [0.2, 0.4], [1, 0]);
-    
-    // Animations dynamiques cinématiques pour le texte d'intro (disparaît APRÈS le zoom complet)
-    const titleOpacity = useTransform(scrollYProgress, [0.4, 0.45], [1, 0]);
-    const titleY = useTransform(scrollYProgress, [0.4, 0.45], [0, -200]);
-    const titleScale = useTransform(scrollYProgress, [0.4, 0.45], [1, 1.1]);
-
-    // L'image de siège de bus prend le relais (crossfade de 20% à 40%)
-    const imgOpacity = useTransform(scrollYProgress, [0.2, 0.4], [0, 1]);
-    
-    // Maintien de l'image jusqu'à la fin de la section
-    const imgScale = useTransform(scrollYProgress, [0.4, 1.0], [1, 1.1]);
-    const roadVibrationY = useTransform(scrollYProgress, [0.4, 0.6, 0.8, 1.0], [0, 1, -1, 0]);
-    const roadVibrationX = useTransform(scrollYProgress, [0.4, 0.6, 0.8, 1.0], [0, -0.5, 0.5, 0]);
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-orange-500/20">
@@ -82,142 +62,145 @@ export default function HomePage() {
                   ROCK-SOLID UNIFIED HERO
                   =======================================================
                 */}
-                <section ref={heroRef} className="relative w-full bg-black">
+                <section ref={heroRef} className="relative w-full min-h-[90vh] flex flex-col items-center justify-center pt-24">
                     
-                    {/* THE PERSISTENT VIEWPORT (Backgrounds and Intro Title) */}
-                    {/* This div stays stuck in the background while we scroll down through the section */}
-                    <div className="sticky top-0 left-0 w-full h-screen overflow-hidden bg-black z-0">
-                        {/* Cinematic Media Stack */}
-                        <div className="absolute inset-0 z-0">
-                            <motion.video 
-                                style={{ opacity: videoOpacity, scale: videoScale }}
-                                className="absolute inset-0 w-full h-full object-cover z-10"
-                                src="/hero/video.mp4"
-                                autoPlay muted loop playsInline 
-                            />
-                            <motion.img 
-                                style={{ 
-                                    opacity: imgOpacity, 
-                                    scale: imgScale, 
-                                    x: roadVibrationX, 
-                                    y: roadVibrationY 
-                                }}
-                                src="/hero/bus_seat.png"
-                                className="absolute inset-0 w-full h-full object-cover z-20"
-                                alt="Bus Interior"
-                            />
-                            {/* Darkness Vignette overlay */}
-                            <div className="absolute inset-0 bg-black/60 z-30 pointer-events-none" />
-                        </div>
-                        
-                        {/* Phase 1: Intro Title */}
-                        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none">
-                            <motion.div 
-                                style={{ opacity: titleOpacity, y: titleY, scale: titleScale }}
-                                className="text-center px-6 absolute top-[40vh] left-0 w-full"
-                            >
-                                <motion.h1 
-                                    className="text-5xl md:text-8xl font-black text-white tracking-tight uppercase drop-shadow-2xl"
-                                    style={{ textShadow: "0px 10px 30px rgba(0,0,0,0.8)" }}
-                                >
-                                    L'avenir du <span className="text-orange-500">Voyage</span>
-                                </motion.h1>
-                                <motion.p 
-                                    className="text-white/90 text-xl md:text-3xl font-light tracking-[0.3em] mt-6 uppercase drop-shadow-lg"
-                                >
-                                    Commence dès la réservation
-                                </motion.p>
-                            </motion.div>
-                        </div>
+                    {/* Background Video Layer */}
+                    <div className="absolute inset-0 z-0 overflow-hidden">
+                        <video 
+                            className="absolute inset-0 w-full h-full object-cover"
+                            src="/hero/video.mp4"
+                            autoPlay muted loop playsInline 
+                        />
+                        {/* Darkness Vignette overlay */}
+                        <div className="absolute inset-0 bg-black/60 z-10 pointer-events-none" />
                     </div>
+                    
+                    {/* Hero Content */}
+                    <div className="relative z-20 w-full max-w-7xl px-6 flex flex-col items-center text-center">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                            className="mb-12"
+                        >
+                            <h1 
+                                className="text-4xl md:text-7xl font-black text-white tracking-tight uppercase drop-shadow-2xl"
+                                style={{ textShadow: "0px 10px 30px rgba(0,0,0,0.8)" }}
+                            >
+                                L'avenir du <span className="text-orange-500">Voyage</span>
+                            </h1>
+                            <p 
+                                className="text-white/90 text-lg md:text-2xl font-light tracking-[0.2em] mt-4 uppercase drop-shadow-lg"
+                            >
+                                Commence dès la réservation
+                            </p>
+                        </motion.div>
 
-                    {/* SPACER : Ensures we have to scroll down to view the 3D tablet */}
-                    <div className="w-full h-[150vh] pointer-events-none" />
+                        {/* Functional Search Form (Premium Style) */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                            className="w-full max-w-5xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-2xl border border-white/20 relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-orange-600" />
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end relative z-10">
+                                <div className="md:col-span-3 flex flex-col gap-2 text-left relative">
+                                    <label className="text-[10px] uppercase text-slate-400 font-bold tracking-[0.15em] ml-1">Départ</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 transition-transform group-focus-within:scale-110">
+                                            <MapPin size={18} />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Casablanca"
+                                            value={depart}
+                                            onChange={(e) => setDepart(e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                        />
+                                    </div>
 
-                    {/* THE SCROLLING CONTENT LAYER : Aceternity 3D Tablet */}
-                    {/* Positioned relatively to overlay naturally on top of the sticky background */}
-                    <div className="relative z-50 w-full flex flex-col items-center pb-24">
-                        <div className="w-full max-w-6xl">
-
-
-                                <ContainerScroll titleComponent={null}>
-                                    <div className="w-full h-full bg-background flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-full h-2 bg-orange-500" />
-                                    
-                                    <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">GareConnect Express</h2>
-                                    
-                                    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-5 gap-4 items-end relative z-10">
-                                        <div className="flex flex-col gap-1.5 md:col-span-1">
-                                            <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Départ</label>
-                                            <input 
-                                                type="text" 
-                                                placeholder="Casablanca"
-                                                value={depart}
-                                                onChange={(e) => setDepart(e.target.value)}
-                                                className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 md:col-span-1">
-                                            <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Arrivée</label>
-                                            <input 
-                                                type="text" 
-                                                placeholder="Marrakech"
-                                                value={arrivee}
-                                                onChange={(e) => setArrivee(e.target.value)}
-                                                className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 md:col-span-1">
-                                            <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Date</label>
-                                            <input 
-                                                type="date" 
-                                                value={date}
-                                                onChange={(e) => setDate(e.target.value)}
-                                                className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 md:col-span-1">
-                                            <label className="text-[11px] uppercase text-muted-foreground font-bold tracking-wider">Passagers</label>
-                                            <input 
-                                                type="number" 
-                                                min="1"
-                                                max="50"
-                                                value={passagers}
-                                                onChange={(e) => setPassagers(parseInt(e.target.value))}
-                                                className="bg-secondary/50 dark:bg-secondary/20 border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-orange-500 focus:bg-background focus:ring-4 focus:ring-orange-500/10"
-                                            />
-                                        </div>
+                                    {/* Swap Button (Desktop) */}
+                                    <div className="absolute -right-3 top-[52px] -translate-y-1/2 z-20 hidden md:block">
                                         <button 
-                                            onClick={handleSearch}
-                                            className="md:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl px-6 py-3 h-[46px] transition-all hover:-translate-y-1 shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2"
+                                            onClick={handleSwap}
+                                            type="button"
+                                            className="w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md flex items-center justify-center text-orange-500 hover:bg-orange-500 hover:text-white transition-all transform hover:rotate-180"
                                         >
-                                            Rechercher <ChevronRight size={18} />
+                                            <ArrowLeftRight size={14} />
                                         </button>
                                     </div>
 
-                                    <div className="mt-8 flex flex-wrap gap-2 justify-center relative z-10">
-                                        <button onClick={() => handleChipClick('Casablanca', 'Marrakech')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
-                                            Casa → Marrakech
+                                    {/* Swap Button (Mobile) */}
+                                    <div className="flex md:hidden justify-center -mb-2 mt-1 z-20">
+                                        <button 
+                                            onClick={handleSwap}
+                                            type="button"
+                                            className="w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md flex items-center justify-center text-orange-500 hover:bg-orange-500 hover:text-white transition-all transform rotate-90"
+                                        >
+                                            <ArrowLeftRight size={14} />
                                         </button>
-                                        <button onClick={() => handleChipClick('Rabat', 'Fès')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
-                                            Rabat → Fès
-                                        </button>
-                                        <button onClick={() => handleChipClick('Tanger', 'Casablanca')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
-                                            Tanger → Casa
-                                        </button>
-                                        <button onClick={() => handleChipClick('Agadir', 'Marrakech')} className="text-xs font-semibold bg-secondary/80 dark:bg-secondary/20 text-muted-foreground px-4 py-2 rounded-full hover:bg-orange-100 dark:hover:bg-orange-500/20 hover:text-orange-600 transition-colors">
-                                            Agadir → Marrakech
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="absolute right-[-40px] bottom-[-20px] opacity-[0.03] pointer-events-none">
-                                        <BusIconHuge />
                                     </div>
                                 </div>
-                            </ContainerScroll>
-                        </div>
+
+                                <div className="md:col-span-3 flex flex-col gap-2 text-left">
+                                    <label className="text-[10px] uppercase text-slate-400 font-bold tracking-[0.15em] ml-1">Arrivée</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 transition-transform group-focus-within:scale-110">
+                                            <MapPin size={18} />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Marrakech"
+                                            value={arrivee}
+                                            onChange={(e) => setArrivee(e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-3 flex flex-col gap-2 text-left">
+                                    <label className="text-[10px] uppercase text-slate-400 font-bold tracking-[0.15em] ml-1">Date</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 transition-transform group-focus-within:scale-110">
+                                            <Calendar size={18} />
+                                        </div>
+                                        <input 
+                                            type="date" 
+                                            value={date}
+                                            onChange={(e) => setDate(e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-3">
+                                    <button 
+                                        onClick={handleSearch}
+                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl py-4 h-[58px] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-orange-500/30 flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                                    >
+                                        Rechercher <ChevronRight size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex flex-wrap gap-3 justify-center items-center relative z-10">
+                                <span className="text-[10px] uppercase text-slate-400 font-bold tracking-widest mr-2">Populaire :</span>
+                                <button onClick={() => handleChipClick('Casablanca', 'Marrakech')} className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-full hover:bg-orange-500 hover:text-white transition-all transform hover:-translate-y-0.5 border border-transparent hover:border-orange-200">
+                                    Casa → Marrakech
+                                </button>
+                                <button onClick={() => handleChipClick('Rabat', 'Fès')} className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-full hover:bg-orange-500 hover:text-white transition-all transform hover:-translate-y-0.5 border border-transparent hover:border-orange-200">
+                                    Rabat → Fès
+                                </button>
+                                <button onClick={() => handleChipClick('Tanger', 'Casablanca')} className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-full hover:bg-orange-500 hover:text-white transition-all transform hover:-translate-y-0.5 border border-transparent hover:border-orange-200">
+                                    Tanger → Casa
+                                </button>
+                            </div>
+                        </motion.div>
                     </div>
                 </section>
+
 
                 {/* Infinite Marquee Premium */}
                 <div className="w-full py-6 overflow-hidden border-y border-border relative z-20 bg-background/50 backdrop-blur-xl">
@@ -518,9 +501,7 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </section>
-
             </main>
-            
             <Footer />
         </div>
     );

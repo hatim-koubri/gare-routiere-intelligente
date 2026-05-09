@@ -34,6 +34,26 @@ public class ResponsableReclamationController {
         return ResponseEntity.ok(reclamations);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ReclamationResponseDTO> getById(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Reclamation reclamation =
+                responsableReclamationService.getById(id, authentication);
+        return ResponseEntity.ok(toDto(reclamation));
+    }
+
+    @PatchMapping("/{id}/resoudre")
+    public ResponseEntity<ReclamationResponseDTO> resoudre(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Reclamation reclamation =
+                responsableReclamationService.resoudre(id, authentication);
+        return ResponseEntity.ok(toDto(reclamation));
+    }
+
     @PatchMapping("/{id}/reponse")
     public ResponseEntity<ReclamationResponseDTO>
     repondre(
@@ -58,6 +78,8 @@ public class ResponsableReclamationController {
 
         dto.setId(reclamation.getId());
 
+        dto.setType(reclamation.getType());
+
         dto.setSujet(reclamation.getSujet());
 
         dto.setDescription(reclamation.getDescription());
@@ -81,12 +103,21 @@ public class ResponsableReclamationController {
             dto.setVoyageurNom(
                     reclamation.getVoyageur().getNom()
             );
+
+            dto.setVoyageurPrenom(
+                    reclamation.getVoyageur().getPrenom()
+            );
         }
 
         if (reclamation.getReservation() != null) {
 
             dto.setReservationId(
                     reclamation.getReservation().getId()
+            );
+
+            dto.setTrajetInfo(
+                    reclamation.getReservation().getTrajet().getLigne().getVilleDepart()
+                            + " → " + reclamation.getReservation().getTrajet().getLigne().getVilleArrivee()
             );
         }
 

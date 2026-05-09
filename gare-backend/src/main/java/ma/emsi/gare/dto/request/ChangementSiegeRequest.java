@@ -6,4 +6,7 @@ import java.util.List;
 @Data
 public class ChangementSiegeRequest {
     private List<String> nouveauxSieges;
+    private String numeroCarte;
+    private String dateExpiration;
+    private String cvv;
 }

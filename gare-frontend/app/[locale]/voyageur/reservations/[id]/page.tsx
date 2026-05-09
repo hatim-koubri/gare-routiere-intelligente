@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, Calendar, Clock, MapPin, Bus, Ticket, 
   Trash2, Edit, RefreshCw, CheckCircle, AlertCircle, Info,
-  Download
+  Download, Package, AlertTriangle, Users, Settings
 } from 'lucide-react';
 
 interface ReservationDetail {
@@ -95,7 +95,8 @@ export default function ReservationDetailPage() {
     setError(null);
     try {
       const response = await apiClient.delete(`/voyageur/reservations/${reservationId}/annuler`);
-      setRemboursementAmount(response.data);
+      const data = response.data;
+      setRemboursementAmount(data?.montant ?? 0);
       setShowConfirmModal(true);
       await loadReservation();
     } catch (error: any) {
@@ -295,7 +296,7 @@ export default function ReservationDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                   >
                     <Edit className="w-4 h-4" />
-                    Modifier trajet/sièges
+                    Modifier date/heure
                   </Link>
                 )}
                 {canChangeSieges() && (
@@ -307,13 +308,34 @@ export default function ReservationDetailPage() {
                     Changer sièges
                   </Link>
                 )}
+                <Link
+                  href={`/fr/voyageur/reservations/${reservation.id}/bagages`}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                >
+                  <Package className="w-4 h-4" />
+                  Acheter bagage
+                </Link>
+                <Link
+                  href={`/fr/voyageur/reservations/${reservation.id}/bagages/gerer`}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                >
+                  <Settings className="w-4 h-4" />
+                  Gérer bagages
+                </Link>
+                <Link
+                  href={`/fr/voyageur/bagages/declarer`}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Déclarer bagage
+                </Link>
                 <button
                   onClick={handleAnnuler}
                   disabled={actionLoading}
                   className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {actionLoading ? 'Annulation...' : 'Annuler la réservation'}
+                  {actionLoading ? 'Annulation...' : 'Annuler'}
                 </button>
               </div>
             </div>
@@ -396,7 +418,7 @@ export default function ReservationDetailPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Réservation annulée</h3>
               {remboursementAmount !== null && remboursementAmount > 0 ? (
                 <p className="text-gray-600">
-                  Vous avez été remboursé de <span className="font-bold text-green-600">{remboursementAmount} MAD</span>
+                  Votre remboursement de <span className="font-bold text-green-600">{remboursementAmount} MAD</span> est en étude
                 </p>
               ) : (
                 <p className="text-gray-600">Aucun remboursement n'est applicable</p>

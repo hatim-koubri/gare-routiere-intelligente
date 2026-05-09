@@ -38,6 +38,8 @@ public interface GareMapper {
     @Mapping(source = "ligne.prixBase", target = "prixBase")
     @Mapping(source = "ligne.compagnie.id", target = "compagnieId")
     @Mapping(source = "ligne.compagnie.nom", target = "compagnieNom")
+    @Mapping(source = "ligne.compagnie.noteMoyenne", target = "compagnieNoteMoyenne")
+    @Mapping(source = "ligne.compagnie.nbAvis", target = "compagnieNbAvis")
     @Mapping(source = "bus.id", target = "busId")
     @Mapping(source = "bus.matricule", target = "busMatricule")
     @Mapping(source = "bus.marque", target = "busMarque")

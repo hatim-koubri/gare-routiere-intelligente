@@ -2,6 +2,7 @@ package ma.emsi.gare.repository;
 
 import ma.emsi.gare.entity.Paiement;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,5 +29,18 @@ public interface PaiementRepository
 """)
     double calculerRecettesCompagnie(
             @Param("compagnieId") Long compagnieId
+    );
+
+    @Query("""
+    SELECT COALESCE(SUM(p.montant), 0)
+    FROM Paiement p
+    WHERE p.confirme = true
+    AND p.reservation.trajet.ligne.compagnie.id = :compagnieId
+    AND p.datePaiement BETWEEN :debut AND :fin
+""")
+    double calculerRecettesCompagnieEntre(
+            @Param("compagnieId") Long compagnieId,
+            @Param("debut") LocalDateTime debut,
+            @Param("fin") LocalDateTime fin
     );
 }

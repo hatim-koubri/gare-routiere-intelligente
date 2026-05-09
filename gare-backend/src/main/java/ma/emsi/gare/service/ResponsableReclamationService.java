@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.ReponseReclamationRequest;
 import ma.emsi.gare.entity.Compagnie;
 import ma.emsi.gare.entity.Reclamation;
+import ma.emsi.gare.enums.StatutReclamation;
 import ma.emsi.gare.entity.ResponsableCompagnie;
 import ma.emsi.gare.repository.CompagnieRepository;
 import ma.emsi.gare.repository.ReclamationRepository;
@@ -48,6 +49,26 @@ public class ResponsableReclamationService {
         reclamation.setReponseResponsable(
                 request.getReponseResponsable()
         );
+
+        return reclamationRepository.save(reclamation);
+    }
+
+    @Transactional(readOnly = true)
+    public Reclamation getById(
+            Long id,
+            Authentication authentication
+    ) {
+        return getReclamationResponsable(id, authentication);
+    }
+
+    public Reclamation resoudre(
+            Long id,
+            Authentication authentication
+    ) {
+        Reclamation reclamation =
+                getReclamationResponsable(id, authentication);
+
+        reclamation.setStatut(StatutReclamation.RESOLUE);
 
         return reclamationRepository.save(reclamation);
     }

@@ -3,6 +3,7 @@ package ma.emsi.gare.controller.responsable;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.ChauffeurCreateRequest;
+import ma.emsi.gare.dto.request.ChauffeurUpdateRequest;
 import ma.emsi.gare.dto.response.ChauffeurResponseDTO;
 import ma.emsi.gare.entity.Chauffeur;
 import ma.emsi.gare.service.ResponsableChauffeurService;
@@ -47,6 +48,47 @@ public class ResponsableChauffeurController {
                         .toList();
 
         return ResponseEntity.ok(chauffeurs);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ChauffeurResponseDTO> modifier(
+            @PathVariable Long id,
+            @Valid @RequestBody ChauffeurUpdateRequest request,
+            Authentication authentication
+    ) {
+        Chauffeur chauffeur =
+                responsableChauffeurService.modifier(id, request, authentication);
+        return ResponseEntity.ok(toDto(chauffeur));
+    }
+
+    @PatchMapping("/{id}/conge")
+    public ResponseEntity<ChauffeurResponseDTO> toggleConge(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Chauffeur chauffeur =
+                responsableChauffeurService.toggleConge(id, authentication);
+        return ResponseEntity.ok(toDto(chauffeur));
+    }
+
+    @PatchMapping("/{id}/activer")
+    public ResponseEntity<ChauffeurResponseDTO> activer(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Chauffeur chauffeur =
+                responsableChauffeurService.activer(id, authentication);
+        return ResponseEntity.ok(toDto(chauffeur));
+    }
+
+    @PatchMapping("/{id}/desactiver")
+    public ResponseEntity<ChauffeurResponseDTO> desactiver(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        Chauffeur chauffeur =
+                responsableChauffeurService.desactiver(id, authentication);
+        return ResponseEntity.ok(toDto(chauffeur));
     }
 
     private ChauffeurResponseDTO toDto(Chauffeur chauffeur) {

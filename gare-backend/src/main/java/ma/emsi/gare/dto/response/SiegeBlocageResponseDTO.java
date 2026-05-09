@@ -11,6 +11,7 @@ public class SiegeBlocageResponseDTO {
     private String positionRangee;
     private boolean occupe;
     private boolean bloque;
+    private boolean verrouilleTemporaire;
     private String motifBlocage;
     private LocalDateTime dateBlocage;
     private Long trajetId;

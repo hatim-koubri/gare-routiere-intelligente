@@ -29,6 +29,9 @@ public class Remboursement {
     private StatutRemboursement statut =
             StatutRemboursement.EN_ATTENTE;
 
+    @Column(nullable = false)
+    private boolean partiel;
+
     @Column(length = 1000)
     private String motif;
 

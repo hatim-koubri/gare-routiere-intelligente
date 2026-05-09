@@ -16,9 +16,24 @@ public class ResponsablePreferenceVoisinageController {
 
     private final ResponsablePreferenceVoisinageService service;
 
-    @GetMapping("/non-satisfaites/{trajetId}")
+    @GetMapping("/non-satisfaites")
     public ResponseEntity<List<PreferenceNonSatisfaiteDTO>>
     getNonSatisfaites(
+            @RequestParam(required = false) Long trajetId,
+            Authentication authentication
+    ) {
+
+        return ResponseEntity.ok(
+                service.getAllPreferencesNonSatisfaites(
+                        trajetId,
+                        authentication
+                )
+        );
+    }
+
+    @GetMapping("/non-satisfaites/{trajetId}")
+    public ResponseEntity<List<PreferenceNonSatisfaiteDTO>>
+    getNonSatisfaitesByTrajet(
             @PathVariable Long trajetId,
             Authentication authentication
     ) {

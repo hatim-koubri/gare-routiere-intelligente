@@ -94,6 +94,17 @@ public class ResponsableBlocageSiegeService {
     }
 
     @Transactional(readOnly = true)
+    public List<Siege> getSiegesByTrajet(
+            Long trajetId,
+            Authentication authentication
+    ) {
+
+        getTrajetResponsable(trajetId, authentication);
+
+        return siegeRepository.findByTrajetId(trajetId);
+    }
+
+    @Transactional(readOnly = true)
     public List<Siege> getSiegesBloques(
             Long trajetId,
             Authentication authentication

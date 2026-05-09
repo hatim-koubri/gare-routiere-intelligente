@@ -29,10 +29,14 @@ public class PaiementService {
     public PaiementResponseDTO simulerPaiement(PaiementRequest request) {
 
         Reservation reservation = reservationRepository.findById(request.getReservationId())
-                .orElseThrow(() -> new RuntimeException("Reservation introuvable"));
+                .orElseThrow(() -> new IllegalStateException("Réservation introuvable"));
 
         if (reservation.getStatut() == StatutReservation.CONFIRMEE) {
-            throw new RuntimeException("Reservation déjà payée");
+            throw new IllegalStateException("Réservation déjà payée");
+        }
+
+        if (reservation.getStatut() != StatutReservation.EN_ATTENTE) {
+            throw new IllegalStateException("Cette réservation n'est plus en attente de paiement");
         }
 
         var sieges = siegeRepository.findByTrajetId(reservation.getTrajet().getId());
@@ -43,7 +47,22 @@ public class PaiementService {
                 .toList();
 
         if (siegesReservation.isEmpty()) {
-            throw new RuntimeException("Aucun siège verrouillé pour cette réservation");
+            siegesReservation = sieges.stream()
+                    .filter(s -> !s.isOccupe() && !s.isBloque())
+                    .limit(sieges.size())
+                    .toList();
+
+            if (siegesReservation.isEmpty()) {
+                throw new IllegalStateException("Les sièges ne sont plus disponibles. Veuillez refaire une réservation.");
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            for (Siege s : siegesReservation) {
+                s.setVerrouilleTemporaire(true);
+                s.setVerrouilleParReservationId(request.getReservationId());
+                s.setVerrouilleAt(now);
+                siegeRepository.save(s);
+            }
         }
 
         Paiement paiement = new Paiement();
@@ -68,7 +87,7 @@ public class PaiementService {
         }
 
         GroupeVoyage groupe = groupeVoyageRepository.findByReservationId(reservation.getId())
-                .orElseThrow(() -> new RuntimeException("Groupe voyage introuvable"));
+                .orElseThrow(() -> new IllegalStateException("Groupe voyage introuvable"));
 
         var membres = membreGroupeRepository.findByGroupeId(groupe.getId());
 

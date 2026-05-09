@@ -6,7 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { apiClient } from '@/lib/api/client';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertCircle, Clock, MapPin, Building, Calendar } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, Clock, MapPin, Building, Calendar, CreditCard } from 'lucide-react';
+import { PaymentForm, PaymentData } from '@/components/voyageur/PaymentForm';
 
 interface TrajetOption {
   id: number;
@@ -52,6 +53,10 @@ export default function ModifierReservationPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingTrajets, setLoadingTrajets] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [modificationFee, setModificationFee] = useState(0);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,6 +78,10 @@ export default function ModifierReservationPage() {
       setReservation(res.data);
       setNombreSieges(res.data.tickets?.length || 1);
       
+      // Calculer les frais de modification (gratuit si première mod, 20 DH sinon)
+      const fee = (res.data.nbModif ?? 0) > 0 ? 20 : 0;
+      setModificationFee(fee);
+      
       // Charger les trajets alternatifs (même destination)
       await loadTrajetsAlternatifs(res.data.trajet.villeDepart, res.data.trajet.villeArrivee);
     } catch (error: any) {
@@ -86,15 +95,16 @@ export default function ModifierReservationPage() {
   const loadTrajetsAlternatifs = async (villeDepart: string, villeArrivee: string) => {
     setLoadingTrajets(true);
     try {
-      // Utiliser l'endpoint de recherche existant
+      // Chercher sur une plage de 30 jours au lieu d'un seul jour
       const today = new Date();
-      const nextMonth = new Date();
-      nextMonth.setDate(today.getDate() + 30);
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(today.getDate() + 30);
       
       const response = await apiClient.post('/voyageur/recherche/trajets-filtres', {
         villeDepart: villeDepart,
         villeArrivee: villeArrivee,
-        date: today.toISOString().split('T')[0],
+        dateDebut: today.toISOString().split('T')[0],
+        dateFin: thirtyDaysLater.toISOString().split('T')[0],
         prixMin: null,
         prixMax: null,
         heureDepartMin: null,
@@ -103,9 +113,10 @@ export default function ModifierReservationPage() {
       });
       
       // Filtrer pour exclure le trajet actuel et les trajets passés
+      const trajetActuelId = reservation?.trajet?.id;
       const maintenant = new Date();
       const filtered = (response.data || []).filter((t: TrajetOption) => 
-        t.id !== parseInt(reservationId) && new Date(t.dateDepart) > maintenant
+        t.id !== trajetActuelId && new Date(t.dateDepart) > maintenant
       );
       
       setTrajetsOptions(filtered);
@@ -156,12 +167,43 @@ export default function ModifierReservationPage() {
       return;
     }
 
+    // Si frais de modification, afficher le formulaire de paiement
+    if (modificationFee > 0) {
+      setShowPaymentForm(true);
+      return;
+    }
+
+    // Sinon, effectuer la modification directement
+    await confirmModification();
+  };
+
+  const handlePayment = async (paymentData: PaymentData) => {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    
+    try {
+      // Passe les données de carte directement dans la modification
+      await confirmModification(paymentData);
+      setShowPaymentForm(false);
+    } catch (e: any) {
+      setPaymentError(e.response?.data?.message || 'Erreur lors du paiement');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const confirmModification = async (paymentData?: PaymentData) => {
     setSubmitting(true);
     setError(null);
     try {
       await apiClient.put(`/voyageur/reservations/${reservationId}/modifier`, {
         nouveauTrajetId: selectedTrajetId,
-        nouveauxSieges: selectedSieges
+        nouveauxSieges: selectedSieges,
+        ...(paymentData ? {
+          numeroCarte: paymentData.numeroCarte,
+          dateExpiration: paymentData.dateExpiration,
+          cvv: paymentData.cvv,
+        } : {})
       });
       setSuccess(true);
       setTimeout(() => {
@@ -337,16 +379,69 @@ export default function ModifierReservationPage() {
           </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || !selectedTrajetId || selectedSieges.length !== nombreSieges || siegesDisponibles.length === 0}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-        >
-          {submitting ? 'Modification en cours...' : 'Confirmer la modification'}
-        </button>
+        {/* Résumé des frais */}
+        {selectedTrajetId && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-700 font-medium mb-2">Résumé des frais</p>
+            <div className="space-y-1 text-sm text-amber-700">
+              {modificationFee > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Frais de modification (2ème modif):</span>
+                    <span className="font-bold">{modificationFee} MAD</span>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-2">
+                    ⚠️ Un paiement supplémentaire de {modificationFee} MAD est nécessaire
+                  </p>
+                </>
+              )}
+              {modificationFee === 0 && reservation && reservation.nbModif === 0 && (
+                <p className="text-green-700 font-medium">✓ Modification gratuite (première modif)</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bouton action */}
+        {!showPaymentForm ? (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !selectedTrajetId || selectedSieges.length !== nombreSieges || siegesDisponibles.length === 0}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+          >
+            {submitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Traitement...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                {modificationFee > 0 ? 'Procéder au paiement' : 'Confirmer la modification'}
+              </>
+            )}
+          </button>
+        ) : null}
+
+        {/* Formulaire de paiement */}
+        {showPaymentForm && modificationFee > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Paiement des frais de modification
+            </h3>
+            <PaymentForm
+              amount={modificationFee}
+              description={`Frais de modification (2ème modification et suivantes)`}
+              onSubmit={handlePayment}
+              loading={paymentLoading}
+              error={paymentError}
+            />
+          </div>
+        )}
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          La première modification est gratuite. À partir de la 2ème : +20 DH
+          1ère modification gratuite • À partir de la 2ème: 20 DH
         </p>
       </div>
     </div>

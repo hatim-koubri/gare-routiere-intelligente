@@ -10,4 +10,7 @@ public interface RemboursementRepository
 
     List<Remboursement>
     findByReservationTrajetLigneCompagnieId(Long compagnieId);
+
+    List<Remboursement>
+    findByReservationVoyageurIdOrderByDateDemandeDesc(Long voyageurId);
 }

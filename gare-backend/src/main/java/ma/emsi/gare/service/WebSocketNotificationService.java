@@ -53,4 +53,14 @@ public class WebSocketNotificationService {
         );
         messagingTemplate.convertAndSend("/topic/ocr", message);
     }
+
+    // ===== Notifier les responsables d'une compagnie =====
+    public void notifierResponsables(Long compagnieId, String type, Object data) {
+        Map<String, Object> message = Map.of(
+                "type", type,
+                "data", data
+        );
+        messagingTemplate.convertAndSend("/topic/responsable/" + compagnieId, message);
+        log.info("WebSocket → Responsables compagnie {}: {}", compagnieId, type);
+    }
 }

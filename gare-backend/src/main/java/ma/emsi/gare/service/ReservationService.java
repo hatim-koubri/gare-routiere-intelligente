@@ -5,11 +5,15 @@ import ma.emsi.gare.dto.request.BagageRequest;
 import ma.emsi.gare.dto.request.MembreGroupeRequest;
 import ma.emsi.gare.dto.request.ReservationRequest;
 import ma.emsi.gare.dto.request.VerrouillageSiegeRequest;
+import ma.emsi.gare.dto.request.ChangementSiegeRequest;
 import ma.emsi.gare.dto.response.BagageResponseDTO;
+import ma.emsi.gare.dto.response.MembreGroupeDTO;
 import ma.emsi.gare.dto.response.ReservationResponseDTO;
 import ma.emsi.gare.dto.response.SiegeResponseDTO;
 import ma.emsi.gare.entity.*;
 import ma.emsi.gare.enums.CategorieTarifaire;
+import ma.emsi.gare.enums.LienOrganisateur;
+import ma.emsi.gare.enums.StatutRemboursement;
 import ma.emsi.gare.enums.StatutReservation;
 import ma.emsi.gare.enums.TypeBagage;
 import ma.emsi.gare.repository.*;
@@ -22,14 +26,12 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import ma.emsi.gare.dto.request.ModificationReservationRequest;
 import ma.emsi.gare.enums.StatutTicket;
 import java.time.Duration;
 import java.util.UUID;
-
-import ma.emsi.gare.enums.StatutTicket;
-import java.time.Duration;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,10 @@ public class ReservationService {
     private final NotificationProducer notificationProducer;
 
     private final BagageRepository bagageRepository;
+    private final CodePromoRepository codePromoRepository;
+    private final RemboursementRepository remboursementRepository;
+    private final PaiementRepository paiementRepository;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     public ReservationResponseDTO creerReservation(Long voyageurId, ReservationRequest request) {
 
@@ -81,30 +87,35 @@ public class ReservationService {
 
         GroupeVoyage savedGroupe = groupeVoyageRepository.save(groupe);
 
-        List<String> nomsMembres = new ArrayList<>();
         double total = 0.0;
 
         for (MembreGroupeRequest membreRequest : request.getMembres()) {
 
-            MembreGroupe membre = new MembreGroupe();
-            membre.setGroupe(savedGroupe);
-
-            if (membreRequest.getVoyageurId() != null) {
-                Voyageur membreVoyageur = voyageurRepository.findById(membreRequest.getVoyageurId())
-                        .orElseThrow(() -> new RuntimeException("Voyageur membre non trouvé"));
-                membre.setVoyageur(membreVoyageur);
+            if (membreRequest.isEnfantSurGenoux() && membreRequest.getAge() != null && membreRequest.getAge() >= 5) {
+                throw new RuntimeException("L'option 'enfant sur genoux' est réservée aux enfants de moins de 5 ans");
             }
 
+            MembreGroupe membre = new MembreGroupe();
+            membre.setGroupe(savedGroupe);
             membre.setNomManuel(membreRequest.getNomManuel());
             membre.setPrenomManuel(membreRequest.getPrenomManuel());
             membre.setSexe(membreRequest.getSexe());
             membre.setAge(membreRequest.getAge());
-            membre.setLienOrganisateur(membreRequest.getLienOrganisateur());
+            if (membreRequest.getLienOrganisateur() != null) {
+                membre.setLienOrganisateur(LienOrganisateur.valueOf(membreRequest.getLienOrganisateur()));
+            }
             membre.setEnfantSurGenoux(membreRequest.isEnfantSurGenoux());
+            membre.setAccepteSexeOppose(membreRequest.isAccepteSexeOppose());
+            membre.setPreferencePosition(membreRequest.getPreferencePosition());
+            membre.setPrefereCoteMembreId(membreRequest.getPrefereCoteMembreId());
 
             CategorieTarifaire categorie = membreRequest.getCategorieTarifaire() != null
-                    ? membreRequest.getCategorieTarifaire()
+                    ? CategorieTarifaire.valueOf(membreRequest.getCategorieTarifaire())
                     : CategorieTarifaire.NORMAL;
+
+            if (membreRequest.isEnfantSurGenoux()) {
+                categorie = CategorieTarifaire.ENFANT;
+            }
 
             membre.setCategorieTarifaire(categorie);
 
@@ -112,28 +123,43 @@ public class ReservationService {
             membre.setPrixMembre(prixMembre);
             total += prixMembre;
 
-            MembreGroupe savedMembre = membreGroupeRepository.save(membre);
+            membreGroupeRepository.save(membre);
+        }
 
-            if (membreRequest.getPreferenceVoisinage() != null) {
-                PreferenceVoisinage preference = new PreferenceVoisinage();
-                preference.setMembre(savedMembre);
-                preference.setAccepteSexeOppose(membreRequest.getPreferenceVoisinage().isAccepteSexeOppose());
-                preference.setPreferencePosition(membreRequest.getPreferenceVoisinage().getPreferencePosition());
-                preference.setPrefereCoteMembreId(membreRequest.getPreferenceVoisinage().getPrefereCoteMembreId());
-                preferenceVoisinageRepository.save(preference);
+        // Appliquer le code promo si fourni
+        String codePromoStr = request.getCodePromo();
+        if (codePromoStr != null && !codePromoStr.isBlank()) {
+            CodePromo promo = codePromoRepository.findByCode(codePromoStr.toUpperCase())
+                    .orElseThrow(() -> new RuntimeException("Code promo invalide"));
+
+            if (!promo.isActif()) {
+                throw new RuntimeException("Ce code promo a été désactivé");
+            }
+            if (promo.getDateExpiration().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Ce code promo a expiré");
+            }
+            if (promo.getNbUtilisationsMax() != null &&
+                    promo.getNbUtilisationsActuel() >= promo.getNbUtilisationsMax()) {
+                throw new RuntimeException("Ce code promo a atteint sa limite d'utilisations");
             }
 
-            nomsMembres.add(
-                    (membreRequest.getPrenomManuel() != null ? membreRequest.getPrenomManuel() : "")
-                            + " "
-                            + (membreRequest.getNomManuel() != null ? membreRequest.getNomManuel() : "")
-            );
+            Long trajetCompagnieId = trajet.getLigne().getCompagnie().getId();
+            if (promo.getCompagnie() == null || !promo.getCompagnie().getId().equals(trajetCompagnieId)) {
+                throw new RuntimeException("Ce code promo n'est pas valide pour cette compagnie");
+            }
+
+            double reduction = total * promo.getPourcentageReduction() / 100.0;
+            total -= reduction;
+            savedReservation.setCodePromoUtilise(promo.getCode());
+
+            promo.setNbUtilisationsActuel(promo.getNbUtilisationsActuel() + 1);
+            codePromoRepository.save(promo);
         }
 
         savedReservation.setPrixTotal(total);
         savedReservation = reservationRepository.save(savedReservation);
 
-        return toResponse(savedReservation, savedGroupe, nomsMembres);
+        return toResponse(savedReservation, savedGroupe);
     }
 
     private double calculPrixSimple(Double prixBase, CategorieTarifaire categorie, boolean enfantSurGenoux) {
@@ -146,7 +172,300 @@ public class ReservationService {
         return prix;
     }
 
-    private ReservationResponseDTO toResponse(Reservation reservation, GroupeVoyage groupe, List<String> nomsMembres) {
+    private MembreGroupeDTO membreToDTO(MembreGroupe m) {
+        MembreGroupeDTO dto = new MembreGroupeDTO();
+        dto.setId(m.getId());
+        dto.setNom(m.getNomManuel());
+        dto.setPrenom(m.getPrenomManuel());
+        dto.setSexe(m.getSexe());
+        dto.setAge(m.getAge());
+        dto.setCategorieTarifaire(m.getCategorieTarifaire() != null ? m.getCategorieTarifaire().name() : null);
+        dto.setLienOrganisateur(m.getLienOrganisateur() != null ? m.getLienOrganisateur().name() : null);
+        dto.setEnfantSurGenoux(m.isEnfantSurGenoux());
+        dto.setAccepteSexeOppose(m.isAccepteSexeOppose());
+        dto.setPreferencePosition(m.getPreferencePosition());
+        dto.setPrefereCoteMembreId(m.getPrefereCoteMembreId());
+        dto.setPrixTicket(m.getPrixMembre());
+        if (m.getTicket() != null) {
+            dto.setNumeroSiege(m.getTicket().getNumeroSiege());
+            dto.setQrCode(m.getTicket().getQrCode());
+            dto.setTicketId(m.getTicket().getId());
+        }
+        return dto;
+    }
+
+    private List<MembreGroupeDTO> membresToDTOs(List<MembreGroupe> membres) {
+        return membres.stream().map(this::membreToDTO).toList();
+    }
+
+    // ── Member CRUD ────────────────────────────────────────────
+
+    @Transactional
+    public MembreGroupeDTO ajouterMembre(Long reservationId, MembreGroupeRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        GroupeVoyage groupe = trouverOuCreerGroupe(reservation);
+
+        verifierModificationMembre(reservation);
+
+        if (request.isEnfantSurGenoux() && request.getAge() != null && request.getAge() >= 5) {
+            throw new RuntimeException("L'option 'enfant sur genoux' est réservée aux enfants de moins de 5 ans");
+        }
+
+        MembreGroupe membre = new MembreGroupe();
+        membre.setGroupe(groupe);
+        membre.setNomManuel(request.getNomManuel());
+        membre.setPrenomManuel(request.getPrenomManuel());
+        membre.setSexe(request.getSexe());
+        membre.setAge(request.getAge());
+        if (request.getLienOrganisateur() != null) {
+            membre.setLienOrganisateur(LienOrganisateur.valueOf(request.getLienOrganisateur()));
+        }
+        membre.setEnfantSurGenoux(request.isEnfantSurGenoux());
+        membre.setAccepteSexeOppose(request.isAccepteSexeOppose());
+        membre.setPreferencePosition(request.getPreferencePosition());
+        membre.setPrefereCoteMembreId(request.getPrefereCoteMembreId());
+
+        CategorieTarifaire categorie = request.getCategorieTarifaire() != null
+                ? CategorieTarifaire.valueOf(request.getCategorieTarifaire())
+                : CategorieTarifaire.NORMAL;
+
+        if (request.isEnfantSurGenoux()) {
+            categorie = CategorieTarifaire.ENFANT;
+        }
+        membre.setCategorieTarifaire(categorie);
+
+        double prixMembre = calculPrixSimple(
+                reservation.getTrajet().getLigne().getPrixBase(),
+                categorie,
+                request.isEnfantSurGenoux()
+        );
+        membre.setPrixMembre(prixMembre);
+
+        MembreGroupe saved = membreGroupeRepository.save(membre);
+
+        String numeroSiege = request.getNumeroSiege();
+        String siegeNumero = numeroSiege;
+        if (numeroSiege != null && !numeroSiege.isBlank()) {
+            Siege siege = siegeRepository
+                    .findByTrajetIdAndNumeroSiege(reservation.getTrajet().getId(), siegeNumero)
+                    .orElseThrow(() -> new IllegalArgumentException("Siège introuvable : " + siegeNumero));
+            if (siege.isOccupe() || siege.isBloque()) {
+                throw new IllegalStateException("Ce siège n'est pas disponible : " + numeroSiege);
+            }
+            siege.setOccupe(true);
+            siege.setVerrouilleTemporaire(false);
+            siege.setVerrouilleParReservationId(null);
+            siege.setVerrouilleAt(null);
+            siegeRepository.save(siege);
+        } else {
+            List<Siege> siegesLibres = siegeRepository.findByTrajetIdAndOccupeFalseAndBloqueFalse(
+                    reservation.getTrajet().getId());
+            if (!siegesLibres.isEmpty()) {
+                Siege siege = siegesLibres.get(0);
+                siege.setOccupe(true);
+                siegeRepository.save(siege);
+                numeroSiege = siege.getNumeroSiege();
+            }
+        }
+
+        Ticket ticket = new Ticket();
+        ticket.setReservation(reservation);
+        ticket.setQrCode(UUID.randomUUID().toString());
+        ticket.setNomPassager(membre.getNomManuel());
+        ticket.setPrenomPassager(membre.getPrenomManuel());
+        ticket.setCategorieTarifaire(membre.getCategorieTarifaire());
+        ticket.setNumeroSiege(numeroSiege);
+        ticket.setPrix(prixMembre);
+        ticket.setEnfantSurGenoux(membre.isEnfantSurGenoux());
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        saved.setTicket(savedTicket);
+        saved.setSiegeAttribue(numeroSiege);
+        membreGroupeRepository.save(saved);
+
+        groupe.setNombrePassagers(groupe.getNombrePassagers() + 1);
+        groupeVoyageRepository.save(groupe);
+
+        reservation.setPrixTotal(reservation.getPrixTotal() + prixMembre);
+        reservationRepository.save(reservation);
+
+        traiterPaiementMembre(reservation, prixMembre, request.getNumeroCarte(), request.getDateExpiration(), request.getCvv());
+
+        return membreToDTO(saved);
+    }
+
+    @Transactional
+    public MembreGroupeDTO modifierMembre(Long reservationId, Long membreId, MembreGroupeRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        verifierModificationMembre(reservation);
+
+        if (request.isEnfantSurGenoux() && request.getAge() != null && request.getAge() >= 5) {
+            throw new RuntimeException("L'option 'enfant sur genoux' est réservée aux enfants de moins de 5 ans");
+        }
+
+        MembreGroupe membre = membreGroupeRepository.findById(membreId)
+                .orElseThrow(() -> new IllegalArgumentException("Membre introuvable"));
+
+        if (!membre.getGroupe().getReservation().getId().equals(reservationId)) {
+            throw new IllegalArgumentException("Ce membre n'appartient pas à cette réservation");
+        }
+
+        double ancienPrix = membre.getPrixMembre();
+
+        membre.setNomManuel(request.getNomManuel());
+        membre.setPrenomManuel(request.getPrenomManuel());
+        membre.setSexe(request.getSexe());
+        membre.setAge(request.getAge());
+        if (request.getLienOrganisateur() != null) {
+            membre.setLienOrganisateur(LienOrganisateur.valueOf(request.getLienOrganisateur()));
+        }
+        membre.setEnfantSurGenoux(request.isEnfantSurGenoux());
+        membre.setAccepteSexeOppose(request.isAccepteSexeOppose());
+        membre.setPreferencePosition(request.getPreferencePosition());
+        membre.setPrefereCoteMembreId(request.getPrefereCoteMembreId());
+
+        CategorieTarifaire categorie = request.getCategorieTarifaire() != null
+                ? CategorieTarifaire.valueOf(request.getCategorieTarifaire())
+                : CategorieTarifaire.NORMAL;
+
+        if (request.isEnfantSurGenoux()) {
+            categorie = CategorieTarifaire.ENFANT;
+        }
+        membre.setCategorieTarifaire(categorie);
+
+        double nouveauPrix = calculPrixSimple(
+                reservation.getTrajet().getLigne().getPrixBase(),
+                categorie,
+                request.isEnfantSurGenoux()
+        );
+        membre.setPrixMembre(nouveauPrix);
+
+        MembreGroupe saved = membreGroupeRepository.save(membre);
+
+        reservation.setPrixTotal(reservation.getPrixTotal() - ancienPrix + nouveauPrix);
+        reservationRepository.save(reservation);
+
+        if (nouveauPrix > ancienPrix) {
+            traiterPaiementMembre(reservation, nouveauPrix - ancienPrix, request.getNumeroCarte(), request.getDateExpiration(), request.getCvv());
+        }
+
+        return membreToDTO(saved);
+    }
+
+    @Transactional
+    public Remboursement supprimerMembre(Long reservationId, Long membreId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        verifierModificationMembre(reservation);
+
+        MembreGroupe membre = membreGroupeRepository.findById(membreId)
+                .orElseThrow(() -> new IllegalArgumentException("Membre introuvable"));
+
+        if (!membre.getGroupe().getReservation().getId().equals(reservationId)) {
+            throw new IllegalArgumentException("Ce membre n'appartient pas à cette réservation");
+        }
+
+        GroupeVoyage groupe = membre.getGroupe();
+
+        if (groupe.getMembres().size() <= 1) {
+            throw new IllegalStateException("Impossible de supprimer le dernier membre du groupe");
+        }
+
+        double prixMembre = membre.getPrixMembre();
+
+        // Cancel associated ticket and free seat
+        Ticket ticketMembre = membre.getTicket();
+        if (ticketMembre != null) {
+            if (ticketMembre.getNumeroSiege() != null) {
+                siegeRepository.findByTrajetIdAndNumeroSiege(
+                        reservation.getTrajet().getId(),
+                        ticketMembre.getNumeroSiege()
+                ).ifPresent(this::libererSiege);
+            }
+            ticketMembre.setStatut(StatutTicket.ANNULE);
+            ticketRepository.save(ticketMembre);
+        }
+
+        groupe.getMembres().remove(membre);
+        groupe.setNombrePassagers(groupe.getNombrePassagers() - 1);
+        membreGroupeRepository.delete(membre);
+        membreGroupeRepository.flush();
+        groupeVoyageRepository.save(groupe);
+
+        double taux = calculTauxRemboursement(reservation.getTrajet().getDateDepart());
+        double montantRembourse = Math.round(prixMembre * taux * 100.0) / 100.0;
+
+        if (reservation.getStatut() == StatutReservation.EN_ATTENTE) {
+            reservation.setPrixTotal(reservation.getPrixTotal() - prixMembre);
+            reservationRepository.save(reservation);
+            return null;
+        }
+
+        reservation.setPrixTotal(reservation.getPrixTotal() - prixMembre);
+        reservationRepository.save(reservation);
+
+        String motif = "Suppression de " + membre.getPrenomManuel() + " " + membre.getNomManuel()
+                + " (" + Math.round(taux * 100) + "% remboursement de " + prixMembre + " MAD)";
+
+        Remboursement remb = new Remboursement();
+        remb.setReservation(reservation);
+        remb.setMontant(montantRembourse);
+        remb.setMotif(motif);
+        remb.setStatut(StatutRemboursement.EN_ATTENTE);
+        remb.setPartiel(true);
+        remb.setDateDemande(LocalDateTime.now());
+        remb = remboursementRepository.save(remb);
+
+        notificationProducer.envoyerNotification(
+                "Demande de remboursement pour suppression de membre ID=" + membreId
+                        + ", réservation ID=" + reservationId
+                        + ", montant=" + montantRembourse
+        );
+
+        webSocketNotificationService.notifierAdmins("NOUVEAU_REMBOURSEMENT", Map.of(
+                "id", remb.getId(),
+                "reservationId", reservationId,
+                "montant", montantRembourse,
+                "motif", motif,
+                "type", "SUPPRESSION_MEMBRE"
+        ));
+
+        Long compagnieId = reservation.getTrajet().getLigne().getCompagnie().getId();
+        webSocketNotificationService.notifierResponsables(compagnieId, "NOUVEAU_REMBOURSEMENT", Map.of(
+                "id", remb.getId(),
+                "reservationId", reservationId,
+                "montant", montantRembourse,
+                "motif", motif,
+                "voyageurEmail", reservation.getVoyageur().getEmail(),
+                "type", "SUPPRESSION_MEMBRE"
+        ));
+
+        return remb;
+    }
+
+    private void verifierModificationMembre(Reservation reservation) {
+        if (reservation.getStatut() == StatutReservation.ANNULEE
+                || reservation.getStatut() == StatutReservation.REMBOURSEE) {
+            throw new IllegalStateException("Impossible de modifier une réservation annulée ou remboursée");
+        }
+
+        LocalDateTime dateDepart = reservation.getTrajet().getDateDepart();
+        if (LocalDateTime.now().isAfter(dateDepart)) {
+            throw new IllegalStateException("Impossible de modifier après le départ");
+        }
+
+        long heuresAvantDepart = Duration.between(LocalDateTime.now(), dateDepart).toHours();
+        if (heuresAvantDepart < 24) {
+            throw new IllegalStateException("Modification des membres autorisée seulement jusqu'à 24h avant le départ");
+        }
+    }
+
+    private ReservationResponseDTO toResponse(Reservation reservation, GroupeVoyage groupe) {
         ReservationResponseDTO dto = new ReservationResponseDTO();
         dto.setId(reservation.getId());
         dto.setVoyageurId(reservation.getVoyageur().getId());
@@ -159,7 +478,7 @@ public class ReservationService {
         dto.setGroupeId(groupe.getId());
         dto.setTypeGroupe(groupe.getTypeGroupe());
         dto.setNombrePassagers(groupe.getNombrePassagers());
-        dto.setMembres(nomsMembres);
+        dto.setMembres(membresToDTOs(groupe.getMembres()));
         return dto;
     }
 
@@ -175,6 +494,10 @@ public class ReservationService {
 
         Trajet trajet = trajetRepository.findById(trajetId)
                 .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
+
+        // Libérer les verrous expirés avant d'afficher le plan
+        LocalDateTime expiration = LocalDateTime.now().minusMinutes(10);
+        siegeRepository.libererSiegesExpires(expiration);
 
         // Générer les sièges automatiquement si pas encore fait
         var siegesExistants = siegeRepository.findByTrajetId(trajetId);
@@ -292,8 +615,9 @@ public class ReservationService {
 
 
     }
+
     @Transactional
-    public double annulerReservation(Long reservationId) {
+    public Remboursement annulerReservation(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
 
@@ -302,7 +626,7 @@ public class ReservationService {
         }
 
         double tauxRemboursement = calculTauxRemboursement(reservation.getTrajet().getDateDepart());
-        double montantRembourse = reservation.getPrixTotal() * tauxRemboursement;
+        double montantRembourse = Math.round(reservation.getPrixTotal() * tauxRemboursement * 100.0) / 100.0;
 
         reservation.setStatut(StatutReservation.ANNULEE);
         reservationRepository.save(reservation);
@@ -315,25 +639,58 @@ public class ReservationService {
 
         libererSiegesReservation(reservation, tickets);
 
+        double prixInitial = reservation.getPrixTotal();
+        String motif = "Annulation réservation #" + reservation.getId()
+                + " (" + Math.round(tauxRemboursement * 100) + "% de "
+                + prixInitial + " MAD)";
+
+        reservation.setPrixTotal(prixInitial - montantRembourse);
+        reservationRepository.save(reservation);
+
+        Remboursement remb = new Remboursement();
+        remb.setReservation(reservation);
+        remb.setMontant(montantRembourse);
+        remb.setMotif(motif);
+        remb.setStatut(StatutRemboursement.EN_ATTENTE);
+        remb.setPartiel(false);
+        remb.setDateDemande(LocalDateTime.now());
+        remb = remboursementRepository.save(remb);
+
         notificationProducer.envoyerNotification(
-                "Réservation annulée ID=" + reservation.getId()
-                        + ", montant remboursé=" + montantRembourse
+                "Demande de remboursement pour annulation réservation ID=" + reservation.getId()
+                        + ", montant=" + montantRembourse
         );
 
-        return montantRembourse;
+        webSocketNotificationService.notifierAdmins("NOUVEAU_REMBOURSEMENT", Map.of(
+                "id", remb.getId(),
+                "reservationId", reservation.getId(),
+                "montant", montantRembourse,
+                "motif", motif,
+                "type", "ANNULATION_RESERVATION"
+        ));
+
+        // Notifier les responsables de la compagnie pour validation
+        Long compagnieId = reservation.getTrajet().getLigne().getCompagnie().getId();
+        webSocketNotificationService.notifierResponsables(compagnieId, "NOUVEAU_REMBOURSEMENT", Map.of(
+                "id", remb.getId(),
+                "reservationId", reservation.getId(),
+                "montant", montantRembourse,
+                "motif", motif,
+                "voyageurEmail", reservation.getVoyageur().getEmail(),
+                "type", "ANNULATION_RESERVATION"
+        ));
+
+        return remb;
     }
 
-    private double calculTauxRemboursement(LocalDateTime dateDepart) {
+    public static double calculTauxRemboursement(LocalDateTime dateDepart) {
         long heuresAvantDepart = Duration.between(LocalDateTime.now(), dateDepart).toHours();
 
-        if (heuresAvantDepart > 48) {
-            return 0.75;
-        }
-
-        if (heuresAvantDepart > 0) {
-            return 0.50;
-        }
-
+        if (heuresAvantDepart > 72) return 0.95;
+        if (heuresAvantDepart > 48) return 0.80;
+        if (heuresAvantDepart > 24) return 0.60;
+        if (heuresAvantDepart > 6)  return 0.40;
+        if (heuresAvantDepart > 0)  return 0.20;
         return 0.0;
     }
 
@@ -359,6 +716,19 @@ public class ReservationService {
         siegeRepository.save(siege);
     }
 
+    private GroupeVoyage trouverOuCreerGroupe(Reservation reservation) {
+        return groupeVoyageRepository.findByReservationId(reservation.getId())
+                .orElseGet(() -> {
+                    GroupeVoyage groupe = new GroupeVoyage();
+                    groupe.setOrganisateur(reservation.getVoyageur());
+                    groupe.setReservation(reservation);
+                    groupe.setTypeGroupe("MOI_SEUL");
+                    groupe.setNombrePassagers(1);
+                    groupe.setPlacementEffectue(false);
+                    return groupeVoyageRepository.save(groupe);
+                });
+    }
+
     private static final int HEURES_MIN_MODIFICATION_TRAJET = 24;
     private static final double FRAIS_DEUXIEME_MODIFICATION = 20.0;
 
@@ -371,6 +741,12 @@ public class ReservationService {
                 .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
 
         verifierReservationModifiable(reservation);
+
+        int nbModif = reservation.getNbModif() == null ? 0 : reservation.getNbModif();
+        if (nbModif >= 1) {
+            traiterPaiementSupplement(reservation, FRAIS_DEUXIEME_MODIFICATION, request.getNumeroCarte(), request.getDateExpiration(), request.getCvv());
+        }
+
         Trajet nouveauTrajet = trajetRepository.findById(request.getNouveauTrajetId())
                 .orElseThrow(() -> new IllegalArgumentException("Nouveau trajet introuvable"));
 
@@ -388,21 +764,20 @@ public class ReservationService {
         ticketRepository.saveAll(tickets);
         Reservation savedReservation = reservationRepository.save(reservation);
 
-        GroupeVoyage groupe = groupeVoyageRepository.findByReservationId(savedReservation.getId())
-                .orElseThrow(() -> new IllegalStateException("Groupe voyage introuvable"));
-
-        List<String> nomsMembres = membreGroupeRepository.findByGroupeId(groupe.getId())
-                .stream()
-                .map(membre -> membre.getPrenomManuel() + " " + membre.getNomManuel())
-                .toList();
+        GroupeVoyage groupe = trouverOuCreerGroupe(savedReservation);
 
         notificationProducer.envoyerNotification(
                 "Réservation modifiée ID=" + savedReservation.getId()
                         + ", nbModif=" + savedReservation.getNbModif()
         );
 
+        webSocketNotificationService.notifierVoyageur(
+                savedReservation.getVoyageur().getEmail(),
+                "MODIFICATION_RESERVATION",
+                Map.of("reservationId", savedReservation.getId(), "nbModif", savedReservation.getNbModif())
+        );
 
-        return toResponse(savedReservation, groupe, nomsMembres);
+        return toResponse(savedReservation, groupe);
     }
 
     private void verifierReservationModifiable(Reservation reservation) {
@@ -497,7 +872,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponseDTO changerSieges(
             Long reservationId,
-            List<String> nouveauxSieges
+            ChangementSiegeRequest request
     ) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
@@ -510,48 +885,55 @@ public class ReservationService {
             throw new IllegalStateException("Impossible de changer de siège après le départ");
         }
 
+        int nbModif = reservation.getNbModif() == null ? 0 : reservation.getNbModif();
+        if (nbModif >= 1) {
+            traiterPaiementSupplement(reservation, FRAIS_DEUXIEME_MODIFICATION, request.getNumeroCarte(), request.getDateExpiration(), request.getCvv());
+        }
+
         List<Ticket> tickets = ticketRepository.findByReservationId(reservationId);
 
         long nbSiegesAttendus = tickets.stream()
                 .filter(t -> !t.isEnfantSurGenoux())
                 .count();
 
-        if (nouveauxSieges == null || nouveauxSieges.size() != nbSiegesAttendus) {
+        if (request.getNouveauxSieges() == null || request.getNouveauxSieges().size() != nbSiegesAttendus) {
             throw new IllegalArgumentException("Nombre de sièges invalide");
         }
 
-        // 🔥 libérer anciens sièges
         libererSiegesReservation(reservation, tickets);
+        occuperNouveauxSieges(reservation.getTrajet(), request.getNouveauxSieges());
 
-        // 🔥 occuper nouveaux sièges
-        occuperNouveauxSieges(reservation.getTrajet(), nouveauxSieges);
-
-        // 🔥 update tickets + QR
         int index = 0;
         for (Ticket ticket : tickets) {
             ticket.setQrCode(UUID.randomUUID().toString());
-
             if (!ticket.isEnfantSurGenoux()) {
-                ticket.setNumeroSiege(nouveauxSieges.get(index));
+                ticket.setNumeroSiege(request.getNouveauxSieges().get(index));
                 index++;
             }
         }
 
         ticketRepository.saveAll(tickets);
 
-        GroupeVoyage groupe = groupeVoyageRepository.findByReservationId(reservation.getId())
-                .orElseThrow(() -> new IllegalStateException("Groupe introuvable"));
+        reservation.setNbModif(nbModif + 1);
+        if (nbModif >= 1) {
+            reservation.setPrixTotal(reservation.getPrixTotal() + FRAIS_DEUXIEME_MODIFICATION);
+        }
+        reservationRepository.save(reservation);
 
-        List<String> noms = membreGroupeRepository.findByGroupeId(groupe.getId())
-                .stream()
-                .map(m -> m.getPrenomManuel() + " " + m.getNomManuel())
-                .toList();
+        GroupeVoyage groupe = trouverOuCreerGroupe(reservation);
 
         notificationProducer.envoyerNotification(
                 "Changement de sièges réservation ID=" + reservation.getId()
+                        + ", nbModif=" + (nbModif + 1)
         );
 
-        return toResponse(reservation, groupe, noms);
+        webSocketNotificationService.notifierVoyageur(
+                reservation.getVoyageur().getEmail(),
+                "CHANGEMENT_SIEGES",
+                Map.of("reservationId", reservation.getId(), "nbModif", nbModif + 1)
+        );
+
+        return toResponse(reservation, groupe);
     }
     @Transactional
     public void declarerBagage(String qrCode, String type) {
@@ -584,13 +966,46 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<Reservation> getReservationsForVoyageur(Long voyageurId) {
-        List<Reservation> reservations = reservationRepository.findByVoyageurId(voyageurId);
-        // Force l'initialisation des collections pour éviter le LazyInitializationException
+        List<Reservation> reservations = reservationRepository.findHistoriqueVoyageur(voyageurId);
         reservations.forEach(r -> {
-            if (r.getTickets() != null) r.getTickets().size();
             if (r.getBagages() != null) r.getBagages().size();
         });
         return reservations;
+    }
+
+    // =========================================================
+    // CODE PROMO — Validation avant réservation
+    // =========================================================
+
+    public Map<String, Object> validerPromo(String code, Long trajetId) {
+        Trajet trajet = trajetRepository.findById(trajetId)
+                .orElseThrow(() -> new RuntimeException("Trajet non trouvé"));
+
+        CodePromo promo = codePromoRepository.findByCode(code.toUpperCase())
+                .orElseThrow(() -> new RuntimeException("Code promo invalide"));
+
+        if (!promo.isActif()) {
+            throw new RuntimeException("Ce code promo a été désactivé");
+        }
+        if (promo.getDateExpiration().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Ce code promo a expiré");
+        }
+        if (promo.getNbUtilisationsMax() != null &&
+                promo.getNbUtilisationsActuel() >= promo.getNbUtilisationsMax()) {
+            throw new RuntimeException("Ce code promo a atteint sa limite d'utilisations");
+        }
+
+        Long trajetCompagnieId = trajet.getLigne().getCompagnie().getId();
+        if (promo.getCompagnie() == null || !promo.getCompagnie().getId().equals(trajetCompagnieId)) {
+            throw new RuntimeException("Ce code promo n'est pas valide pour cette compagnie");
+        }
+
+        return Map.of(
+                "valid", true,
+                "pourcentageReduction", promo.getPourcentageReduction(),
+                "code", promo.getCode(),
+                "compagnieNom", promo.getCompagnie().getNom()
+        );
     }
 
     // =========================================================
@@ -648,6 +1063,72 @@ public class ReservationService {
         return bagagesSauvegardes.stream()
                 .map(this::toBagageDTO)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public BagageResponseDTO supprimerBagage(Long reservationId, Long bagageId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Réservation introuvable"));
+
+        Bagage bagage = bagageRepository.findById(bagageId)
+                .orElseThrow(() -> new IllegalArgumentException("Bagage introuvable"));
+
+        if (!bagage.getReservation().getId().equals(reservationId)) {
+            throw new IllegalArgumentException("Ce bagage n'appartient pas à cette réservation");
+        }
+
+        double remboursementBagage = bagage.getSurplusPrix();
+        bagageRepository.delete(bagage);
+
+        reservation.setPrixTotal(Math.max(0, reservation.getPrixTotal() - remboursementBagage));
+        reservationRepository.save(reservation);
+
+        if (remboursementBagage > 0 && reservation.getStatut() == StatutReservation.CONFIRMEE) {
+            String motif = "Suppression bagage #" + bagage.getId()
+                    + " (" + bagage.getTypeBagage() + ", " + bagage.getPoidsKg() + "kg"
+                    + ", remboursement " + remboursementBagage + " MAD)";
+
+            Remboursement remb = new Remboursement();
+            remb.setReservation(reservation);
+            remb.setMontant(remboursementBagage);
+            remb.setMotif(motif);
+            remb.setStatut(StatutRemboursement.EN_ATTENTE);
+            remb.setPartiel(true);
+            remb.setDateDemande(LocalDateTime.now());
+            remboursementRepository.save(remb);
+        }
+
+        return toBagageDTO(bagage);
+    }
+
+    @Transactional
+    protected void traiterPaiementSupplement(Reservation reservation, double montant, String numeroCarte, String dateExpiration, String cvv) {
+        Paiement paiement = paiementRepository.findByReservationId(reservation.getId())
+                .orElseGet(Paiement::new);
+        paiement.setReservation(reservation);
+        paiement.setMontant(paiement.getMontant() == null ? montant : paiement.getMontant() + montant);
+        paiement.setMethodePaiement("CARTE");
+        if (paiement.getTransactionId() == null) {
+            paiement.setTransactionId(UUID.randomUUID().toString());
+        }
+        paiement.setDatePaiement(LocalDateTime.now());
+        paiement.setConfirme(true);
+        paiementRepository.save(paiement);
+    }
+
+    @Transactional
+    protected void traiterPaiementMembre(Reservation reservation, double montant, String numeroCarte, String dateExpiration, String cvv) {
+        Paiement paiement = paiementRepository.findByReservationId(reservation.getId())
+                .orElseGet(Paiement::new);
+        paiement.setReservation(reservation);
+        paiement.setMontant(paiement.getMontant() == null ? montant : paiement.getMontant() + montant);
+        paiement.setMethodePaiement("CARTE");
+        if (paiement.getTransactionId() == null) {
+            paiement.setTransactionId(UUID.randomUUID().toString());
+        }
+        paiement.setDatePaiement(LocalDateTime.now());
+        paiement.setConfirme(true);
+        paiementRepository.save(paiement);
     }
 
     // ── Formule de tarification ────────────────────────────────

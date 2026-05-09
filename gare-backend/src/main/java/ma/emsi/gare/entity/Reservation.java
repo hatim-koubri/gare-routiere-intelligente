@@ -10,9 +10,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "reservations")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"voyageur", "trajet", "tickets", "bagages"})
+@EqualsAndHashCode(exclude = {"voyageur", "trajet", "tickets", "bagages"})
 public class Reservation {
 
     @Id

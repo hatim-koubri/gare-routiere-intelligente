@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { chauffeurTrajetApi } from '@/lib/api/chauffeur/trajets';
+import { chauffeurDepartApi } from '@/lib/api/chauffeur/depart';
+import { apiClient } from '@/lib/api/client';
 import { Trajet } from '@/types';
 import Link from 'next/link';
 import {
   MapPin, ArrowRight, Bus, Building2, ParkingCircle, Clock,
   Users, Timer, FileText, QrCode, Luggage, Flag, AlertTriangle,
-  CalendarDays, RefreshCw, ChevronRight,
+  CalendarDays, RefreshCw, ChevronRight, Play, Square, Navigation,
+  Loader2,
 } from 'lucide-react';
 
 const STATUT_CONFIG: Record<string, { label: string; className: string; dot: string }> = {
@@ -182,11 +185,18 @@ export default function ChauffeurTrajetsPage() {
 
                 {/* Actions */}
                 <div className="px-6 py-4 flex flex-wrap gap-2">
+                  {trajet.statut === 'PLANIFIE' && (
+                    <DepartBtn trajetId={trajet.id} onDone={() => loadTrajets(true)} />
+                  )}
+                  {trajet.statut === 'EN_COURS' && (
+                    <TerminerBtn trajetId={trajet.id} onDone={() => loadTrajets(true)} />
+                  )}
                   <ActionBtn href={`/fr/chauffeur/trajets/${trajet.id}/manifeste`} icon={<FileText size={14} />} label="Manifeste" color="indigo" />
                   <ActionBtn href={`/fr/chauffeur/scanner/ticket?trajetId=${trajet.id}`} icon={<QrCode size={14} />} label="Scanner ticket" color="emerald" />
                   <ActionBtn href={`/fr/chauffeur/scanner/bagage?trajetId=${trajet.id}`} icon={<Luggage size={14} />} label="Scanner bagage" color="violet" />
                   <ActionBtn href={`/fr/chauffeur/trajets/${trajet.id}/jalons`} icon={<Flag size={14} />} label="Jalons" color="amber" />
                   <ActionBtn href={`/fr/chauffeur/incidents?trajetId=${trajet.id}`} icon={<AlertTriangle size={14} />} label="Incident" color="red" />
+                  <ActionBtn href={`/fr/chauffeur/plan-quai`} icon={<Navigation size={14} />} label="Plan quai" color="sky" />
                 </div>
               </div>
             );
@@ -215,6 +225,7 @@ const COLOR_MAP: Record<string, string> = {
   violet:  'bg-violet-600 hover:bg-violet-700',
   amber:   'bg-amber-500 hover:bg-amber-600',
   red:     'bg-red-500 hover:bg-red-600',
+  sky:     'bg-sky-500 hover:bg-sky-600',
 };
 
 function ActionBtn({ href, icon, label, color }: { href: string; icon: React.ReactNode; label: string; color: string }) {
@@ -226,5 +237,47 @@ function ActionBtn({ href, icon, label, color }: { href: string; icon: React.Rea
       {icon}
       {label}
     </Link>
+  );
+}
+
+function DepartBtn({ trajetId, onDone }: { trajetId: number; onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await chauffeurDepartApi.declencherDepart(trajetId);
+      onDone();
+    } catch { alert('Erreur lors du départ'); } finally { setLoading(false); }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs font-semibold transition-all duration-150 shadow-sm hover:shadow-md bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300"
+    >
+      {loading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+      DÉPART
+    </button>
+  );
+}
+
+function TerminerBtn({ trajetId, onDone }: { trajetId: number; onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await apiClient.post(`/chauffeur/trajets/${trajetId}/terminer`);
+      onDone();
+    } catch { alert('Erreur'); } finally { setLoading(false); }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs font-semibold transition-all duration-150 shadow-sm hover:shadow-md bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300"
+    >
+      {loading ? <Loader2 size={14} className="animate-spin" /> : <Square size={14} />}
+      TERMINER
+    </button>
   );
 }

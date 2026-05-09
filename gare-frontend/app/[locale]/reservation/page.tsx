@@ -9,8 +9,11 @@ import { apiClient } from '@/lib/api/client';
 import { storage } from '@/lib/utils/storage';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { UserPlus, UserMinus, AlertCircle, ArrowLeft, Briefcase, Plus, X } from 'lucide-react';
+import { UserPlus, UserMinus, AlertCircle, ArrowLeft, Briefcase, Plus, X, Heart, Sparkles, ShieldCheck, Bus, MapPin, Clock, Ticket, CheckCircle2 } from 'lucide-react';
 import { BagageRequest } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+
 interface TrajetDTO {
   id: number;
   dateDepart: string;
@@ -34,6 +37,7 @@ interface MembreForm {
   categorieTarifaire: string;
   lienOrganisateur: string;
   enfantSurGenoux: boolean;
+  accepteSexeOppose: boolean;
 }
 
 const defaultMembre = (): MembreForm => ({
@@ -44,6 +48,7 @@ const defaultMembre = (): MembreForm => ({
   categorieTarifaire: 'NORMAL',
   lienOrganisateur: 'AMI',
   enfantSurGenoux: false,
+  accepteSexeOppose: true,
 });
 
 export default function ReservationPage() {
@@ -51,7 +56,6 @@ export default function ReservationPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const params = useParams();
-  const locale = 'fr';
   const trajetId = searchParams.get('trajetId');
 
   const [trajet, setTrajet] = useState<TrajetDTO | null>(null);
@@ -62,6 +66,11 @@ export default function ReservationPage() {
   const [bagages, setBagages] = useState<BagageRequest[]>([]);
   const [showBagages, setShowBagages] = useState(false);
   const [error, setError] = useState('');
+
+  // Promo Code State
+  const [promoCode, setPromoCode] = useState('');
+  const [promoValid, setPromoValid] = useState<boolean | null>(null);
+  const [promoMsg, setPromoMsg] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -77,14 +86,26 @@ export default function ReservationPage() {
 
   const loadTrajet = async () => {
     try {
-      const token = storage.getToken();
       const response = await apiClient.get(`/voyageur/trajets/${trajetId}`);
       setTrajet(response.data);
     } catch (error: any) {
-      console.error('Erreur loadTrajet:', error);
       setError('Trajet introuvable');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePromoCheck = () => {
+    if (!promoCode || !trajet) return;
+    
+    // Simple logic: Promo codes are often tied to the company name (e.g. CTM2024, SUPRATOURS10)
+    const companyPrefix = trajet.compagnieNom.split(' ')[0].toUpperCase();
+    if (promoCode.toUpperCase().startsWith(companyPrefix)) {
+        setPromoValid(true);
+        setPromoMsg(`Code promo ${promoCode} appliqué pour ${trajet.compagnieNom} !`);
+    } else {
+        setPromoValid(false);
+        setPromoMsg(`Ce code n'est pas valide pour la compagnie ${trajet.compagnieNom}.`);
     }
   };
 
@@ -97,11 +118,7 @@ export default function ReservationPage() {
   };
 
   // ----- Gestion des bagages -----
-  const defaultBagage = (): BagageRequest => ({
-    poidsKg: 10,
-    dimensionCm: '60x40x30',
-  });
-
+  const defaultBagage = (): BagageRequest => ({ poidsKg: 10, dimensionCm: '60x40x30' });
   const ajouterBagage = () => setBagages([...bagages, defaultBagage()]);
   const supprimerBagage = (index: number) => setBagages(bagages.filter((_, i) => i !== index));
   const updateBagage = (index: number, field: keyof BagageRequest, value: any) => {
@@ -112,7 +129,6 @@ export default function ReservationPage() {
 
   const calculerSurplusEstime = (bagage: BagageRequest) => {
     if (!bagage.poidsKg || !bagage.dimensionCm) return 0;
-    
     let surplusPoids = 0;
     if (bagage.poidsKg > 40) surplusPoids = 150;
     else if (bagage.poidsKg > 30) surplusPoids = 100;
@@ -127,13 +143,11 @@ export default function ReservationPage() {
       const h = parseFloat(parts[2]) || 0;
       volume = l * w * h;
     }
-    
     let surplusVolume = 0;
     if (volume > 300000) surplusVolume = 150;
     else if (volume > 200000) surplusVolume = 100;
     else if (volume > 120000) surplusVolume = 75;
     else if (volume > 60000) surplusVolume = 50;
-
     return Math.max(surplusPoids, surplusVolume);
   };
 
@@ -141,7 +155,6 @@ export default function ReservationPage() {
     if (!showBagages) return 0;
     return bagages.reduce((total, b) => total + calculerSurplusEstime(b), 0);
   };
-  // ---------------------------------
 
   const getNbPassagers = () => {
     if (typeGroupe === 'MOI_SEUL') return 1;
@@ -149,9 +162,31 @@ export default function ReservationPage() {
     return membres.length;
   };
 
-  const getPrixTotal = () => {
+  const getPrixTotalAvecEnfants = () => {
     if (!trajet) return 0;
-    return (trajet.prixBase * getNbPassagers()).toFixed(0);
+    let total = 0;
+    const allMembres = typeGroupe === 'MOI_SEUL'
+      ? [{ enfantSurGenoux: false, categorieTarifaire: 'NORMAL' }]
+      : typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS'
+        ? [{ enfantSurGenoux: false, categorieTarifaire: 'NORMAL' }, ...membres]
+        : membres;
+    allMembres.forEach(m => {
+      if ((m as any).enfantSurGenoux) return;
+      let prix = trajet.prixBase;
+      const cat = (m as any).categorieTarifaire;
+      if (cat === 'ETUDIANT') prix *= 0.75;
+      else if (cat === 'ENFANT') prix *= 0.5;
+      else if (cat === 'MILITAIRE') prix *= 0.7;
+      else if (cat === 'SENIOR') prix *= 0.8;
+      total += prix;
+    });
+    
+    // Apply Promo Discount
+    if (promoValid) {
+        total *= 0.9; // 10% discount for validated promo
+    }
+    
+    return total.toFixed(0);
   };
 
   const handleContinue = async () => {
@@ -159,78 +194,35 @@ export default function ReservationPage() {
     setError('');
 
     let membresData: any[] = [];
-
     if (typeGroupe === 'MOI_SEUL') {
-      membresData = [{
-        nomManuel: user.nom,
-        prenomManuel: user.prenom,
-        sexe: 'HOMME',
-        age: 25,
-        categorieTarifaire: 'NORMAL',
-        lienOrganisateur: 'MOI',
-        enfantSurGenoux: false,
-      }];
+      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: true }];
     } else if (typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS') {
-      if (membres.length === 0) {
-        setError('Ajoutez au moins un accompagnant');
-        return;
-      }
-      membresData = [
-        {
-          nomManuel: user.nom,
-          prenomManuel: user.prenom,
-          sexe: 'HOMME',
-          age: 25,
-          categorieTarifaire: 'NORMAL',
-          lienOrganisateur: 'MOI',
-          enfantSurGenoux: false,
-        },
-        ...membres,
-      ];
+      if (membres.length === 0) { setError('Ajoutez au moins un accompagnant'); return; }
+      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: true }, ...membres];
     } else {
-      if (membres.length === 0) {
-        setError('Ajoutez au moins un passager');
-        return;
-      }
+      if (membres.length === 0) { setError('Ajoutez au moins un passager'); return; }
       membresData = membres;
     }
 
     const invalid = membresData.some(m => !m.nomManuel || !m.prenomManuel);
-    if (invalid) {
-      setError('Veuillez remplir le nom et prénom de tous les passagers');
-      return;
-    }
+    if (invalid) { setError('Veuillez remplir le nom et prénom de tous les passagers'); return; }
 
     setSubmitting(true);
     try {
-      const reservation = await reservationApi.creer({
-        trajetId: trajet.id,
-        typeGroupe,
-        membres: membresData,
-      });
-
-      // Si des bagages sont déclarés, on les ajoute
+      const reservation = await reservationApi.creer({ trajetId: trajet.id, typeGroupe, membres: membresData });
       let surplusBagagesFinal = 0;
       if (showBagages && bagages.length > 0) {
         const bagagesResponse = await reservationApi.ajouterBagages(reservation.id, bagages);
         surplusBagagesFinal = bagagesResponse.reduce((sum, b) => sum + (b.surplusPrix || 0), 0);
       }
+      
+      const finalPrice = parseInt(getPrixTotalAvecEnfants().toString()) + surplusBagagesFinal;
 
-      // Stocker les infos complètes du trajet
       sessionStorage.setItem('reservation_temp', JSON.stringify({
-        reservationId: reservation.id,
-        trajetId: trajet.id,
-        typeGroupe,
-        membres: membresData,
-        nbPassagers: membresData.length,
-        prixTotal: reservation.prixTotal + surplusBagagesFinal,
-        villeDepart: trajet.villeDepart,
-        villeArrivee: trajet.villeArrivee,
-        dateDepart: trajet.dateDepart,
-        compagnieNom: trajet.compagnieNom,
-        busMatricule: trajet.busMatricule,
-        quaiNumero: trajet.quaiNumero,
-        selectedSieges: [],
+        reservationId: reservation.id, trajetId: trajet.id, typeGroupe, membres: membresData, nbPassagers: membresData.length,
+        prixTotal: finalPrice, villeDepart: trajet.villeDepart, villeArrivee: trajet.villeArrivee,
+        dateDepart: trajet.dateDepart, compagnieNom: trajet.compagnieNom, busMatricule: trajet.busMatricule,
+        quaiNumero: trajet.quaiNumero, selectedSieges: [], promoApplied: promoValid
       }));
 
       router.push(`/fr/plan-bus?trajetId=${trajet.id}&reservationId=${reservation.id}`);
@@ -250,387 +242,273 @@ export default function ReservationPage() {
     return h > 0 ? `${h}h${m > 0 ? m + 'min' : ''}` : `${m}min`;
   };
 
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
-        </div>
-        <Footer />
-      </>
-    );
-  }
-
-  if (!trajet || error === 'Trajet introuvable') {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Trajet non trouvé</p>
-            <button onClick={() => router.push(`/fr/recherche`)} className="mt-4 text-orange-500 hover:underline text-sm">
-              ← Retour à la recherche
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4"><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full" /><p className="text-orange-500 font-black uppercase tracking-widest text-xs animate-pulse">Initialisation...</p></div>;
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 selection:bg-orange-500/30">
       <Header />
-      <main className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4 space-y-6">
-
-          {/* Bouton retour */}
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-gray-500 hover:text-orange-600 text-sm transition"
-          >
-            <ArrowLeft size={16} /> Retour
-          </button>
-
-          {/* Étapes */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-            <span className="font-medium text-orange-600">Passagers</span>
-            <div className="h-px bg-gray-300 flex-1" />
-            <span className="bg-gray-200 text-gray-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-            <span className="text-gray-400">Sièges</span>
-            <div className="h-px bg-gray-300 flex-1" />
-            <span className="bg-gray-200 text-gray-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-            <span className="text-gray-400">Paiement</span>
-          </div>
-
-          {/* Résumé trajet */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Votre trajet</p>
-            <div className="flex items-center gap-4 mb-3">
-              <div className="text-center">
-                <p className="text-2xl font-black text-gray-800">{formatHeure(trajet.dateDepart)}</p>
-                <p className="text-xs text-gray-500">{trajet.villeDepart}</p>
-              </div>
-              <div className="flex-1 flex flex-col items-center gap-1">
-                <div className="flex items-center w-full gap-2">
-                  <div className="h-px bg-gray-300 flex-1" />
-                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                    {formatDuree(trajet.dateDepart, trajet.dateArriveePrevue)}
-                  </span>
-                  <div className="h-px bg-gray-300 flex-1" />
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-gray-800">{formatHeure(trajet.dateArriveePrevue)}</p>
-                <p className="text-xs text-gray-500">{trajet.villeArrivee}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3 text-xs text-gray-500 pt-3 border-t border-gray-100">
-              <span>📅 {formatDate(trajet.dateDepart)}</span>
-              <span>🏢 {trajet.compagnieNom}</span>
-              <span>🚌 {trajet.busMarque || trajet.busMatricule}</span>
-              {trajet.quaiNumero && <span>🅿️ Quai {trajet.quaiNumero}</span>}
-            </div>
-          </div>
-
-          {/* Type de groupe */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-bold text-gray-800 mb-4">👥 Qui voyage ?</h2>
-            <div className="space-y-3">
-              {[
-                { value: 'MOI_SEUL', label: 'Moi seul(e)', desc: 'Un seul passager', emoji: '🙋' },
-                { value: 'MOI_PLUS_ACCOMPAGNANTS', label: 'Moi + accompagnants', desc: "Je réserve pour moi et d'autres", emoji: '👨‍👩‍👧' },
-                { value: 'AUTRE_PERSONNE', label: 'Une autre personne', desc: "Je réserve pour quelqu'un d'autre", emoji: '👤' },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition
-                    ${typeGroupe === option.value ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}
-                >
-                  <input
-                    type="radio"
-                    name="typeGroupe"
-                    value={option.value}
-                    checked={typeGroupe === option.value as any}
-                    onChange={() => {
-                      setTypeGroupe(option.value as any);
-                      setMembres([]);
-                    }}
-                    className="hidden"
-                  />
-                  <span className="text-2xl">{option.emoji}</span>
-                  <div>
-                    <p className="font-semibold text-gray-800 text-sm">{option.label}</p>
-                    <p className="text-xs text-gray-500">{option.desc}</p>
-                  </div>
-                  {typeGroupe === option.value && (
-                    <div className="ml-auto w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Passagers */}
-          {(typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS' || typeGroupe === 'AUTRE_PERSONNE') && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-base font-bold text-gray-800">
-                  {typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS' ? '👥 Accompagnants' : '👤 Passagers'}
-                </h2>
-                <button
-                  onClick={ajouterMembre}
-                  className="flex items-center gap-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg text-sm font-medium transition"
-                >
-                  <UserPlus size={15} /> Ajouter
-                </button>
-              </div>
-
-              {membres.length === 0 && (
-                <div className="text-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-xl">
-                  Cliquez sur "Ajouter" pour ajouter un passager
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {membres.map((membre, index) => (
-                  <div key={index} className="border border-gray-200 rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold text-sm text-gray-700">
-                        {typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS' ? `Accompagnant ${index + 1}` : `Passager ${index + 1}`}
-                      </h3>
-                      <button
-                        onClick={() => supprimerMembre(index)}
-                        className="text-red-400 hover:text-red-600 text-xs flex items-center gap-1"
-                      >
-                        <UserMinus size={13} /> Supprimer
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        placeholder="Nom *"
-                        value={membre.nomManuel}
-                        onChange={(e) => updateMembre(index, 'nomManuel', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Prénom *"
-                        value={membre.prenomManuel}
-                        onChange={(e) => updateMembre(index, 'prenomManuel', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      />
-                      <select
-                        value={membre.sexe}
-                        onChange={(e) => updateMembre(index, 'sexe', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      >
-                        <option value="HOMME">👨 Homme</option>
-                        <option value="FEMME">👩 Femme</option>
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="Âge"
-                        value={membre.age}
-                        min={0}
-                        max={120}
-                        onChange={(e) => updateMembre(index, 'age', parseInt(e.target.value) || '')}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      />
-                      <select
-                        value={membre.categorieTarifaire}
-                        onChange={(e) => updateMembre(index, 'categorieTarifaire', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      >
-                        <option value="NORMAL">Normal</option>
-                        <option value="ETUDIANT">Étudiant (-25%)</option>
-                        <option value="ENFANT">Enfant (-50%)</option>
-                        <option value="SENIOR">Senior (-20%)</option>
-                      </select>
-                      <select
-                        value={membre.lienOrganisateur}
-                        onChange={(e) => updateMembre(index, 'lienOrganisateur', e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                      >
-                        <option value="AMI">Ami(e)</option>
-                        <option value="FAMILLE">Famille</option>
-                        <option value="CONJOINT">Conjoint(e)</option>
-                        <option value="COLLEGUE">Collègue</option>
-                      </select>
-                      <label className="col-span-2 flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={membre.enfantSurGenoux}
-                          onChange={(e) => updateMembre(index, 'enfantSurGenoux', e.target.checked)}
-                          className="rounded"
-                        />
-                        Enfant sur les genoux (&lt;5 ans, gratuit)
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Bagages */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-500">
-                  <Briefcase size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-gray-800">Bagages spéciaux / soute</h2>
-                  <p className="text-xs text-gray-500">Ajoutez vos bagages encombrants (gratuit jusqu'à 15kg)</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={showBagages}
-                  onChange={(e) => {
-                    setShowBagages(e.target.checked);
-                    if (!e.target.checked) setBagages([]);
-                    else if (bagages.length === 0) ajouterBagage();
-                  }}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-              </label>
+      
+      <main>
+        {/* ── Hero Section WOW ── */}
+        <section className="relative pt-20 pb-32 overflow-hidden bg-slate-900">
+            <div className="absolute inset-0 z-0 opacity-40">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(249,115,22,0.15),transparent_70%)]" />
             </div>
 
-            {showBagages && (
-              <div className="mt-6 space-y-4">
-                {bagages.map((bagage, index) => (
-                  <div key={index} className="border border-gray-200 rounded-xl p-4 relative bg-gray-50/50">
-                    <button
-                      onClick={() => supprimerBagage(index)}
-                      className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition"
-                    >
-                      <X size={16} />
-                    </button>
-                    <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                      <Briefcase size={14} className="text-gray-400" /> Bagage {index + 1}
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Poids estimé (kg)</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            step="0.5"
-                            value={bagage.poidsKg}
-                            onChange={(e) => updateBagage(index, 'poidsKg', parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 pr-8"
-                          />
-                          <span className="absolute right-3 top-2 text-gray-400 text-sm">kg</span>
+            <div className="max-w-7xl mx-auto px-6 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-end gap-10">
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                        <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 px-4 py-2 rounded-full mb-6">
+                            <Ticket className="w-4 h-4 text-orange-400" />
+                            <span className="text-orange-400 text-[10px] font-black uppercase tracking-[0.2em]">Étape 1: Passagers</span>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Dimensions L×l×H (cm)</label>
-                        <select
-                          value={bagage.dimensionCm}
-                          onChange={(e) => updateBagage(index, 'dimensionCm', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                        >
-                          <option value="50x35x25">Cabine (50×35×25) - ~45L</option>
-                          <option value="60x40x30">Moyen (60×40×30) - ~70L</option>
-                          <option value="70x50x40">Grand (70×50×40) - ~140L</option>
-                          <option value="80x60x50">Très grand (80×60×50) - ~240L</option>
-                          <option value="90x70x50">Surdimensionné (&gt;250L)</option>
-                        </select>
-                      </div>
+                        <h1 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-none">
+                            Finaliser ma <br/><span className="text-orange-500">Réservation</span>
+                        </h1>
+                    </motion.div>
+                    
+                    <div className="hidden lg:flex items-center gap-8 text-white/40">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-full border-2 border-orange-500 flex items-center justify-center text-orange-500 font-black italic">1</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-orange-500">Passagers</span>
+                        </div>
+                        <div className="w-10 h-px bg-white/10" />
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center font-black italic">2</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Sièges</span>
+                        </div>
+                        <div className="w-10 h-px bg-white/10" />
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center font-black italic">3</div>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Paiement</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="absolute bottom-0 left-0 w-full h-24 bg-[#f8fafc] dark:bg-slate-950" style={{ clipPath: 'ellipse(70% 100% at 50% 100%)' }} />
+        </section>
+
+        <div className="max-w-7xl mx-auto px-6 -mt-16 relative z-20 pb-32">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                
+                {/* Left Side: Form */}
+                <div className="lg:col-span-8 space-y-8">
+                    
+                    {/* Trajet Summary Card WOW */}
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl" />
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-slate-900 dark:text-white">
+                                    <Bus size={32} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic leading-none mb-1">{trajet.compagnieNom}</h3>
+                                    <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{trajet.busMatricule} • Quai {trajet.quaiNumero}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <div className="text-center">
+                                    <p className="text-2xl font-black text-slate-800 dark:text-white italic tracking-tighter">{formatHeure(trajet.dateDepart)}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{trajet.villeDepart}</p>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <div className="w-12 h-px bg-slate-100 dark:bg-slate-800" />
+                                    <span className="text-[9px] font-black text-orange-500 my-1">{formatDuree(trajet.dateDepart, trajet.dateArriveePrevue)}</span>
+                                    <div className="w-12 h-px bg-slate-100 dark:bg-slate-800" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-black text-slate-800 dark:text-white italic tracking-tighter">{formatHeure(trajet.dateArriveePrevue)}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{trajet.villeArrivee}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Passenger Type Select */}
+                    <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 shadow-xl">
+                        <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mb-8">Type de Réservation</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                                { id: 'MOI_SEUL', label: 'Moi Seul', icon: '🙋' },
+                                { id: 'MOI_PLUS_ACCOMPAGNANTS', label: 'Moi + Amis', icon: '👨‍👩‍👧' },
+                                { id: 'AUTRE_PERSONNE', label: 'Un Tiers', icon: '👤' },
+                            ].map(opt => (
+                                <button 
+                                    key={opt.id}
+                                    onClick={() => { setTypeGroupe(opt.id as any); setMembres([]); }}
+                                    className={cn(
+                                        "flex flex-col items-center p-6 rounded-[2rem] border-2 transition-all duration-300",
+                                        typeGroupe === opt.id ? "border-orange-500 bg-orange-500/5" : "border-slate-50 dark:border-slate-800 hover:border-orange-500/30"
+                                    )}
+                                >
+                                    <span className="text-3xl mb-3">{opt.icon}</span>
+                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", typeGroupe === opt.id ? "text-orange-500" : "text-slate-400")}>{opt.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    {calculerSurplusEstime(bagage) > 0 && (
-                      <div className="mt-3 text-xs flex items-center justify-between bg-orange-50 text-orange-700 p-2 rounded-lg">
-                        <span>⚠️ Ce bagage générera un surplus (estimé)</span>
-                        <span className="font-bold">+{calculerSurplusEstime(bagage)} DH</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    {/* Dynamic Member Forms */}
+                    <AnimatePresence>
+                        {(typeGroupe !== 'MOI_SEUL') && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-6">
+                                <div className="flex justify-between items-center px-4">
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Informations Passagers</h3>
+                                    <button onClick={ajouterMembre} className="bg-orange-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 flex items-center gap-2">
+                                        <UserPlus size={14} /> Ajouter un Passager
+                                    </button>
+                                </div>
+                                {membres.map((m, i) => (
+                                    <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-100 dark:border-slate-800 shadow-xl">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <span className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Passager #{i + 1}</span>
+                                            <button onClick={() => supprimerMembre(i)} className="text-rose-500 hover:text-rose-600 transition-colors"><UserMinus size={18} /></button>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <input type="text" placeholder="NOM" value={m.nomManuel} onChange={e => updateMembre(i, 'nomManuel', e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-sm font-bold outline-none" />
+                                            <input type="text" placeholder="PRÉNOM" value={m.prenomManuel} onChange={e => updateMembre(i, 'prenomManuel', e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-sm font-bold outline-none" />
+                                            <select value={m.categorieTarifaire} onChange={e => updateMembre(i, 'categorieTarifaire', e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-sm font-bold outline-none">
+                                                <option value="NORMAL">TARIF NORMAL</option>
+                                                <option value="ETUDIANT">ÉTUDIANT (-25%)</option>
+                                                <option value="ENFANT">ENFANT (-50%)</option>
+                                                <option value="SENIOR">SENIOR (-20%)</option>
+                                            </select>
+                                            <select value={m.sexe} onChange={e => updateMembre(i, 'sexe', e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-sm font-bold outline-none">
+                                                <option value="HOMME">HOMME</option>
+                                                <option value="FEMME">FEMME</option>
+                                            </select>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                <button
-                  onClick={ajouterBagage}
-                  className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition flex items-center justify-center gap-2"
-                >
-                  <Plus size={16} /> Ajouter un autre bagage
-                </button>
-              </div>
-            )}
-          </div>
+                    {/* Baggage Section WOW */}
+                    <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden relative">
+                         <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white"><Briefcase size={24} /></div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Bagages en Soute</h3>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Optionnel • Jusqu'à 15kg gratuit</p>
+                                </div>
+                            </div>
+                            <button onClick={() => { setShowBagages(!showBagages); if(!showBagages && bagages.length===0) ajouterBagage(); }} className={cn("px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all", showBagages ? "bg-orange-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400")}>
+                                {showBagages ? "DÉCLARÉ" : "AJOUTER"}
+                            </button>
+                         </div>
 
-          {/* Récapitulatif prix */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h2 className="text-base font-bold text-gray-800 mb-3">💰 Récapitulatif</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Prix unitaire</span>
-                <span>{trajet.prixBase} DH</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Nombre de passagers</span>
-                <span>{getNbPassagers()}</span>
-              </div>
-              {showBagages && bagages.length > 0 && (
-                <div className="flex justify-between text-gray-600">
-                  <span>Surplus bagages estimé</span>
-                  <span>{getSurplusTotalBagages() > 0 ? `+${getSurplusTotalBagages()} DH` : 'Gratuit'}</span>
+                         <AnimatePresence>
+                            {showBagages && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4 pt-4">
+                                    {bagages.map((b, i) => (
+                                        <div key={i} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem]">
+                                            <div className="flex-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-1 block">Poids (KG)</label>
+                                                <input type="number" value={b.poidsKg} onChange={e => updateBagage(i, 'poidsKg', parseFloat(e.target.value))} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-6 py-3 text-sm font-bold outline-none" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-1 block">Format</label>
+                                                <select value={b.dimensionCm} onChange={e => updateBagage(i, 'dimensionCm', e.target.value)} className="w-full bg-white dark:bg-slate-900 border-none rounded-xl px-6 py-3 text-sm font-bold outline-none">
+                                                    <option value="60x40x30">STANDARD (MOYEN)</option>
+                                                    <option value="80x60x50">VOLUMINEUX (+75 DH)</option>
+                                                </select>
+                                            </div>
+                                            <button onClick={() => supprimerBagage(i)} className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"><X size={20} /></button>
+                                        </div>
+                                    ))}
+                                    <button onClick={ajouterBagage} className="w-full border-2 border-dashed border-slate-100 dark:border-slate-800 py-4 rounded-[2rem] text-[9px] font-black uppercase tracking-widest text-slate-400 hover:border-orange-500/30 transition-all">+ Ajouter un autre bagage</button>
+                                </motion.div>
+                            )}
+                         </AnimatePresence>
+                    </div>
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-gray-100 text-base">
-                <span>Total estimé</span>
-                <span className="text-orange-500">
-                  {parseInt(getPrixTotal().toString()) + getSurplusTotalBagages()} DH
-                </span>
-              </div>
+
+                {/* Right Side: Price Recap & Promo */}
+                <div className="lg:col-span-4 space-y-8">
+                    
+                    {/* Promo Code Card WOW */}
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl">
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic mb-6">Code Promo</h3>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                placeholder="CTM2024..." 
+                                value={promoCode}
+                                onChange={(e) => { setPromoCode(e.target.value); setPromoValid(null); }}
+                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-sm font-black outline-none uppercase"
+                            />
+                            <button 
+                                onClick={handlePromoCheck}
+                                className="absolute right-2 top-2 bottom-2 bg-slate-900 dark:bg-slate-700 text-white px-4 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
+                            >
+                                Vérifier
+                            </button>
+                        </div>
+                        <AnimatePresence>
+                            {promoMsg && (
+                                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className={cn("mt-3 text-[10px] font-bold px-4 py-2 rounded-xl flex items-center gap-2", promoValid ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500")}>
+                                    {promoValid ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                    {promoMsg}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+
+                    {/* Price Summary WOW */}
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="bg-slate-900 dark:bg-orange-500 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                         <div className="relative z-10">
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-8">Récapitulatif</h3>
+                            
+                            <div className="space-y-4 mb-10">
+                                <div className="flex justify-between items-center text-white/60">
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Base ({getNbPassagers()} Passagers)</span>
+                                    <span className="text-sm font-bold">{(trajet.prixBase * getNbPassagers()).toFixed(0)} DH</span>
+                                </div>
+                                {getSurplusTotalBagages() > 0 && (
+                                    <div className="flex justify-between items-center text-white/60">
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Surplus Bagages</span>
+                                        <span className="text-sm font-bold">+{getSurplusTotalBagages()} DH</span>
+                                    </div>
+                                )}
+                                {promoValid && (
+                                    <div className="flex justify-between items-center text-emerald-400">
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Réduction Promo</span>
+                                        <span className="text-sm font-bold">-10%</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="border-t border-white/10 pt-6 mb-10">
+                                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-2">Total à payer</p>
+                                <p className="text-5xl font-black text-white italic tracking-tighter">
+                                    {parseInt(getPrixTotalAvecEnfants().toString()) + getSurplusTotalBagages()} <span className="text-xl">DH</span>
+                                </p>
+                            </div>
+
+                            <button 
+                                onClick={handleContinue}
+                                disabled={submitting}
+                                className="w-full bg-white text-slate-900 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:scale-[1.03] active:scale-95 transition-all shadow-xl shadow-black/20"
+                            >
+                                {submitting ? "Traitement..." : "Continuer vers les sièges"}
+                            </button>
+                         </div>
+                    </motion.div>
+
+                    {error && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-[2rem] text-rose-500 text-xs font-bold flex items-center gap-3">
+                            <AlertCircle size={20} /> {error}
+                        </motion.div>
+                    )}
+                </div>
             </div>
-          </div>
-
-          {/* Erreur */}
-          {error && error !== 'Trajet introuvable' && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-600 text-sm">
-              <AlertCircle size={18} />
-              {error}
-            </div>
-          )}
-
-          {/* Bouton continuer */}
-          <button
-            onClick={handleContinue}
-            disabled={submitting}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-4 rounded-xl font-bold text-base transition shadow-lg shadow-orange-100"
-          >
-            {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                Création de la réservation...
-              </span>
-            ) : 'Continuer → Choisir mes sièges'}
-          </button>
-
-          <button
-            onClick={() => router.back()}
-            className="w-full text-gray-500 text-sm hover:text-gray-700 py-2"
-          >
-            ← Retour
-          </button>
-
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

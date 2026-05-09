@@ -3,17 +3,20 @@ package ma.emsi.gare.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;  // ← AJOUTER CET IMPORT
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "compagnies")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = {"bus", "quais", "chauffeurs"})
+@EqualsAndHashCode(exclude = {"bus", "quais", "chauffeurs"})
 public class Compagnie {
 
     @Id
@@ -33,6 +36,9 @@ public class Compagnie {
 
     @Column(name = "note_moyenne")
     private Double noteMoyenne = 0.0;
+
+    @Column(name = "nb_avis")
+    private Integer nbAvis = 0;
 
     @Column(nullable = false)
     private boolean actif = true;

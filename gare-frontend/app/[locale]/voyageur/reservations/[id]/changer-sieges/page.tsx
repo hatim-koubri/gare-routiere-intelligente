@@ -6,7 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { apiClient } from '@/lib/api/client';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, RefreshCw, CreditCard } from 'lucide-react';
+import { PaymentForm, PaymentData } from '@/components/voyageur/PaymentForm';
 
 interface Reservation {
   id: number;
@@ -49,6 +50,10 @@ export default function ChangerSiegesPage() {
   const [selectedSieges, setSelectedSieges] = useState<string[]>([]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modificationFee, setModificationFee] = useState(0);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -70,6 +75,10 @@ export default function ChangerSiegesPage() {
       const data = res.data;
       
       setReservation(data);
+
+      // Calculer les frais : gratuit si première modif, 20 DH sinon
+      const fee = (data.nbModif ?? 0) > 0 ? 20 : 0;
+      setModificationFee(fee);
       
       const siegesActuelsList = data.tickets?.map((t: any) => t.numeroSiege) || [];
       setSiegesActuels(siegesActuelsList);
@@ -108,11 +117,39 @@ export default function ChangerSiegesPage() {
       return;
     }
 
+    // Si frais de modification, afficher le formulaire de paiement
+    if (modificationFee > 0) {
+      setShowPaymentForm(true);
+      return;
+    }
+
+    await confirmChangement();
+  };
+
+  const handlePayment = async (paymentData: PaymentData) => {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    try {
+      await confirmChangement(paymentData);
+      setShowPaymentForm(false);
+    } catch (e: any) {
+      setPaymentError(e.response?.data?.message || 'Erreur lors du paiement');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const confirmChangement = async (paymentData?: PaymentData) => {
     setSubmitting(true);
     setError(null);
     try {
       await apiClient.put(`/voyageur/reservations/${reservationId}/changer-sieges`, {
-        nouveauxSieges: selectedSieges
+        nouveauxSieges: selectedSieges,
+        ...(paymentData ? {
+          numeroCarte: paymentData.numeroCarte,
+          dateExpiration: paymentData.dateExpiration,
+          cvv: paymentData.cvv,
+        } : {})
       });
       setSuccess(true);
       setTimeout(() => {
@@ -253,17 +290,57 @@ export default function ChangerSiegesPage() {
           </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || selectedSieges.length !== nombreSieges || siegesDisponibles.length === 0}
-          className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {submitting ? 'Changement en cours...' : 'Confirmer le changement de sièges'}
-        </button>
+        {/* Résumé des frais */}
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700 font-medium mb-2">Résumé des frais</p>
+          <div className="space-y-1 text-sm text-amber-700">
+            {modificationFee > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span>Frais de modification (2ème modif):</span>
+                  <span className="font-bold">{modificationFee} MAD</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-2">
+                  ⚠️ Un paiement supplémentaire de {modificationFee} MAD est nécessaire
+                </p>
+              </>
+            )}
+            {modificationFee === 0 && (
+              <p className="text-green-700 font-medium">✓ Changement gratuit (première modification)</p>
+            )}
+          </div>
+        </div>
+
+        {!showPaymentForm ? (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || selectedSieges.length !== nombreSieges || siegesDisponibles.length === 0}
+            className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {submitting ? 'Changement en cours...' : modificationFee > 0 ? 'Procéder au paiement' : 'Confirmer le changement de sièges'}
+          </button>
+        ) : null}
+
+        {/* Formulaire de paiement */}
+        {showPaymentForm && modificationFee > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Paiement des frais de modification
+            </h3>
+            <PaymentForm
+              amount={modificationFee}
+              description="Frais de modification de sièges (2ème modification et suivantes)"
+              onSubmit={handlePayment}
+              loading={paymentLoading}
+              error={paymentError}
+            />
+          </div>
+        )}
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          Le changement de sièges est gratuit et ne modifie pas le prix total.
+          1ère modification gratuite • À partir de la 2ème: 20 DH
         </p>
       </div>
     </div>

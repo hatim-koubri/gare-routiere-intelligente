@@ -57,6 +57,15 @@ public class ResponsableBusController {
         return ResponseEntity.ok(toDto(bus));
     }
 
+    @PatchMapping("/{id}/activer")
+    public ResponseEntity<BusResponseDTO> activer(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        Bus bus = responsableBusService.activerBus(id, authentication);
+        return ResponseEntity.ok(toDto(bus));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> supprimer(
             @PathVariable Long id,

@@ -33,7 +33,11 @@ public class AdminPromoController {
     }
 
     @GetMapping("/promos")
-    public ResponseEntity<List<CodePromo>> getPromos() {
+    public ResponseEntity<List<CodePromo>> getPromos(
+            @RequestParam(required = false) Long compagnieId) {
+        if (compagnieId != null && compagnieId > 0) {
+            return ResponseEntity.ok(promoAnnonceService.getPromosByCompagnie(compagnieId));
+        }
         return ResponseEntity.ok(promoAnnonceService.getCodesPromosActifs());
     }
 
@@ -55,7 +59,11 @@ public class AdminPromoController {
     }
 
     @GetMapping("/annonces")
-    public ResponseEntity<List<Annonce>> getAnnonces() {
+    public ResponseEntity<List<Annonce>> getAnnonces(
+            @RequestParam(required = false) Long compagnieId) {
+        if (compagnieId != null && compagnieId > 0) {
+            return ResponseEntity.ok(promoAnnonceService.getAnnoncesByCompagnie(compagnieId));
+        }
         return ResponseEntity.ok(promoAnnonceService.getAnnoncesActives());
     }
 

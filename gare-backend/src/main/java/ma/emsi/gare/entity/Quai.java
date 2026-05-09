@@ -6,10 +6,13 @@ import lombok.*;
 
 @Entity
 @Table(name = "quais")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = {"compagnie"})
+@EqualsAndHashCode(exclude = {"compagnie"})
 public class Quai {
 
     @Id

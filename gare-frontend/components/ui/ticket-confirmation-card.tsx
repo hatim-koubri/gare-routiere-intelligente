@@ -1,5 +1,7 @@
+// components/ui/ticket-confirmation-card.tsx
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- SVG Icons ---
 
@@ -21,167 +23,81 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const BusIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 6v6" />
-    <path d="M15 6v6" />
-    <path d="M2 12h19.6" />
-    <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3" />
-    <circle cx="7" cy="18" r="2" />
-    <path d="M9 18h5" />
-    <circle cx="16" cy="18" r="2" />
-  </svg>
-);
-
-const MapPinIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-
-const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-    <line x1="16" y1="2" x2="16" y2="6" />
-    <line x1="8" y1="2" x2="8" y2="6" />
-    <line x1="3" y1="10" x2="21" y2="10" />
-  </svg>
-);
-
-const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
-);
-
-const SeatIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M5 11a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6H5Z" />
-    <path d="M7 9V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-    <path d="M5 17h14" />
-  </svg>
-);
-
 const MastercardIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="36"
-    height="24"
-  >
-    <circle cx="8" cy="12" r="7" fill="#EA001B" />
-    <circle cx="16" cy="12" r="7" fill="#F79E1B" fillOpacity="0.8" />
-  </svg>
+    <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        width="36"
+        height="24"
+    >
+        <circle cx="8" cy="12" r="7" fill="#EA001B"></circle>
+        <circle cx="16" cy="12" r="7" fill="#F79E1B" fillOpacity="0.8"></circle>
+    </svg>
 );
+
 
 // --- Helper Components ---
 
 const DashedLine = () => (
-  <div className="w-full border-t-2 border-dashed border-border" aria-hidden="true" />
+  <div
+    className="w-full border-t-2 border-dashed border-slate-200 dark:border-slate-800"
+    aria-hidden="true"
+  />
 );
 
 const Barcode = ({ value }: { value: string }) => {
-  const hashCode = (s: string) => s.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
-  const seed = hashCode(value);
-  const random = (s: number) => {
-    const x = Math.sin(s) * 10000;
-    return x - Math.floor(x);
-  };
+    const hashCode = (s: string) => s.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+    const seed = hashCode(value);
+    const random = (s: number) => {
+        const x = Math.sin(s) * 10000;
+        return x - Math.floor(x);
+    };
 
-  const bars = Array.from({ length: 60 }).map((_, index) => {
-    const rand = random(seed + index);
-    const width = rand > 0.7 ? 2.5 : 1.5;
-    return { width };
-  });
+    const bars = Array.from({ length: 60 }).map((_, index) => {
+        const rand = random(seed + index);
+        const width = rand > 0.7 ? 2.5 : 1.5;
+        return { width };
+    });
 
-  const spacing = 1.5;
-  const totalWidth = bars.reduce((acc, bar) => acc + bar.width + spacing, 0) - spacing;
-  const svgWidth = 250;
-  const svgHeight = 70;
-  let currentX = (svgWidth - totalWidth) / 2;
+    const spacing = 1.5;
+    const totalWidth = bars.reduce((acc, bar) => acc + bar.width + spacing, 0) - spacing;
+    const svgWidth = 250;
+    const svgHeight = 70;
+    let currentX = (svgWidth - totalWidth) / 2;
 
-  return (
-    <div className="flex flex-col items-center py-2">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={svgWidth}
-        height={svgHeight}
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        aria-label={`Barcode for value ${value}`}
-        className="fill-current text-foreground"
-      >
-        {bars.map((bar, index) => {
-          const x = currentX;
-          currentX += bar.width + spacing;
-          return <rect key={index} x={x} y="10" width={bar.width} height="50" />;
-        })}
-      </svg>
-      <p className="text-sm text-muted-foreground tracking-[0.3em] mt-2">{value}</p>
-    </div>
-  );
+    return (
+        <div className="flex flex-col items-center py-2">
+             <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width={svgWidth}
+                height={svgHeight}
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                aria-label={`Barcode for value ${value}`}
+                className="fill-current text-slate-800 dark:text-slate-200"
+            >
+                {bars.map((bar, index) => {
+                    const x = currentX;
+                    currentX += bar.width + spacing;
+                    return (
+                        <rect
+                            key={index}
+                            x={x}
+                            y="10"
+                            width={bar.width}
+                            height="50"
+                        />
+                    );
+                })}
+            </svg>
+            <p className="text-[10px] font-black text-slate-400 tracking-[0.4em] mt-2 font-mono">{value}</p>
+        </div>
+    );
 };
 
 const ConfettiExplosion = () => {
-  const confettiCount = 80;
-  const colors = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#8b5cf6", "#f97316"];
+  const confettiCount = 100;
+  const colors = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#8b5cf6", "#f97316"];
 
   return (
     <>
@@ -189,8 +105,8 @@ const ConfettiExplosion = () => {
         {`
           @keyframes fall {
             0% {
-              transform: translateY(-10vh) rotate(0deg);
-              opacity: 1;
+                transform: translateY(-10vh) rotate(0deg);
+                opacity: 1;
             }
             100% {
               transform: translateY(110vh) rotate(720deg);
@@ -199,7 +115,7 @@ const ConfettiExplosion = () => {
           }
         `}
       </style>
-      <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
+      <div className="fixed inset-0 z-[100] pointer-events-none" aria-hidden="true">
         {Array.from({ length: confettiCount }).map((_, i) => (
           <div
             key={i}
@@ -209,7 +125,7 @@ const ConfettiExplosion = () => {
               top: `${-20 + Math.random() * 10}%`,
               backgroundColor: colors[i % colors.length],
               transform: `rotate(${Math.random() * 360}deg)`,
-              animation: `fall ${2 + Math.random() * 2}s ${Math.random() * 2}s linear forwards`,
+              animation: `fall ${2.5 + Math.random() * 2.5}s ${Math.random() * 2}s linear forwards`,
             }}
           />
         ))}
@@ -217,6 +133,7 @@ const ConfettiExplosion = () => {
     </>
   );
 };
+
 
 // --- Main Ticket Component ---
 
@@ -227,16 +144,11 @@ export interface TicketProps extends React.HTMLAttributes<HTMLDivElement> {
   cardHolder: string;
   last4Digits: string;
   barcodeValue: string;
-  // Nouvelles props pour les infos trajet
   villeDepart?: string;
   villeArrivee?: string;
-  dateDepart?: string;
-  heureDepart?: string;
-  compagnie?: string;
-  siege?: string;
-  passagerName?: string;
-  passengerCount?: number;
-  showAnimation?: boolean;
+  numeroSiege?: string;
+  compagnieNom?: string;
+  quai?: string;
 }
 
 const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
@@ -249,15 +161,11 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
       cardHolder,
       last4Digits,
       barcodeValue,
-      villeDepart = "Casablanca",
-      villeArrivee = "Marrakech",
-      dateDepart = "",
-      heureDepart = "",
-      compagnie = "Gare Routière",
-      siege = "12A",
-      passagerName = "",
-      passengerCount = 1,
-      showAnimation = true,
+      villeDepart,
+      villeArrivee,
+      numeroSiege,
+      compagnieNom,
+      quai,
       ...props
     },
     ref
@@ -265,15 +173,13 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
     const [showConfetti, setShowConfetti] = React.useState(false);
 
     React.useEffect(() => {
-      if (showAnimation) {
-        const mountTimer = setTimeout(() => setShowConfetti(true), 100);
-        const unmountTimer = setTimeout(() => setShowConfetti(false), 6000);
-        return () => {
-          clearTimeout(mountTimer);
-          clearTimeout(unmountTimer);
-        };
-      }
-    }, [showAnimation]);
+      const mountTimer = setTimeout(() => setShowConfetti(true), 100);
+      const unmountTimer = setTimeout(() => setShowConfetti(false), 6000);
+      return () => {
+        clearTimeout(mountTimer);
+        clearTimeout(unmountTimer);
+      };
+    }, []);
 
     const formattedAmount = new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -282,18 +188,12 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
 
     const formattedDate = new Intl.DateTimeFormat("fr-FR", {
       day: 'numeric',
-      month: 'long',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
-    }).format(date).replace(',', ' • ');
-
-    const formattedDateDepart = dateDepart
-      ? new Date(dateDepart).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-      : 'N/A';
-
-    const formattedHeureDepart = heureDepart || (dateDepart ? new Date(dateDepart).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'N/A');
+    }).format(date);
 
     return (
       <>
@@ -301,117 +201,76 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
         <div
           ref={ref}
           className={cn(
-            "relative w-full max-w-sm bg-gradient-to-br from-orange-50 to-white text-gray-800 rounded-2xl shadow-xl font-sans z-10",
-            "animate-in slide-in-from-top duration-500",
+            "relative w-full max-w-lg bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded-[2.5rem] shadow-2xl font-sans z-10 border border-slate-100 dark:border-slate-800",
+            "animate-in fade-in-0 zoom-in-95 duration-500",
             className
           )}
           {...props}
         >
           {/* Ticket cut-out effect */}
-          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-50 shadow-inner" />
-          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-50 shadow-inner" />
+          <div className="absolute -left-4 top-[55%] -translate-y-1/2 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800" />
+          <div className="absolute -right-4 top-[55%] -translate-y-1/2 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800" />
 
-          {/* Header */}
-          <div className="p-6 flex flex-col items-center text-center">
-            <div className="p-3 bg-orange-100 rounded-full animate-in zoom-in-50 delay-300 duration-500">
-              <CheckCircleIcon className="w-10 h-10 text-orange-500 animate-in zoom-in-75 delay-500 duration-500" />
-            </div>
-            <h1 className="text-2xl font-bold mt-4 text-gray-800">Merci !</h1>
-            <p className="text-gray-500 mt-1">Votre billet a été émis avec succès</p>
+          <div className="p-10 flex flex-col items-center text-center">
+              <div className="p-4 bg-emerald-500/10 rounded-full animate-in zoom-in-50 delay-300 duration-500">
+                  <CheckCircleIcon className="w-12 h-12 text-emerald-500 animate-in zoom-in-75 delay-500 duration-500" />
+              </div>
+              <h1 className="text-3xl font-black mt-6 uppercase italic tracking-tighter">Merci !</h1>
+              <p className="text-slate-400 text-sm font-medium mt-2">
+                Votre réservation a été confirmée avec succès
+              </p>
           </div>
 
-          <div className="px-6 pb-6 space-y-4">
-            <DashedLine />
+          <div className="px-10 pb-10 space-y-8">
+              <DashedLine />
 
-            {/* Infos trajet */}
-            <div className="bg-white rounded-xl p-4 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BusIcon className="w-4 h-4 text-orange-500" />
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{compagnie}</span>
-                </div>
-                <span className="text-xs text-gray-400">Billet numérique</span>
-              </div>
-
-              {/* Ville départ/arrivée */}
-              <div className="flex items-center justify-between">
-                <div className="text-center">
-                  <p className="text-xl font-black text-gray-800">{villeDepart.substring(0, 3).toUpperCase()}</p>
-                  <p className="text-xs text-gray-500">{villeDepart}</p>
-                </div>
-                <div className="flex-1 flex flex-col items-center px-4">
-                  <div className="w-full flex items-center gap-1">
-                    <div className="h-px bg-gray-300 flex-1" />
-                    <span className="text-orange-500 text-xs">→</span>
-                    <div className="h-px bg-gray-300 flex-1" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1">Direct</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-black text-gray-800">{villeArrivee.substring(0, 3).toUpperCase()}</p>
-                  <p className="text-xs text-gray-500">{villeArrivee}</p>
-                </div>
-              </div>
-
-              {/* Date et heure */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-gray-400" />
+              <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase">Date</p>
-                    <p className="text-xs font-medium text-gray-700">{formattedDateDepart}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Trajet</p>
+                      <p className="font-black text-slate-900 dark:text-white uppercase italic tracking-tighter text-xl leading-none">
+                        {villeDepart} <span className="text-emerald-500">→</span> {villeArrivee}
+                      </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="w-4 h-4 text-gray-400" />
+                  <div className="text-right">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Montant</p>
+                      <p className="font-black text-2xl text-emerald-500 italic tracking-tighter leading-none">{formattedAmount}</p>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase">Heure</p>
-                    <p className="text-xs font-medium text-gray-700">{formattedHeureDepart}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Date & Heure</p>
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{formattedDate}</p>
                   </div>
-                </div>
+                  <div className="text-right">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Siège</p>
+                      <p className="font-black text-xl text-emerald-500 italic leading-none">{numeroSiege}</p>
+                  </div>
               </div>
-            </div>
 
-            <DashedLine />
-
-            {/* Passager et siège */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-orange-50 rounded-xl p-3 text-center">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Passager</p>
-                <p className="font-bold text-gray-800 text-sm">{passagerName || cardHolder}</p>
+              <div className="grid grid-cols-2 gap-6">
+                  <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Compagnie</p>
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200 uppercase">{compagnieNom}</p>
+                  </div>
+                  <div className="text-right">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Quai</p>
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200 uppercase">NO. {quai}</p>
+                  </div>
               </div>
-              <div className="bg-orange-50 rounded-xl p-3 text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <SeatIcon className="w-3 h-3 text-orange-500" />
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Siège</p>
-                </div>
-                <p className="font-black text-xl text-orange-600">{siege}</p>
+
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl flex items-center space-x-6 border border-slate-100 dark:border-slate-800">
+                  <MastercardIcon className="w-12 h-12" />
+                  <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Titulaire</p>
+                      <p className="font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">{cardHolder}</p>
+                      <p className="text-slate-400 font-mono text-xs tracking-widest mt-1">•••• {last4Digits}</p>
+                  </div>
               </div>
-            </div>
 
-            {/* Prix et paiement */}
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Montant</p>
-                  <p className="font-bold text-lg text-orange-600">{formattedAmount}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Transaction</p>
-                  <p className="font-mono text-[10px] text-gray-500">{barcodeValue.substring(0, 16)}...</p>
-                </div>
-              </div>
-            </div>
+              <DashedLine />
 
-            <DashedLine />
-
-            {/* Barcode */}
-            <Barcode value={barcodeValue} />
-
-            {/* Footer */}
-            <p className="text-center text-[10px] text-gray-400">
-              Présentez ce QR code au chauffeur avant l'embarquement
-            </p>
+              <Barcode value={barcodeValue} />
           </div>
         </div>
       </>

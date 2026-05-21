@@ -1,12 +1,14 @@
 package ma.emsi.gare.service;
 
 import ma.emsi.gare.dto.request.TraitementRemboursementRequest;
+import ma.emsi.gare.dto.response.RemboursementResponseDTO;
 import ma.emsi.gare.entity.*;
 import ma.emsi.gare.enums.StatutRemboursement;
 import ma.emsi.gare.enums.StatutReservation;
 import ma.emsi.gare.repository.CompagnieRepository;
 import ma.emsi.gare.repository.RemboursementRepository;
 import ma.emsi.gare.repository.ReservationRepository;
+import ma.emsi.gare.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,11 +34,15 @@ class ResponsableRemboursementServiceTest {
     @Mock
     private CompagnieRepository compagnieRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private ResponsableRemboursementService service;
 
     private Authentication authentication;
     private Compagnie compagnie;
+    private ResponsableCompagnie responsable;
     private Remboursement remboursement;
     private Reservation reservation;
 
@@ -45,7 +51,8 @@ class ResponsableRemboursementServiceTest {
         compagnie = new Compagnie();
         compagnie.setId(1L);
 
-        ResponsableCompagnie responsable = new ResponsableCompagnie();
+        responsable = new ResponsableCompagnie();
+        responsable.setEmail("responsable@test.com");
         responsable.setCompagnie(compagnie);
 
         authentication = new UsernamePasswordAuthenticationToken(responsable, null);
@@ -74,8 +81,8 @@ class ResponsableRemboursementServiceTest {
                 new TraitementRemboursementRequest();
         request.setStatut(StatutRemboursement.ACCEPTE);
 
-        when(compagnieRepository.findById(1L))
-                .thenReturn(Optional.of(compagnie));
+        when(userRepository.findByEmail("responsable@test.com"))
+                .thenReturn(Optional.of(responsable));
 
         when(repository.findById(1L))
                 .thenReturn(Optional.of(remboursement));
@@ -83,7 +90,7 @@ class ResponsableRemboursementServiceTest {
         when(repository.save(any(Remboursement.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Remboursement result =
+        RemboursementResponseDTO result =
                 service.traiter(1L, request, authentication);
 
         assertEquals(StatutRemboursement.ACCEPTE, result.getStatut());
@@ -100,8 +107,8 @@ class ResponsableRemboursementServiceTest {
                 new TraitementRemboursementRequest();
         request.setStatut(StatutRemboursement.REFUSE);
 
-        when(compagnieRepository.findById(1L))
-                .thenReturn(Optional.of(compagnie));
+        when(userRepository.findByEmail("responsable@test.com"))
+                .thenReturn(Optional.of(responsable));
 
         when(repository.findById(1L))
                 .thenReturn(Optional.of(remboursement));
@@ -109,7 +116,7 @@ class ResponsableRemboursementServiceTest {
         when(repository.save(any(Remboursement.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Remboursement result =
+        RemboursementResponseDTO result =
                 service.traiter(1L, request, authentication);
 
         assertEquals(StatutRemboursement.REFUSE, result.getStatut());

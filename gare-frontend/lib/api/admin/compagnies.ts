@@ -60,4 +60,20 @@ export const adminCompagnieApi = {
     const response = await apiClient.post(`/admin/compagnies/${compagnieId}/responsables`, data);
     return response.data;
   },
+
+  getById: async (id: number): Promise<Compagnie> => {
+    const response = await apiClient.get(`/admin/compagnies/${id}`);
+    return response.data;
+  },
+
+  getResponsables: async (compagnieId: number): Promise<{
+    id: number;
+    nom: string;
+    prenom: string;
+    email: string;
+    telephone?: string;
+  }[]> => {
+    const response = await apiClient.get(`/admin/compagnies/${compagnieId}/responsables`);
+    return response.data;
+  },
 };

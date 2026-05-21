@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { reservationApi } from '@/lib/api/voyageur/reservation';
+import { preferencesApi } from '@/lib/api/voyageur/preferences';
 import { apiClient } from '@/lib/api/client';
 import { storage } from '@/lib/utils/storage';
 import Header from '@/components/layout/Header';
@@ -62,10 +63,18 @@ export default function ReservationPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [typeGroupe, setTypeGroupe] = useState<'MOI_SEUL' | 'MOI_PLUS_ACCOMPAGNANTS' | 'AUTRE_PERSONNE'>('MOI_SEUL');
+  const [accepteSeparer, setAccepteSeparer] = useState(false);
   const [membres, setMembres] = useState<MembreForm[]>([]);
   const [bagages, setBagages] = useState<BagageRequest[]>([]);
   const [showBagages, setShowBagages] = useState(false);
   const [error, setError] = useState('');
+  const [userPrefs, setUserPrefs] = useState<{ accepteSexeOppose: boolean; preferencePosition?: string }>({ accepteSexeOppose: true });
+
+  useEffect(() => {
+    preferencesApi.getPreferenceVoisinage()
+      .then(data => setUserPrefs(data))
+      .catch(() => {});
+  }, []);
 
   // Promo Code State
   const [promoCode, setPromoCode] = useState('');
@@ -195,10 +204,10 @@ export default function ReservationPage() {
 
     let membresData: any[] = [];
     if (typeGroupe === 'MOI_SEUL') {
-      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: true }];
+      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: userPrefs.accepteSexeOppose, preferencePosition: userPrefs.preferencePosition || 'INDIFFERENT' }];
     } else if (typeGroupe === 'MOI_PLUS_ACCOMPAGNANTS') {
       if (membres.length === 0) { setError('Ajoutez au moins un accompagnant'); return; }
-      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: true }, ...membres];
+      membresData = [{ nomManuel: user.nom, prenomManuel: user.prenom, sexe: (user as any).sexe || 'HOMME', age: (user as any).age || 25, categorieTarifaire: 'NORMAL', lienOrganisateur: 'MOI', enfantSurGenoux: false, accepteSexeOppose: userPrefs.accepteSexeOppose, preferencePosition: userPrefs.preferencePosition || 'INDIFFERENT' }, ...membres];
     } else {
       if (membres.length === 0) { setError('Ajoutez au moins un passager'); return; }
       membresData = membres;
@@ -209,7 +218,7 @@ export default function ReservationPage() {
 
     setSubmitting(true);
     try {
-      const reservation = await reservationApi.creer({ trajetId: trajet.id, typeGroupe, membres: membresData });
+      const reservation = await reservationApi.creer({ trajetId: trajet.id, typeGroupe, accepteSeparer, membres: membresData });
       let surplusBagagesFinal = 0;
       if (showBagages && bagages.length > 0) {
         const bagagesResponse = await reservationApi.ajouterBagages(reservation.id, bagages);
@@ -385,6 +394,31 @@ export default function ReservationPage() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Separation Preference (groupe only) */}
+                    {typeGroupe !== 'MOI_SEUL' && (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 shadow-xl">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Séparation dans le bus</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                              {accepteSeparer
+                                ? 'Le groupe peut être séparé si aucune rangée complète n\'est libre'
+                                : 'Le groupe doit rester ensemble dans la même rangée'}
+                            </p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={accepteSeparer}
+                              onChange={(e) => setAccepteSeparer(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-300 dark:bg-zinc-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500" />
+                          </label>
+                        </div>
+                      </motion.div>
+                    )}
 
                     {/* Baggage Section WOW */}
                     <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden relative">

@@ -15,4 +15,7 @@ public class SiegeResponseDTO {
 
     private String genreOccupant;
     private boolean enfantSurGenoux;
+
+    // HOMME / FEMME / ENFANT / GROUPE / null
+    private String typeOccupant;
 }

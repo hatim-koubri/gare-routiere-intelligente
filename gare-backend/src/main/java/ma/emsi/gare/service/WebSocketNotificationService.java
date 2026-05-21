@@ -63,4 +63,14 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/responsable/" + compagnieId, message);
         log.info("WebSocket → Responsables compagnie {}: {}", compagnieId, type);
     }
+
+    // ===== Notifier un responsable spécifique (file personnelle) =====
+    public void notifierResponsable(String email, String type, Object data) {
+        Map<String, Object> message = Map.of(
+                "type", type,
+                "data", data
+        );
+        messagingTemplate.convertAndSend("/queue/responsable/" + email, message);
+        log.info("WebSocket → Responsable {}: {}", email, type);
+    }
 }

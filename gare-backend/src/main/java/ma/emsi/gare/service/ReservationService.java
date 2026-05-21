@@ -15,6 +15,7 @@ import ma.emsi.gare.enums.CategorieTarifaire;
 import ma.emsi.gare.enums.LienOrganisateur;
 import ma.emsi.gare.enums.StatutRemboursement;
 import ma.emsi.gare.enums.StatutReservation;
+import ma.emsi.gare.enums.TypeNotification;
 import ma.emsi.gare.enums.TypeBagage;
 import ma.emsi.gare.repository.*;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,7 @@ public class ReservationService {
     private final RemboursementRepository remboursementRepository;
     private final PaiementRepository paiementRepository;
     private final WebSocketNotificationService webSocketNotificationService;
+    private final ResponsableNotificationHelper responsableNotificationHelper;
 
     public ReservationResponseDTO creerReservation(Long voyageurId, ReservationRequest request) {
 
@@ -83,6 +85,7 @@ public class ReservationService {
         groupe.setReservation(savedReservation);
         groupe.setTypeGroupe(request.getTypeGroupe());
         groupe.setNombrePassagers(request.getMembres().size());
+        groupe.setAccepteSeparer(request.isAccepteSeparer());
         groupe.setPlacementEffectue(false);
 
         GroupeVoyage savedGroupe = groupeVoyageRepository.save(groupe);
@@ -436,14 +439,19 @@ public class ReservationService {
         ));
 
         Long compagnieId = reservation.getTrajet().getLigne().getCompagnie().getId();
-        webSocketNotificationService.notifierResponsables(compagnieId, "NOUVEAU_REMBOURSEMENT", Map.of(
+        Map<String, Object> notifData = Map.of(
                 "id", remb.getId(),
                 "reservationId", reservationId,
                 "montant", montantRembourse,
                 "motif", motif,
                 "voyageurEmail", reservation.getVoyageur().getEmail(),
                 "type", "SUPPRESSION_MEMBRE"
-        ));
+        );
+        responsableNotificationHelper.notifierResponsables(
+                compagnieId, "NOUVEAU_REMBOURSEMENT", TypeNotification.NOUVEAU_REMBOURSEMENT,
+                "💳 Nouvelle demande de remboursement partiel — " + montantRembourse + " MAD — Réservation #" + reservationId,
+                notifData
+        );
 
         return remb;
     }
@@ -516,6 +524,21 @@ public class ReservationService {
             dto.setVerrouilleTemporaire(s.isVerrouilleTemporaire());
             dto.setGenreOccupant(s.getGenreOccupant());
             dto.setEnfantSurGenoux(s.isEnfantSurGenoux());
+
+            if (s.isOccupe() || s.isVerrouilleTemporaire()) {
+                if (s.isEnfantSurGenoux()) {
+                    dto.setTypeOccupant("ENFANT");
+                } else if ("HOMME".equals(s.getGenreOccupant())) {
+                    dto.setTypeOccupant("HOMME");
+                } else if ("FEMME".equals(s.getGenreOccupant())) {
+                    dto.setTypeOccupant("FEMME");
+                } else {
+                    dto.setTypeOccupant(null);
+                }
+            } else {
+                dto.setTypeOccupant(null);
+            }
+
             return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
@@ -550,7 +573,7 @@ public class ReservationService {
         siegeRepository.saveAll(sieges);
     }
 
-    // ── Proposer sièges groupés ────────────────────────────────
+    // ── Proposer sièges groupés (basique) ──────────────────────
     public List<String> proposerSiegesGroupe(Long trajetId, int nombrePlaces) {
 
         var sieges = siegeRepository.findSiegesLibresOrdonnes(trajetId);
@@ -576,6 +599,175 @@ public class ReservationService {
         }
 
         return new ArrayList<>();
+    }
+
+    // ── Proposition intelligente avec genre et préférences ──────
+    public ma.emsi.gare.dto.response.PropositionGroupeDTO proposerSiegesIntelligents(Long reservationId) {
+        var groupe = groupeVoyageRepository.findByReservationId(reservationId)
+                .orElseThrow(() -> new RuntimeException("Groupe non trouvé"));
+
+        var membres = membreGroupeRepository.findByGroupeId(groupe.getId());
+        if (membres.isEmpty()) {
+            throw new RuntimeException("Aucun membre dans le groupe");
+        }
+
+        List<MembreGroupe> membresActifs = membres.stream()
+                .filter(m -> !m.isEnfantSurGenoux())
+                .collect(java.util.stream.Collectors.toList());
+        if (membresActifs.isEmpty()) membresActifs = new ArrayList<>(membres);
+
+        long trajetId = groupe.getReservation().getTrajet().getId();
+        var allSieges = siegeRepository.findByTrajetId(trajetId);
+        var siegesLibres = siegeRepository.findSiegesLibresOrdonnes(trajetId);
+
+        // ── 1. Essayer un bloc contigu avec vérification des préférences ──────
+        for (int i = 0; i < siegesLibres.size(); i++) {
+            List<Siege> bloc = new ArrayList<>();
+            bloc.add(siegesLibres.get(i));
+            if (bloc.size() == membresActifs.size() && blocSatisfaitPreferences(bloc, membresActifs, allSieges)) {
+                return assignerBloc(bloc, membresActifs);
+            }
+            for (int j = i + 1; j < siegesLibres.size(); j++) {
+                if (!siegesLibres.get(j).getNumeroRangee().equals(siegesLibres.get(j - 1).getNumeroRangee())) break;
+                bloc.add(siegesLibres.get(j));
+                if (bloc.size() == membresActifs.size() && blocSatisfaitPreferences(bloc, membresActifs, allSieges)) {
+                    return assignerBloc(bloc, membresActifs);
+                }
+            }
+        }
+
+        // ── 2. Séparation individuelle (si autorisé) ─────────────
+        if (Boolean.TRUE.equals(groupe.getAccepteSeparer())) {
+            var resultat = placerIndividuellementStrict(siegesLibres, membresActifs, allSieges);
+            if (resultat != null) return resultat;
+        }
+
+        // ── 3. Aucune solution trouvée ───────────────────────────
+        return ma.emsi.gare.dto.response.PropositionGroupeDTO.builder()
+                .numerosSieges(new ArrayList<>())
+                .membresOrdre(new ArrayList<>())
+                .description("Malheureusement, aucun siège disponible ne correspond à vos préférences.")
+                .build();
+    }
+
+    private boolean blocSatisfaitPreferences(List<Siege> bloc, List<MembreGroupe> membres, List<Siege> allSieges) {
+        if (bloc.size() != membres.size()) return false;
+
+        // Trier membres : restrictifs d'abord (extrémités)
+        List<MembreGroupe> ordonnes = new ArrayList<>(membres);
+        ordonnes.sort((a, b) -> Boolean.compare(!b.isAccepteSexeOppose(), !a.isAccepteSexeOppose()));
+
+        for (int i = 0; i < bloc.size(); i++) {
+            MembreGroupe m = ordonnes.get(i);
+            Siege s = bloc.get(i);
+            if (!siegeCorrespondAuxPreferences(s, m, allSieges)) return false;
+        }
+        return true;
+    }
+
+    private boolean siegeCorrespondAuxPreferences(Siege siege, MembreGroupe membre, List<Siege> allSieges) {
+        // Vérifier préférence de position
+        String posPref = membre.getPreferencePosition();
+        if (posPref != null && !posPref.equals("INDIFFERENT")) {
+            String pos = siege.getPositionRangee();
+            if (posPref.equals("FENETRE") && !pos.equals("A") && !pos.equals("D")) return false;
+            if (posPref.equals("COULOIR") && !pos.equals("B") && !pos.equals("C")) return false;
+        }
+
+        // Vérifier voisinage (membre restrictif)
+        if (!membre.isAccepteSexeOppose() && membre.getSexe() != null) {
+            if (!voisinageCompatible(siege, membre.getSexe(), allSieges)) return false;
+        }
+
+        return true;
+    }
+
+    private boolean voisinageCompatible(Siege siege, String monSexe, List<Siege> allSieges) {
+        String[] adjacents = adjacentsPosition(siege.getPositionRangee());
+        for (String adjPos : adjacents) {
+            Siege voisin = allSieges.stream()
+                    .filter(s -> s.getNumeroRangee().equals(siege.getNumeroRangee())
+                            && adjPos.equals(s.getPositionRangee())
+                            && (s.isOccupe() || s.isVerrouilleTemporaire()))
+                    .findFirst().orElse(null);
+            if (voisin != null && voisin.getGenreOccupant() != null
+                    && !voisin.getGenreOccupant().equals(monSexe)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String[] adjacentsPosition(String pos) {
+        if ("A".equals(pos)) return new String[]{"B"};
+        if ("D".equals(pos)) return new String[]{"C"};
+        if ("B".equals(pos)) return new String[]{"A", "C"};
+        if ("C".equals(pos)) return new String[]{"B", "D"};
+        return new String[]{};
+    }
+
+    private ma.emsi.gare.dto.response.PropositionGroupeDTO assignerBloc(
+            List<Siege> bloc, List<MembreGroupe> membres) {
+
+        List<MembreGroupe> membresOrdonnes = new ArrayList<>(membres);
+        membresOrdonnes.sort((a, b) -> Boolean.compare(!b.isAccepteSexeOppose(), !a.isAccepteSexeOppose()));
+
+        List<String> siegesSugg = bloc.stream().map(Siege::getNumeroSiege).toList();
+        List<String> membresDansOrdreSieges = new ArrayList<>();
+        for (int i = 0; i < membresOrdonnes.size(); i++) {
+            membresDansOrdreSieges.add(formaterNomMembre(membresOrdonnes.get(i), i));
+        }
+
+        return ma.emsi.gare.dto.response.PropositionGroupeDTO.builder()
+                .numerosSieges(siegesSugg)
+                .membresOrdre(membresDansOrdreSieges)
+                .description("Bloc de " + membres.size() + " sièges trouvé (rangée " + bloc.get(0).getNumeroRangee() + ")")
+                .build();
+    }
+
+    private ma.emsi.gare.dto.response.PropositionGroupeDTO placerIndividuellementStrict(
+            List<Siege> siegesLibres, List<MembreGroupe> membres, List<Siege> allSieges) {
+
+        List<MembreGroupe> membresATrier = new ArrayList<>(membres);
+        membresATrier.sort((a, b) -> Boolean.compare(!b.isAccepteSexeOppose(), !a.isAccepteSexeOppose()));
+
+        List<Siege> disponibles = new ArrayList<>(siegesLibres);
+        List<String> siegesChoisis = new ArrayList<>();
+        List<String> membresOrdre = new ArrayList<>();
+
+        for (MembreGroupe membre : membresATrier) {
+            if (membre.isEnfantSurGenoux()) continue;
+
+            Siege meilleur = trouverMeilleurSiegeStrict(membre, disponibles, allSieges);
+            if (meilleur == null) {
+                return null;
+            }
+
+            siegesChoisis.add(meilleur.getNumeroSiege());
+            disponibles.remove(meilleur);
+            membresOrdre.add(formaterNomMembre(membre, membresOrdre.size()));
+        }
+
+                return ma.emsi.gare.dto.response.PropositionGroupeDTO.builder()
+                .numerosSieges(siegesChoisis)
+                .membresOrdre(membresOrdre)
+                .description(membres.size() + " sièges attribués selon vos préférences")
+                .build();
+    }
+
+    private Siege trouverMeilleurSiegeStrict(MembreGroupe membre, List<Siege> disponibles, List<Siege> allSieges) {
+        // Priorité 1 : correspond à la préférence de position + voisinage compatible
+        for (Siege s : disponibles) {
+            if (siegeCorrespondAuxPreferences(s, membre, allSieges)) return s;
+        }
+        return null;
+    }
+
+    private String formaterNomMembre(MembreGroupe m, int index) {
+        String nom = (m.getNomManuel() != null ? m.getNomManuel() : "")
+                + " " + (m.getPrenomManuel() != null ? m.getPrenomManuel() : "");
+        if (nom.isBlank()) nom = "Passager " + (index + 1);
+        return nom.trim();
     }
 
     // ── Verrouillage temporaire ────────────────────────────────
@@ -671,14 +863,19 @@ public class ReservationService {
 
         // Notifier les responsables de la compagnie pour validation
         Long compagnieId = reservation.getTrajet().getLigne().getCompagnie().getId();
-        webSocketNotificationService.notifierResponsables(compagnieId, "NOUVEAU_REMBOURSEMENT", Map.of(
+        Map<String, Object> notifData = Map.of(
                 "id", remb.getId(),
                 "reservationId", reservation.getId(),
                 "montant", montantRembourse,
                 "motif", motif,
                 "voyageurEmail", reservation.getVoyageur().getEmail(),
                 "type", "ANNULATION_RESERVATION"
-        ));
+        );
+        responsableNotificationHelper.notifierResponsables(
+                compagnieId, "NOUVEAU_REMBOURSEMENT", TypeNotification.NOUVEAU_REMBOURSEMENT,
+                "💳 Nouvelle demande de remboursement — " + montantRembourse + " MAD — Réservation #" + reservation.getId(),
+                notifData
+        );
 
         return remb;
     }
@@ -1088,13 +1285,16 @@ public class ReservationService {
                     + " (" + bagage.getTypeBagage() + ", " + bagage.getPoidsKg() + "kg"
                     + ", remboursement " + remboursementBagage + " MAD)";
 
-            Remboursement remb = new Remboursement();
-            remb.setReservation(reservation);
-            remb.setMontant(remboursementBagage);
-            remb.setMotif(motif);
+            Remboursement remb = remboursementRepository.findByReservationId(reservationId)
+                    .orElseGet(Remboursement::new);
+            if (remb.getId() == null) {
+                remb.setReservation(reservation);
+                remb.setPartiel(true);
+                remb.setDateDemande(LocalDateTime.now());
+            }
+            remb.setMontant((remb.getMontant() == null ? 0 : remb.getMontant()) + remboursementBagage);
+            remb.setMotif((remb.getMotif() == null ? "" : remb.getMotif() + "\n") + motif);
             remb.setStatut(StatutRemboursement.EN_ATTENTE);
-            remb.setPartiel(true);
-            remb.setDateDemande(LocalDateTime.now());
             remboursementRepository.save(remb);
         }
 

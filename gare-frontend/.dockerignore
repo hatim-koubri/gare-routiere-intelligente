@@ -1,0 +1,41 @@
+# ============================================================
+# .dockerignore — Fichiers exclus de l'image Docker
+# Réduire la taille de l'image et éviter les conflits
+# ============================================================
+
+# Dossier node_modules (sera réinstallé dans le container)
+node_modules
+
+# Build Next.js (sera régénéré en dev)
+.next
+out
+
+# Fichiers de configuration IDE
+.idea
+.vscode
+*.iml
+
+# Git
+.git
+.gitignore
+
+# Fichiers de log
+*.log
+npm-debug.log*
+
+# Variables d'environnement locales (ne jamais versionner les secrets)
+.env.local
+.env.*.local
+
+# Documentation et fichiers inutiles pour l'exécution
+README.md
+CHANGES_SUMMARY.md
+IMPLEMENTATION_GUIDE.md
+PAYMENT_REFUND_GUIDE.md
+AGENTS.md
+CLAUDE.md
+ATesterSprint1Apres
+scratch
+
+# TypeScript build info (volumineux, non nécessaire)
+tsconfig.tsbuildinfo

@@ -39,7 +39,7 @@ export default function LoginForm() {
   return (
     <div className="w-full">
       {error && <Badge variant="danger" className="w-full text-center py-2 mb-6">{error}</Badge>}
-      
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Input
           type="email"
@@ -48,7 +48,7 @@ export default function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        
+
         <Input
           type="password"
           label={t.auth.password}
@@ -56,13 +56,13 @@ export default function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        
+
         <div className="mt-4">
           <Button
             type="submit"
             disabled={loading}
-            fullWidth
-            className="relative overflow-hidden group"
+            fullwidth
+            className="relative overflow-hidden group bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-md"
           >
             <div className={`flex items-center justify-center transition-all duration-300 ${loading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
               {t.common.login}
@@ -75,7 +75,7 @@ export default function LoginForm() {
           </Button>
         </div>
       </form>
-      
+
       <div className="mt-12 pt-8 border-t border-[var(--ink)]/10 font-body text-[15px] text-[var(--muted)] text-center">
         {t.common.noAccount}{' '}
         <Link href="/fr/auth/register" className="text-[var(--terracotta)] font-semibold hover:text-[var(--ink)] transition-colors">

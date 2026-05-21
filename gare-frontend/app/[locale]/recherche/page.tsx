@@ -1,17 +1,100 @@
 // app/recherche/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { rechercheApi } from '@/lib/api/voyageur/recherche';
 import { favorisApi } from '@/lib/api/voyageur/favoris';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Calendar, Clock, MapPin, Filter, ArrowRight, Users, Building, Heart, Sparkles, Search, X, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, Filter, ArrowRight, Users, Building, Heart, Sparkles, Search, X, ChevronRight, CalendarRange, ChevronDown } from 'lucide-react';
 import { FlightCard } from '@/components/ui/flight-card';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+
+const VILLES_MAROC = [
+  'Agadir', 'Al Hoceïma', 'Azilal', 'Beni Mellal', 'Berkane', 'Bouskoura',
+  'Casablanca', 'Chaouen', 'Dakhla', 'El Jadida', 'El Kelâa des Srarhna',
+  'Errachidia', 'Essaouira', 'Fès', 'Figuig', 'Guelmim', 'Ifrane',
+  'Inezgane', 'Kénitra', 'Khemisset', 'Khouribga', 'Laâyoune', 'Larache',
+  'Marrakech', 'Meknès', 'Mohammedia', 'Nador', 'Ouarzazate', 'Oujda',
+  'Rabat', 'Safi', 'Salé', 'Settat', 'Sidi Kacem', 'Sidi Slimane',
+  'Skhirat', 'Tanger', 'Taounate', 'Taroudant', 'Taza', 'Témara',
+  'Tétouan', 'Tiznit', 'Youssoufia',
+];
+
+function CityAutocomplete({ value, onChange, placeholder, icon, swap }: {
+  value: string; onChange: (v: string) => void; placeholder: string;
+  icon: React.ReactNode; swap?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState(value);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = input.length > 0
+    ? VILLES_MAROC.filter(v => v.toLowerCase().includes(input.toLowerCase())).slice(0, 8)
+    : VILLES_MAROC.slice(0, 8);
+
+  useEffect(() => {
+    setInput(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative group">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
+          {icon}
+        </div>
+        <input
+          type="text"
+          required
+          placeholder={placeholder}
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setOpen(true); onChange(e.target.value); }}
+          onFocus={() => setOpen(true)}
+          className="w-full bg-white/10 border border-white/20 rounded-2xl pl-14 pr-12 py-5 text-base font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+        />
+        <ChevronDown size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+        {swap}
+      </div>
+      <AnimatePresence>
+        {open && filtered.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute top-full mt-2 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+          >
+            {filtered.map((ville) => (
+              <button
+                key={ville}
+                type="button"
+                onClick={() => { setInput(ville); onChange(ville); setOpen(false); }}
+                className={cn(
+                  "w-full text-left px-6 py-5 text-base font-bold text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-4",
+                  value === ville && "text-orange-400 bg-white/5"
+                )}
+              >
+                <MapPin size={18} className="text-orange-500 shrink-0" />
+                {ville}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 interface TrajetDTO {
   id: number;
@@ -63,6 +146,19 @@ export default function RecherchePage() {
     }
   }, [user]);
 
+  const toggleFavori = async (ligneId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (favorisLigneIds.has(ligneId)) {
+        await favorisApi.supprimer(ligneId);
+        setFavorisLigneIds(prev => { const n = new Set(prev); n.delete(ligneId); return n; });
+      } else {
+        await favorisApi.ajouter(ligneId);
+        setFavorisLigneIds(prev => new Set(prev).add(ligneId));
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     const vd = searchParams.get('villeDepart');
     const va = searchParams.get('villeArrivee');
@@ -76,10 +172,13 @@ export default function RecherchePage() {
     }
   }, []);
 
+  const [dateMode, setDateMode] = useState<'precise' | 'interval'>('precise');
   const [formData, setFormData] = useState({
     villeDepart: '',
     villeArrivee: '',
     date: new Date().toISOString().split('T')[0],
+    dateDebut: '',
+    dateFin: '',
     prixMin: 0,
     prixMax: 1000,
     heureDepartMin: 0,
@@ -107,15 +206,25 @@ export default function RecherchePage() {
     setLoading(true);
     setSearched(false);
     try {
-      const searchData = {
-        villeDepart: formData.villeDepart,
-        villeArrivee: formData.villeArrivee,
-        date: formData.date,
-      };
+      let searchData: Record<string, unknown>;
+      if (dateMode === 'interval' && formData.dateFin) {
+        searchData = {
+          villeDepart: formData.villeDepart,
+          villeArrivee: formData.villeArrivee,
+          dateDebut: formData.dateDebut,
+          dateFin: formData.dateFin,
+        };
+      } else {
+        searchData = {
+          villeDepart: formData.villeDepart,
+          villeArrivee: formData.villeArrivee,
+          date: formData.date,
+        };
+      }
       
       const [directsData, correspondancesData] = await Promise.all([
-        rechercheApi.rechercherDirects(searchData).catch(() => []),
-        rechercheApi.rechercherCorrespondances(searchData).catch(() => []),
+        rechercheApi.rechercherDirects(searchData as any).catch((err) => { console.error('Erreur directs', err); return []; }),
+        rechercheApi.rechercherCorrespondances(searchData as any).catch((err) => { console.error('Erreur correspondances', err); return []; }),
       ]);
       
       setAllTrajets(directsData as TrajetDTO[]);
@@ -156,6 +265,10 @@ export default function RecherchePage() {
     return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   const formatDuree = (depart: string, arrivee: string) => {
     if (!depart || !arrivee) return 'N/A';
     const diff = new Date(arrivee).getTime() - new Date(depart).getTime();
@@ -187,6 +300,7 @@ export default function RecherchePage() {
               animate={{ x: [0, 80, -40, 0], y: [0, -60, 30, 0] }}
               transition={{ duration: 12 + i * 2, repeat: Infinity, ease: "linear" }}
               style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+              suppressHydrationWarning
             />
           ))}
         </div>
@@ -206,81 +320,129 @@ export default function RecherchePage() {
                 </h1>
                 
                 {/* Search Form Premium (Glassmorphism) */}
-                <div className="max-w-5xl mx-auto mt-10">
+                <div className="max-w-6xl mx-auto mt-14">
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white/10 backdrop-blur-2xl border border-white/20 p-8 rounded-[2.5rem] shadow-2xl relative"
+                        className="bg-white/10 backdrop-blur-2xl border border-white/20 p-12 md:p-14 rounded-[3.5rem] shadow-2xl relative"
                     >
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-orange-600 rounded-t-[2.5rem]" />
+                        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-t-[3.5rem]" />
                         
-                        <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end relative z-10">
-                            <div className="md:col-span-3 flex flex-col gap-2 text-left relative">
-                                <label className="text-[10px] uppercase text-white/50 font-black tracking-widest ml-1">Départ</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
-                                        <MapPin size={18} />
-                                    </div>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        placeholder="Ville de départ"
+                        <form onSubmit={handleSearch} className="flex flex-col gap-8 relative z-10">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                                <div className="md:col-span-4 flex flex-col gap-3 text-left relative">
+                                    <label className="text-xs uppercase text-white/50 font-black tracking-widest ml-1">Départ</label>
+                                    <CityAutocomplete
                                         value={formData.villeDepart}
-                                        onChange={(e) => setFormData({ ...formData, villeDepart: e.target.value })}
-                                        className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                        onChange={(v) => setFormData({ ...formData, villeDepart: v })}
+                                        placeholder="Ville de départ"
+                                        icon={<MapPin size={22} />}
+                                        swap={
+                                            <button 
+                                                type="button"
+                                                onClick={handleSwap}
+                                                className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex w-10 h-10 bg-slate-900 border border-white/10 rounded-full items-center justify-center text-orange-500 hover:rotate-180 transition-transform"
+                                            >
+                                                <ChevronRight size={16} className="rotate-90 md:rotate-0" />
+                                            </button>
+                                        }
                                     />
-                                    {/* Swap Button Desktop */}
-                                    <button 
-                                        type="button"
-                                        onClick={handleSwap}
-                                        className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex w-8 h-8 bg-slate-900 border border-white/10 rounded-full items-center justify-center text-orange-500 hover:rotate-180 transition-transform"
-                                    >
-                                        <ChevronRight size={14} className="rotate-90 md:rotate-0" />
-                                    </button>
                                 </div>
-                            </div>
 
-                            <div className="md:col-span-3 flex flex-col gap-2 text-left">
-                                <label className="text-[10px] uppercase text-white/50 font-black tracking-widest ml-1">Arrivée</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
-                                        <MapPin size={18} />
-                                    </div>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        placeholder="Ville d'arrivée"
+                                <div className="md:col-span-4 flex flex-col gap-3 text-left">
+                                    <label className="text-xs uppercase text-white/50 font-black tracking-widest ml-1">Arrivée</label>
+                                    <CityAutocomplete
                                         value={formData.villeArrivee}
-                                        onChange={(e) => setFormData({ ...formData, villeArrivee: e.target.value })}
-                                        className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                        onChange={(v) => setFormData({ ...formData, villeArrivee: v })}
+                                        placeholder="Ville d'arrivée"
+                                        icon={<MapPin size={22} />}
                                     />
                                 </div>
-                            </div>
 
-                            <div className="md:col-span-3 flex flex-col gap-2 text-left">
-                                <label className="text-[10px] uppercase text-white/50 font-black tracking-widest ml-1">Date</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
-                                        <Calendar size={18} />
+                                <div className="md:col-span-4 flex flex-col gap-3 text-left">
+                                    <label className="text-xs uppercase text-white/50 font-black tracking-widest ml-1">Date</label>
+                                    <div className="relative group flex gap-3">
+                                        {/* Mode toggle */}
+                                        <div className="flex bg-white/10 border border-white/20 rounded-2xl p-1.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDateMode('precise'); if (!formData.date) { setFormData(prev => ({ ...prev, date: prev.dateDebut || new Date().toISOString().split('T')[0] })); } }}
+                                            className={cn(
+                                                "px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                                dateMode === 'precise' ? 'bg-orange-500 text-white shadow-lg' : 'text-white/50 hover:text-white'
+                                            )}
+                                            title="Date précise"
+                                        >
+                                            <Calendar size={20} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDateMode('interval'); if (!formData.dateDebut) { setFormData(prev => ({ ...prev, dateDebut: prev.date })); } }}
+                                            className={cn(
+                                                "px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                                dateMode === 'interval' ? 'bg-orange-500 text-white shadow-lg' : 'text-white/50 hover:text-white'
+                                            )}
+                                            title="Intervalle de dates"
+                                        >
+                                            <CalendarRange size={20} />
+                                        </button>
+                                        </div>
+                                        {dateMode === 'precise' ? (
+                                            <div className="relative flex-1 min-w-0">
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
+                                                    <Calendar size={20} />
+                                                </div>
+                                                <input 
+                                                    type="date" 
+                                                    required
+                                                    value={formData.date}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                    className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-5 py-5 text-base font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-3 flex-1 min-w-0">
+                                                <div className="relative flex-1 min-w-0">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
+                                                        <Calendar size={20} />
+                                                    </div>
+                                                    <input 
+                                                        type="date" 
+                                                        required
+                                                        value={formData.dateDebut}
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                        onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
+                                                        className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-3 py-5 text-base font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                                    />
+                                                </div>
+                                                <span className="flex items-center text-white/40 text-sm font-black shrink-0">→</span>
+                                                <div className="relative flex-1 min-w-0">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">
+                                                        <Calendar size={20} />
+                                                    </div>
+                                                    <input 
+                                                        type="date" 
+                                                        required
+                                                        value={formData.dateFin}
+                                                        min={formData.dateDebut || new Date().toISOString().split('T')[0]}
+                                                        onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
+                                                        className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-3 py-5 text-base font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        value={formData.date}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                        className="w-full bg-white/10 border border-white/20 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                                    />
                                 </div>
                             </div>
 
-                            <div className="md:col-span-3">
+                            <div className="flex justify-center">
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl py-4 h-[58px] transition-all hover:scale-[1.02] shadow-xl shadow-orange-500/30 flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                                    className="w-full md:w-auto min-w-[280px] bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl py-5 h-[72px] transition-all hover:scale-[1.03] active:scale-95 shadow-xl shadow-orange-500/30 flex items-center justify-center gap-3 uppercase tracking-widest text-base px-12"
                                 >
-                                    {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Rechercher <Search size={18} /></>}
+                                    {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Rechercher <Search size={22} /></>}
                                 </button>
                             </div>
                         </form>
@@ -395,6 +557,7 @@ export default function RecherchePage() {
                                         departureCode={trajet.villeDepart.slice(0, 3).toUpperCase()}
                                         departureCity={trajet.villeDepart}
                                         departureTime={formatHeure(trajet.dateDepart)}
+                                        departureDate={formatDate(trajet.dateDepart)}
                                         arrivalCode={trajet.villeArrivee.slice(0, 3).toUpperCase()}
                                         arrivalCity={trajet.villeArrivee}
                                         arrivalTime={formatHeure(trajet.dateArriveePrevue)}
@@ -434,6 +597,7 @@ export default function RecherchePage() {
                                                 departureCode={t.villeDepart.slice(0, 3).toUpperCase()}
                                                 departureCity={t.villeDepart}
                                                 departureTime={formatHeure(t.dateDepart)}
+                                                departureDate={formatDate(t.dateDepart)}
                                                 arrivalCode={t.villeArrivee.slice(0, 3).toUpperCase()}
                                                 arrivalCity={t.villeArrivee}
                                                 arrivalTime={formatHeure(t.dateArriveePrevue)}

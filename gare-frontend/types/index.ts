@@ -14,6 +14,32 @@ export enum StatutTrajet {
   RETARDE = 'RETARDE'
 }
 
+// Stationnement billing types
+export interface StationnementLigneDTO {
+  stationnementId: number;
+  matricule: string;
+  compagnieNom: string;
+  debut: string | null;
+  fin: string | null;
+  dureeMinutes: number;
+  coutCalcule: number;
+  statut: string;
+}
+
+export interface QuaiStationnementDetailDTO {
+  quaiId: number;
+  quaiNumero: number;
+  tarifHoraire: number;
+  compagnieNom: string;
+  stationnements: StationnementLigneDTO[];
+  totalQuai: number;
+}
+
+export interface QuaiStationnementSummaryDTO {
+  quais: QuaiStationnementDetailDTO[];
+  totalGeneral: number;
+}
+
 export enum TypeNotification {
   RETARD = 'RETARD',
   ANNULATION = 'ANNULATION',
@@ -26,7 +52,15 @@ export enum TypeNotification {
   ALERTE_GARE = 'ALERTE_GARE',
   JALON_ARRIVEE = 'JALON_ARRIVEE',
   JALON_DEPART = 'JALON_DEPART',
-  TICKET_VALIDE = 'TICKET_VALIDE'
+  TICKET_VALIDE = 'TICKET_VALIDE',
+  RECLAMATION_TRAITEE = 'RECLAMATION_TRAITEE',
+  REMBOURSEMENT_TRAITE = 'REMBOURSEMENT_TRAITE',
+  DEMANDE_AVIS = 'DEMANDE_AVIS',
+  NOUVEAU_REMBOURSEMENT = 'NOUVEAU_REMBOURSEMENT',
+  NOUVELLE_RECLAMATION = 'NOUVELLE_RECLAMATION',
+  INCIDENT_SIGNALE = 'INCIDENT_SIGNALE',
+  BUS_ARRIVE = 'BUS_ARRIVE',
+  QUAI_LIBERE = 'QUAI_LIBERE'
 }
 
 // Auth Types
@@ -42,6 +76,7 @@ export interface RegisterRequest {
   password: string;
   telephone?: string;
   role: Role;
+  sexe?: string;
 }
 
 export interface AuthResponse {
@@ -51,6 +86,8 @@ export interface AuthResponse {
   prenom: string;
   role: Role;
   userId: number;
+  sexe?: string;
+  compagnieId?: number;
 }
 
 export interface User {
@@ -60,6 +97,8 @@ export interface User {
   email: string;
   role: Role;
   telephone?: string;
+  sexe?: string;
+  compagnieId?: number;
 }
 
 // Offline Types
@@ -621,6 +660,8 @@ export interface RechercheTrajetRequest {
   villeDepart: string;
   villeArrivee: string;
   date: string;
+  dateDebut?: string;
+  dateFin?: string;
   prixMin?: number;
   prixMax?: number;
   heureDepartMin?: number;
@@ -685,6 +726,7 @@ export interface MembreGroupeDTO {
 export interface ReservationRequest {
   trajetId: number;
   typeGroupe: 'MOI_SEUL' | 'MOI_PLUS_ACCOMPAGNANTS' | 'AUTRE_PERSONNE';
+  accepteSeparer?: boolean;
   membres: MembreGroupeRequest[];
   numerosSieges?: string[];
 }
@@ -708,6 +750,7 @@ export interface SiegePlanDTO {
   enfantSurGenoux?: boolean;
   numeroRangee?: number;
   positionRangee?: string;
+  typeOccupant?: 'HOMME' | 'FEMME' | 'ENFANT' | 'GROUPE' | null;
 }
 
 // Paiement
@@ -735,6 +778,11 @@ export interface TicketDTO {
   numeroSiege: string;
   prix: number;
   categorieTarifaire: string;
+}
+export interface PropositionGroupe {
+  numerosSieges: string[];
+  membresOrdre: string[];
+  description: string;
 }
 // ============ DASHBOARD VOYAGEUR ============
 
@@ -796,6 +844,8 @@ export interface Reclamation {
   voyageurId: number;
   voyageurNom?: string;
   voyageurPrenom?: string;
+  compagnieId?: number;
+  compagnieNom?: string;
 }
 
 export interface CreerReclamationRequest {
@@ -803,6 +853,8 @@ export interface CreerReclamationRequest {
   description: string;
   type: string;
   reservationId?: number;
+  codeBagage?: string;
+  compagnieId?: number;
 }
 
 // Remboursement

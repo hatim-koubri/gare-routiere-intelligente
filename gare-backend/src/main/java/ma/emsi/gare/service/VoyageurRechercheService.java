@@ -23,12 +23,22 @@ public class VoyageurRechercheService {
 
     public List<TrajetResponseDTO> rechercherTrajetsDirects(RechercheTrajetRequest request) {
 
-        if (request.getVilleDepart() == null || request.getVilleArrivee() == null || request.getDate() == null) {
-            throw new RuntimeException("Ville de départ, ville d'arrivée et date sont obligatoires");
+        if (request.getVilleDepart() == null || request.getVilleArrivee() == null) {
+            throw new RuntimeException("Ville de départ et ville d'arrivée sont obligatoires");
         }
 
-        LocalDateTime debut = request.getDate().atStartOfDay();
-        LocalDateTime fin = request.getDate().atTime(23, 59, 59);
+        LocalDateTime debut;
+        LocalDateTime fin;
+
+        if (request.getDateDebut() != null && request.getDateFin() != null) {
+            debut = request.getDateDebut().atStartOfDay();
+            fin = request.getDateFin().atTime(23, 59, 59);
+        } else if (request.getDate() != null) {
+            debut = request.getDate().atStartOfDay();
+            fin = request.getDate().atTime(23, 59, 59);
+        } else {
+            throw new RuntimeException("Date ou intervalle de dates obligatoire");
+        }
 
         var dtos = gareMapper.toTrajetDTOList(
                 trajetRepository.findByVillePeriodeEtCompagnie(
@@ -46,12 +56,22 @@ public class VoyageurRechercheService {
 
     public List<List<TrajetResponseDTO>> rechercherAvecCorrespondances(RechercheTrajetRequest request) {
 
-        if (request.getVilleDepart() == null || request.getVilleArrivee() == null || request.getDate() == null) {
-            throw new RuntimeException("Ville de départ, ville d'arrivée et date sont obligatoires");
+        if (request.getVilleDepart() == null || request.getVilleArrivee() == null) {
+            throw new RuntimeException("Ville de départ et ville d'arrivée sont obligatoires");
         }
 
-        LocalDateTime debut = request.getDate().atStartOfDay();
-        LocalDateTime fin = request.getDate().atTime(23, 59, 59);
+        LocalDateTime debut;
+        LocalDateTime fin;
+
+        if (request.getDateDebut() != null && request.getDateFin() != null) {
+            debut = request.getDateDebut().atStartOfDay();
+            fin = request.getDateFin().atTime(23, 59, 59);
+        } else if (request.getDate() != null) {
+            debut = request.getDate().atStartOfDay();
+            fin = request.getDate().atTime(23, 59, 59);
+        } else {
+            throw new RuntimeException("Date ou intervalle de dates obligatoire");
+        }
 
         List<StatutTrajet> statuts = List.of(StatutTrajet.PLANIFIE);
 
@@ -217,13 +237,18 @@ public class VoyageurRechercheService {
                                             t.getDateArriveePrevue()
                                     ).toMinutes();
 
-                                    double note = t.getLigne().getCompagnie().getNoteMoyenne();
+                                    Long compagnieId = t.getLigne().getCompagnie().getId();
+                                    Double avgNote = avisRepository.avgNoteByCompagnieId(compagnieId);
+                                    Long countAvis = avisRepository.countByCompagnieId(compagnieId);
+                                    double note = avgNote != null ? Math.round(avgNote * 10.0) / 10.0 : 0.0;
+                                    int nbAvis = countAvis != null ? countAvis.intValue() : 0;
 
                                     return new ComparaisonCompagnieDTO(
                                             compagnie,
                                             prix,
                                             duree,
-                                            note
+                                            note,
+                                            nbAvis
                                     );
                                 },
                                 (existing, replacement) -> existing // éviter doublons

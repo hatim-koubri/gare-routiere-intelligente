@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.HashMap;
@@ -32,35 +33,81 @@ public class OCRService {
     private final ImagePreprocessingService imagePreprocessingService;
     private final TesseractOCRService tesseractOCRService;
     private final TrajetRepository trajetRepository;
+    private final ResponsableNotificationHelper responsableNotificationHelper;
+    private final UserRepository userRepository;
 
     // =========================================================
     // T3-01/T3-02/T3-03 — Traitement image OCR
     // (Upload image → prétraitement → Tesseract → extraction matricule)
     // =========================================================
     @Transactional
-    public OCRDetectionResponse traiterImageOCR(MultipartFile image) {
-        log.info("Traitement image OCR : {}", image.getOriginalFilename());
+    public OCRDetectionResponse traiterImageOCR(
+            MultipartFile image,
+            String imageUrl) {
 
-        // Étape 1 : Essayer Tesseract OCR réel
+        log.info(
+                "Traitement image OCR : {}",
+                image.getOriginalFilename());
+
+        // ==========================================
+        // TESSERACT OCR
+        // ==========================================
+
         try {
-            BufferedImage processed = imagePreprocessingService.preprocessImage(image);
-            String matriculeExtrait = tesseractOCRService.extraireMatricule(processed);
-            if (matriculeExtrait != null && !matriculeExtrait.isBlank()) {
-                log.info("OCR Tesseract réussi : {}", matriculeExtrait);
-                return traiterMatriculeExtrait(matriculeExtrait, null);
+
+            BufferedImage processed = imagePreprocessingService
+                    .preprocessImage(image);
+
+            String matriculeExtrait = tesseractOCRService
+                    .extraireMatricule(processed);
+
+            // IMPORTANT
+            log.info(
+                    "OCR RESULT = {}",
+                    matriculeExtrait);
+
+            // SI OCR REUSSI
+            if (matriculeExtrait != null
+                    && !matriculeExtrait.isBlank()) {
+
+                log.info(
+                        "OCR Tesseract réussi : {}",
+                        matriculeExtrait);
+
+                return traiterMatriculeExtrait(
+                        matriculeExtrait,
+                        imageUrl);
             }
-        } catch (Exception e) {
-            log.warn("Tesseract OCR échoué, fallback simulation : {}", e.getMessage());
+
+        } catch (Throwable e) {
+
+            log.warn(
+                    "Tesseract OCR échoué (Erreur système ou mémoire) : {}",
+                    e.getMessage());
         }
 
-        // Étape 2 : Fallback simulation (nom de fichier ou matricule par défaut)
+        // ==========================================
+        // FALLBACK
+        // ==========================================
+
         String matriculeExtrait = simulerExtractionOCR(image);
 
-        if (matriculeExtrait == null || matriculeExtrait.isBlank()) {
-            return traiterPlaquillisible();
+        log.info(
+                "Fallback RESULT = {}",
+                matriculeExtrait);
+
+        // SI AUCUN MATRICULE
+        if (matriculeExtrait == null
+                || matriculeExtrait.isBlank()) {
+
+            return traiterPlaquillisible(
+                    imageUrl);
         }
 
-        return traiterMatriculeExtrait(matriculeExtrait, null);
+        // FALLBACK OK
+        return traiterMatriculeExtrait(
+                matriculeExtrait,
+                imageUrl);
     }
 
     // =========================================================
@@ -90,22 +137,53 @@ public class OCRService {
 
         // T3-07 — Notifier via WebSocket
         wsNotifService.broadcastOCRDetection(matricule, "DETECTE");
-        wsNotifService.notifierAdmins("BUS_ARRIVE", Map.of(
+        Map<String, Object> adminData = Map.of(
                 "matricule", matricule,
                 "compagnie", compagnie.getNom(),
-                "quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A"
-        ));
+                "quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A",
+                "stationnementId", stationnement.getId());
+        wsNotifService.notifierAdmins("BUS_ARRIVE", adminData);
+
+        // — Créer les notifications offline pour chaque admin
+        try {
+            String adminMessage = "Bus " + matricule + " entré en gare — Quai " + (quaiAttribue != null ? quaiAttribue.getNumero() : "N/A") + " — " + compagnie.getNom();
+            String adminPayload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(adminData);
+            List<ma.emsi.gare.entity.User> admins = userRepository.findByRole(ma.emsi.gare.enums.Role.ADMIN);
+            for (ma.emsi.gare.entity.User admin : admins) {
+                notifOfflineService.creerNotification(
+                        admin.getEmail(),
+                        ma.emsi.gare.enums.TypeNotification.BUS_ARRIVE,
+                        adminMessage,
+                        adminPayload);
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de créer les notifications offline pour les admins: {}", e.getMessage());
+        }
+
+        // — Notifier les responsables de la compagnie
+        Map<String, Object> responsableData = new HashMap<>();
+        responsableData.put("matricule", matricule);
+        responsableData.put("compagnie", compagnie.getNom());
+        responsableData.put("quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A");
+        responsableData.put("stationnementId", stationnement.getId());
+        responsableNotificationHelper.notifierResponsables(
+                compagnie.getId(),
+                "BUS_ARRIVE",
+                ma.emsi.gare.enums.TypeNotification.BUS_ARRIVE,
+                "Bus " + matricule + " entré en gare — Quai " + (quaiAttribue != null ? quaiAttribue.getNumero() : "N/A"),
+                responsableData);
+
+        // — Trouver les trajets du jour de ce bus
+        LocalDateTime maintenant = LocalDateTime.now();
+        LocalDateTime debutJour = maintenant.toLocalDate().atStartOfDay();
+        LocalDateTime finJour = debutJour.plusDays(1);
+        List<Trajet> trajetsDuJour = trajetRepository
+                .findByBusIdAndDateDepartBetweenAndStatutIn(
+                        bus.getId(), debutJour, finJour,
+                        List.of(StatutTrajet.PLANIFIE, StatutTrajet.EN_COURS, StatutTrajet.RETARDE));
 
         // T3-29 — Notifier le chauffeur du trajet actif pour ce bus
         try {
-            LocalDateTime maintenant = LocalDateTime.now();
-            LocalDateTime debutJour = maintenant.toLocalDate().atStartOfDay();
-            LocalDateTime finJour = debutJour.plusDays(1);
-            List<Trajet> trajetsDuJour = trajetRepository
-                    .findByBusIdAndDateDepartBetweenAndStatutIn(
-                            bus.getId(), debutJour, finJour,
-                            List.of(StatutTrajet.PLANIFIE, StatutTrajet.EN_COURS, StatutTrajet.RETARDE)
-                    );
             for (Trajet t : trajetsDuJour) {
                 if (t.getChauffeur() != null) {
                     wsNotifService.notifierChauffeur(
@@ -117,9 +195,7 @@ public class OCRService {
                                     "quai", quaiAttribue != null ? quaiAttribue.getNumero() : "N/A",
                                     "compagnie", compagnie.getNom(),
                                     "villeDepart", t.getLigne().getVilleDepart(),
-                                    "villeArrivee", t.getLigne().getVilleArrivee()
-                            )
-                    );
+                                    "villeArrivee", t.getLigne().getVilleArrivee()));
                     log.info("Chauffeur {} notifié pour le quai {} (trajet {})",
                             t.getChauffeur().getId(),
                             quaiAttribue != null ? quaiAttribue.getNumero() : "N/A",
@@ -128,6 +204,42 @@ public class OCRService {
             }
         } catch (Exception e) {
             log.warn("Impossible de notifier le chauffeur: {}", e.getMessage());
+        }
+
+        // — Notifier les voyageurs réservés sur les trajets du jour de ce bus
+        try {
+            int totalVoyageursNotifies = 0;
+            for (Trajet t : trajetsDuJour) {
+                if (t.getReservations() == null || t.getReservations().isEmpty()) continue;
+
+                String qNum = quaiAttribue != null ? String.valueOf(quaiAttribue.getNumero()) : "N/A";
+                String msg = "🚌 Bus " + matricule + " (" + compagnie.getNom() + ") entré en gare — Quai " + qNum;
+
+                Map<String, Object> voyageurData = Map.of(
+                        "matricule", matricule,
+                        "compagnie", compagnie.getNom(),
+                        "quai", qNum,
+                        "trajetId", t.getId(),
+                        "villeDepart", t.getLigne().getVilleDepart(),
+                        "villeArrivee", t.getLigne().getVilleArrivee(),
+                        "dateDepart", t.getDateDepart().toString(),
+                        "message", msg
+                );
+                String payloadJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(voyageurData);
+
+                for (Reservation r : t.getReservations()) {
+                    String email = r.getVoyageur().getEmail();
+                    wsNotifService.notifierVoyageur(email, "BUS_EN_GARE", voyageurData);
+                    notifOfflineService.creerNotification(
+                            email, ma.emsi.gare.enums.TypeNotification.BUS_ARRIVE, msg, payloadJson);
+                    totalVoyageursNotifies++;
+                }
+            }
+            if (totalVoyageursNotifies > 0) {
+                log.info("{} voyageurs notifiés de l'arrivée en gare du bus {}", totalVoyageursNotifies, matricule);
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de notifier les voyageurs: {}", e.getMessage());
         }
 
         log.info("Bus {} détecté → Quai {} → Facturation démarrée",
@@ -139,7 +251,8 @@ public class OCRService {
                 .statut("DETECTE")
                 .stationnementId(stationnement.getId())
                 .quaiAttribue(quaiAttribue != null
-                        ? quaiAttribue.getNumero() : null)
+                        ? quaiAttribue.getNumero()
+                        : null)
                 .compagnie(compagnie.getNom())
                 .message("Bus détecté et quai attribué avec succès")
                 .succès(true)
@@ -151,7 +264,7 @@ public class OCRService {
     // =========================================================
     @Transactional
     public OCRDetectionResponse corrigerOCR(Long stationnementId,
-                                            OCRCorrectionRequest request) {
+            OCRCorrectionRequest request) {
         StationnementOCR stat = stationnementRepo.findById(stationnementId)
                 .orElseThrow(() -> new RuntimeException(
                         "Stationnement non trouvé"));
@@ -214,6 +327,9 @@ public class OCRService {
         stat.setHeureSortie(LocalDateTime.now());
         stat.setStatut(StatutStationnement.TERMINE);
 
+        long dureeMinutes = java.time.temporal.ChronoUnit.MINUTES.between(stat.getHeureEntree(), stat.getHeureSortie());
+        stat.setDureeMinutes((int) dureeMinutes);
+
         double montant = calculerMontant(stat);
         stat.setMontantFacture(montant);
 
@@ -227,11 +343,29 @@ public class OCRService {
         StationnementOCR saved = stationnementRepo.save(stat);
 
         // Notifier l'admin
-        wsNotifService.notifierAdmins("BUS_PARTI", Map.of(
+        Map<String, Object> busPartiData = Map.of(
                 "matricule", stat.getMatricule(),
                 "montant", montant,
-                "stationnementId", stationnementId
-        ));
+                "stationnementId", stationnementId,
+                "quai", stat.getQuai() != null ? stat.getQuai().getNumero() : "N/A",
+                "duree", stat.getDureeMinutes() != null ? stat.getDureeMinutes() : 0);
+        wsNotifService.notifierAdmins("BUS_PARTI", busPartiData);
+
+        // — Créer les notifications offline pour chaque admin
+        try {
+            String adminMessage = "Bus " + stat.getMatricule() + " parti — Facture: " + montant + " MAD — Quai " + (stat.getQuai() != null ? stat.getQuai().getNumero() : "N/A");
+            String adminPayload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(busPartiData);
+            List<ma.emsi.gare.entity.User> admins = userRepository.findByRole(ma.emsi.gare.enums.Role.ADMIN);
+            for (ma.emsi.gare.entity.User admin : admins) {
+                notifOfflineService.creerNotification(
+                        admin.getEmail(),
+                        ma.emsi.gare.enums.TypeNotification.BUS_ARRIVE,
+                        adminMessage,
+                        adminPayload);
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de créer les notifications offline pour les admins (BUS_PARTI): {}", e.getMessage());
+        }
 
         log.info("Bus {} parti → Montant facturé: {} MAD",
                 stat.getMatricule(), montant);
@@ -276,8 +410,8 @@ public class OCRService {
     }
 
     private StationnementOCR demarrerFacturation(String matricule,
-                                                 Bus bus,
-                                                 Quai quai) {
+            Bus bus,
+            Quai quai) {
         StationnementOCR stat = new StationnementOCR();
         stat.setMatricule(matricule);
         stat.setCompagnie(bus.getCompagnie());
@@ -289,7 +423,7 @@ public class OCRService {
     }
 
     private OCRDetectionResponse traiterPlaqueinconnue(String matricule,
-                                                       String imageUrl) {
+            String imageUrl) {
         StationnementOCR stat = new StationnementOCR();
         stat.setMatricule(matricule != null ? matricule : "INCONNU");
         stat.setHeureEntree(LocalDateTime.now());
@@ -317,18 +451,19 @@ public class OCRService {
                 .build();
     }
 
-    private OCRDetectionResponse traiterPlaquillisible() {
+    private OCRDetectionResponse traiterPlaquillisible(String imageUrl) {
         StationnementOCR stat = new StationnementOCR();
         stat.setMatricule("ILLISIBLE");
         stat.setHeureEntree(LocalDateTime.now());
         stat.setStatut(StatutStationnement.CORRECTION_MANUELLE);
         stat.setCorrectionManuelle(true);
+        stat.setImageEntreeUrl(imageUrl);
         stationnementRepo.save(stat);
 
         wsNotifService.notifierAdmins("PLAQUE_ILLISIBLE", Map.of(
                 "message", "Plaque illisible — intervention manuelle requise",
-                "stationnementId", stat.getId()
-        ));
+                "stationnementId", stat.getId(),
+                "imageUrl", imageUrl != null ? imageUrl : ""));
 
         return OCRDetectionResponse.builder()
                 .matricule("ILLISIBLE")
@@ -339,22 +474,47 @@ public class OCRService {
                 .build();
     }
 
-    // Simulation OCR académique
+    // =========================================================
+    // FALLBACK OCR
+    // =========================================================
+
     private String simulerExtractionOCR(MultipartFile image) {
-        // Dans la vraie version : appel HTTP vers microservice Python
-        // Pour la démo : on retourne un matricule fictif basé sur le nom du fichier
+
         String filename = image.getOriginalFilename();
-        if (filename != null && filename.contains("_")) {
-            return filename.split("_")[0].toUpperCase();
+
+        log.info("FILENAME = {}", filename);
+
+        if (filename == null) {
+            return null;
         }
-        return "12345-A-1"; // matricule par défaut pour la démo
+
+        filename = filename.toUpperCase();
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(\\d{1,5}-[A-Z]-\\d{1,3})");
+
+        java.util.regex.Matcher matcher = pattern.matcher(filename);
+
+        if (matcher.find()) {
+
+            String matricule = matcher.group(1);
+
+            log.info("MATRICULE FALLBACK = {}", matricule);
+
+            return matricule;
+        }
+
+        log.warn("Aucun matricule trouvé dans filename");
+
+        return null;
     }
 
     private double calculerMontant(StationnementOCR stat) {
         if (stat.getHeureEntree() == null || stat.getHeureSortie() == null) {
             return 0.0;
         }
-        if (stat.getQuai() == null) return 0.0;
+        if (stat.getQuai() == null)
+            return 0.0;
 
         long minutes = java.time.temporal.ChronoUnit.MINUTES.between(
                 stat.getHeureEntree(), stat.getHeureSortie());

@@ -6,10 +6,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { Home, ChevronLeft, ChevronRight, Briefcase, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Home, ChevronLeft, ChevronRight, Briefcase, Sparkles, CheckCircle2, FileWarning, Clock, Ticket, Ban, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedTicket } from "@/components/ui/ticket-confirmation-card";
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function ConfirmationPage() {
   const { user } = useAuth();
@@ -168,6 +169,67 @@ export default function ConfirmationPage() {
                     </div>
                 </motion.div>
             </div>
+
+            {/* ── Règles Importantes ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="mt-12 w-full max-w-4xl bg-white dark:bg-slate-950 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden"
+            >
+                <div className="bg-orange-500 p-6">
+                    <div className="flex items-center gap-3">
+                        <FileWarning size={24} className="text-white" />
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">Règles Importantes à Savoir</h3>
+                    </div>
+                </div>
+                <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                            <Clock size={18} className="text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter italic mb-1">Présentez-vous à l'avance</h4>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                L'embarquement commence <strong className="text-slate-700 dark:text-slate-300">30 minutes avant le départ</strong>. 
+                                Les portes ferment 10 minutes avant le départ. Aucun remboursement en cas de retard.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                            <Ticket size={18} className="text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter italic mb-1">Ticket Obligatoire</h4>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                Votre ticket (numérique ou imprimé) est <strong className="text-slate-700 dark:text-slate-300">strictement obligatoire</strong> pour embarquer. 
+                                Il est personnel et non transmissible.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-rose-100 dark:bg-rose-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                            <Ban size={18} className="text-rose-600 dark:text-rose-400" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter italic mb-1">Annulation & Remboursement</h4>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                Annulation possible jusqu'à <strong className="text-slate-700 dark:text-slate-300">24h avant le départ</strong>. 
+                                Des frais de dossier s'appliquent. Aucun remboursement moins de 12h avant le départ.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="px-8 pb-8">
+                    <Link
+                        href="/fr/conditions"
+                        className="inline-flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20 hover:scale-[1.03] transition-all"
+                    >
+                        Voir toutes les conditions générales <ExternalLink size={12} />
+                    </Link>
+                </div>
+            </motion.div>
         </div>
       </main>
 

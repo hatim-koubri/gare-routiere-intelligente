@@ -13,4 +13,6 @@ public interface RemboursementRepository
 
     List<Remboursement>
     findByReservationVoyageurIdOrderByDateDemandeDesc(Long voyageurId);
+
+    java.util.Optional<Remboursement> findByReservationId(Long reservationId);
 }

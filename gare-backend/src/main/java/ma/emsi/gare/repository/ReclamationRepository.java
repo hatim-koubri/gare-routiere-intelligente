@@ -11,5 +11,7 @@ public interface ReclamationRepository
     List<Reclamation>
     findByReservationTrajetLigneCompagnieId(Long compagnieId);
 
+    List<Reclamation> findByCompagnieIdOrderByDateCreationDesc(Long compagnieId);
+
     List<Reclamation> findByVoyageurIdOrderByDateCreationDesc(Long voyageurId);
 }

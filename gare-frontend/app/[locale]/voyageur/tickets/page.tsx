@@ -8,6 +8,7 @@ import { Calendar, Clock, Download, QrCode, ArrowLeft, Bus, MapPin, User, Ticket
 import { apiClient } from '@/lib/api/client';
 import QRCode from 'qrcode';
 import { useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TicketItem {
   id: number;
@@ -96,8 +97,8 @@ export default function MesTicketsPage() {
   if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-400 text-sm">Chargement de vos tickets…</p>
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-400 dark:text-zinc-500 text-sm">Chargement de vos tickets…</p>
       </div>
     );
   }
@@ -110,36 +111,44 @@ export default function MesTicketsPage() {
     <div className="space-y-6 pb-10">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Mes tickets</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Mes tickets</h1>
+          <p className="text-slate-500 dark:text-zinc-400 text-sm mt-0.5">
             {allTickets.length} billet{allTickets.length !== 1 ? 's' : ''} au total
           </p>
         </div>
         <Link
           href="/fr/voyageur/dashboard"
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 text-sm font-medium transition"
+          className="flex items-center gap-2 text-slate-600 dark:text-zinc-400 hover:text-orange-500 text-sm font-semibold transition group"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
           Retour au tableau de bord
         </Link>
-      </div>
+      </motion.div>
 
       {allTickets.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-14 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <Ticket size={28} className="text-slate-400" />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-700 p-14 text-center"
+        >
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-500/10 dark:to-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <Ticket size={28} className="text-orange-400" />
           </div>
-          <h3 className="font-semibold text-slate-700 mb-2">Aucun ticket disponible</h3>
-          <p className="text-sm text-slate-400 mb-5">Réservez un voyage pour obtenir vos billets électroniques</p>
+          <h3 className="font-bold text-slate-700 dark:text-zinc-300 mb-2">Aucun ticket disponible</h3>
+          <p className="text-sm text-slate-400 dark:text-zinc-500 mb-5">Réservez un voyage pour obtenir vos billets électroniques</p>
           <Link
             href="/fr/recherche"
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition shadow-md shadow-orange-200/50 dark:shadow-none"
           >
             Rechercher un trajet
           </Link>
-        </div>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {allTickets.map((item, idx) => {
@@ -148,87 +157,99 @@ export default function MesTicketsPage() {
               : null;
             const isValid = item.statut === 'ACTIF';
             const isUpcoming = dateDep && dateDep > new Date();
+            const isPastTrip = dateDep && dateDep < new Date() && item.statut === 'ACTIF';
 
             return (
-              <div
+              <motion.div
                 key={idx}
-                className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.06 }}
+                className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm hover:shadow-xl dark:hover:shadow-none hover:-translate-y-1 transition-all duration-300 overflow-hidden"
               >
                 {/* ── Boarding Pass Header ── */}
                 <div className={`relative px-5 pt-5 pb-4 ${
                   isValid && isUpcoming
-                    ? 'bg-gradient-to-r from-blue-700 to-indigo-600'
+                    ? 'bg-gradient-to-r from-orange-500 via-orange-500 to-red-500'
                     : 'bg-gradient-to-r from-slate-600 to-slate-700'
                 }`}>
-                  <div className="absolute top-3 right-3">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      isValid ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30' : 'bg-white/10 text-white/60 border border-white/20'
-                    }`}>
-                      {isValid ? '✓ Valide' : item.statut}
-                    </span>
-                  </div>
+                  {/* Subtle grid pattern */}
+                  <div className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+                      backgroundSize: '20px 20px'
+                    }}
+                  />
+                  <div className="relative">
+                    <div className="absolute top-0 right-0">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        isPastTrip ? 'bg-black/20 text-white/70' : isValid ? 'bg-white/20 text-white' : 'bg-white/10 text-white/60'
+                      }`}>
+                        {isPastTrip ? 'Voyage passé' : isValid ? '✓ Valide' : item.statut}
+                      </span>
+                    </div>
 
-                  {/* Route */}
-                  <div className="flex items-center gap-3 mt-1">
-                    <div className="text-center">
-                      <p className="text-white/60 text-xs">De</p>
-                      <p className="text-white font-bold text-lg leading-tight">
-                        {item.reservation.trajet?.villeDepart ?? '—'}
-                      </p>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center gap-1">
-                      <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                        <Bus size={12} className="text-white" />
+                    {/* Route */}
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="text-center">
+                        <p className="text-white/60 text-xs">De</p>
+                        <p className="text-white font-black text-lg leading-tight">
+                          {item.reservation.trajet?.villeDepart ?? '—'}
+                        </p>
                       </div>
-                      <div className="flex w-full items-center gap-1">
-                        <div className="flex-1 border-t border-dashed border-white/30" />
-                        <div className="flex-1 border-t border-dashed border-white/30" />
+                      <div className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                          <Bus size={12} className="text-white" />
+                        </div>
+                        <div className="flex w-full items-center gap-1">
+                          <div className="flex-1 border-t border-dashed border-white/30" />
+                          <div className="flex-1 border-t border-dashed border-white/30" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-white/60 text-xs">À</p>
-                      <p className="text-white font-bold text-lg leading-tight">
-                        {item.reservation.trajet?.villeArrivee ?? '—'}
-                      </p>
+                      <div className="text-center">
+                        <p className="text-white/60 text-xs">À</p>
+                        <p className="text-white font-black text-lg leading-tight">
+                          {item.reservation.trajet?.villeArrivee ?? '—'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Ticket body */}
-                {/* ── Dashed divider ── */}
+                {/* Ticket body divider */}
                 <div className="relative flex items-center px-5 py-0">
-                  <div className="absolute -left-3 w-6 h-6 bg-slate-50 rounded-full border border-slate-100" />
-                  <div className="flex-1 border-t-2 border-dashed border-slate-100 my-3" />
-                  <div className="absolute -right-3 w-6 h-6 bg-slate-50 rounded-full border border-slate-100" />
+                  <div className="absolute -left-3 w-6 h-6 bg-slate-50 dark:bg-zinc-950 rounded-full border border-slate-100 dark:border-zinc-800" />
+                  <div className="flex-1 border-t-2 border-dashed border-slate-100 dark:border-zinc-700 my-3" />
+                  <div className="absolute -right-3 w-6 h-6 bg-slate-50 dark:bg-zinc-950 rounded-full border border-slate-100 dark:border-zinc-800" />
                 </div>
 
                 <div className="px-5 pb-5">
                   {/* Passenger */}
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                      <User size={15} className="text-blue-600" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-500/10 dark:to-red-500/10 rounded-lg flex items-center justify-center">
+                      <User size={15} className="text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Passager</p>
-                      <p className="text-sm font-semibold text-slate-800">
+                      <p className="text-xs text-slate-400 dark:text-zinc-500">Passager</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-white">
                         {item.nomPassager} {item.prenomPassager}
                       </p>
                     </div>
                   </div>
 
                   {/* Details grid */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-slate-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-400 mb-0.5">Siège</p>
-                      <p className="font-bold text-blue-600 text-sm">{item.numeroSiege}</p>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="bg-orange-50 dark:bg-orange-500/10 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400 dark:text-zinc-500 mb-0.5">Siège</p>
+                      <p className="font-black text-orange-500 text-sm">{item.numeroSiege}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-400 mb-0.5">Prix</p>
-                      <p className="font-bold text-slate-800 text-xs">{item.prix} MAD</p>
+                    <div className="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400 dark:text-zinc-500 mb-0.5">Prix</p>
+                      <p className="font-bold text-slate-800 dark:text-white text-xs">{item.prix} MAD</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-400 mb-0.5">Quai</p>
-                      <p className="font-bold text-slate-800 text-sm">
+                    <div className="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400 dark:text-zinc-500 mb-0.5">Quai</p>
+                      <p className="font-bold text-slate-800 dark:text-white text-sm">
                         {item.reservation.trajet?.quaiNumero ?? '—'}
                       </p>
                     </div>
@@ -236,13 +257,13 @@ export default function MesTicketsPage() {
 
                   {/* Date/heure */}
                   {dateDep && (
-                    <div className="flex items-center gap-3 mb-4 text-xs text-slate-500">
+                    <div className="flex items-center gap-3 mb-4 text-xs text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-800 rounded-xl px-3 py-2">
                       <span className="flex items-center gap-1">
-                        <Calendar size={11} className="text-slate-400" />
+                        <Calendar size={11} className="text-orange-400" />
                         {dateDep.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Clock size={11} className="text-slate-400" />
+                        <Clock size={11} className="text-orange-400" />
                         {dateDep.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -255,154 +276,164 @@ export default function MesTicketsPage() {
                         setSelectedTicket(item);
                         setSelectedReservation(item.reservation);
                       }}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold hover:bg-blue-100 transition"
+                      className="flex items-center justify-center gap-2 py-2.5 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-xl text-xs font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition border border-orange-100 dark:border-orange-500/10"
                     >
                       <QrCode size={14} />
-                      Voir
+                      Voir QR
                     </button>
                     <button
                       onClick={() => handleDownload(item.reservation.id, item.id)}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition"
+                      className="flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-sm shadow-orange-200/50 dark:shadow-none"
                     >
                       <Download size={14} />
                       PDF
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
 
-      {/* ── Modal détail ticket (Boarding Pass Design) ── */}
-      {selectedTicket && selectedReservation && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => { setSelectedTicket(null); setSelectedReservation(null); }}
-        >
-          <div
-            className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl overflow-hidden flex flex-col"
-            onClick={e => e.stopPropagation()}
+      {/* ── Modal détail ticket ── */}
+      <AnimatePresence>
+        {selectedTicket && selectedReservation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => { setSelectedTicket(null); setSelectedReservation(null); }}
           >
-            {/* ── Top Section: Route & Company ── */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white relative">
-              <button
-                onClick={() => { setSelectedTicket(null); setSelectedReservation(null); }}
-                className="absolute top-4 right-4 p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition"
-              >
-                <X size={20} />
-              </button>
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-zinc-900 rounded-[2rem] w-full max-w-sm shadow-2xl overflow-hidden flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* ── Top Section ── */}
+              <div className="bg-gradient-to-br from-orange-500 via-orange-500 to-red-500 p-6 text-white relative overflow-hidden">
+                <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full" />
+                <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-white/5 rounded-full" />
+                <button
+                  onClick={() => { setSelectedTicket(null); setSelectedReservation(null); }}
+                  className="absolute top-4 right-4 p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition"
+                >
+                  <X size={20} />
+                </button>
 
-              <div className="flex justify-between items-center mb-6 pr-8">
-                <span className="bg-white/10 text-white/90 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest border border-white/10">
-                  TICKET #{selectedTicket.id}
-                </span>
-                <span className="text-white/60 text-xs font-semibold flex items-center gap-1">
-                  <Building size={14} /> {selectedReservation.trajet?.compagnieNom || '—'}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Départ</p>
-                  <h2 className="text-3xl font-black leading-none">{selectedReservation.trajet?.villeDepart}</h2>
-                  <p className="text-white/70 text-xs mt-2 font-medium">
-                    {selectedReservation.trajet?.dateDepart ? new Date(selectedReservation.trajet.dateDepart).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                  </p>
-                </div>
-                <div className="flex flex-col items-center pb-2 px-2">
-                  <Bus className="text-orange-500 mb-1" size={20} />
-                  <div className="w-10 border-t-2 border-dashed border-white/20"></div>
-                </div>
-                <div className="text-right">
-                  <p className="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Arrivée</p>
-                  <h2 className="text-3xl font-black leading-none">{selectedReservation.trajet?.villeArrivee}</h2>
-                  <p className="text-white/70 text-xs mt-2 font-medium">
-                    {selectedReservation.trajet?.dateArriveePrevue ? new Date(selectedReservation.trajet.dateArriveePrevue).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Perforation Line ── */}
-            <div className="relative h-6 bg-white overflow-hidden flex items-center justify-center">
-              <div className="absolute w-6 h-6 bg-slate-900/60 backdrop-blur-sm rounded-full -left-3 top-0"></div>
-              <div className="w-full border-t-2 border-dashed border-slate-200 mx-4"></div>
-              <div className="absolute w-6 h-6 bg-slate-900/60 backdrop-blur-sm rounded-full -right-3 top-0"></div>
-            </div>
-
-            {/* ── Passenger & QR Code ── */}
-            <div className="px-6 pb-6 pt-1">
-              <div className="flex justify-between items-start mb-6">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Passager</p>
-                    <p className="text-base font-black text-slate-800 leading-tight">
-                      {selectedTicket.nomPassager} {selectedTicket.prenomPassager}
-                    </p>
-                  </div>
-                  <div className="flex gap-6">
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Siège</p>
-                      <p className="text-xl font-black text-orange-600 leading-none">{selectedTicket.numeroSiege}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Bus</p>
-                      <p className="text-sm font-bold text-slate-700 mt-1">{selectedReservation.trajet?.busMatricule || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* QR Code */}
-                <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
-                  <canvas ref={qrCanvasRef} className="w-20 h-20" />
-                  <p className="text-[9px] font-mono text-slate-400 mt-1.5 tracking-wider">
-                    {selectedTicket.qrCode || 'N/A'}
-                  </p>
-                </div>
-              </div>
-
-              {/* ── Bagages ── */}
-              <div className="bg-orange-50/50 rounded-2xl p-4 border border-orange-100/50 mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-orange-600">
-                    <Briefcase size={16} />
-                    <span className="font-bold text-sm">Bagages (Réservation)</span>
-                  </div>
-                  <span className="bg-orange-100 text-orange-700 font-bold text-[10px] px-2.5 py-1 rounded-md">
-                    {selectedReservation.bagages?.length || 0} BAGAGE(S)
+                <div className="relative flex justify-between items-center mb-6 pr-8">
+                  <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black tracking-widest border border-white/20">
+                    TICKET #{selectedTicket.id}
+                  </span>
+                  <span className="text-white/70 text-xs font-semibold flex items-center gap-1">
+                    <Building size={14} /> {selectedReservation.trajet?.compagnieNom || '—'}
                   </span>
                 </div>
-                {selectedReservation.bagages && selectedReservation.bagages.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedReservation.bagages.map((b, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs border-b border-orange-100/50 pb-1.5 last:border-0 last:pb-0">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-700">Bagage {idx + 1} <span className="text-slate-400 font-normal">({b.typeBagage || 'STANDARD'})</span></span>
-                          <span className="text-[10px] text-orange-600/80 font-mono mt-0.5 font-bold">ID: {b.id}</span>
-                        </div>
-                        <span className="font-bold text-slate-800">{b.poidsKg} kg</span>
-                      </div>
-                    ))}
+
+                <div className="relative flex justify-between items-end">
+                  <div>
+                    <p className="text-white/50 text-[10px] font-black uppercase tracking-wider mb-1">Départ</p>
+                    <h2 className="text-3xl font-black leading-none">{selectedReservation.trajet?.villeDepart}</h2>
+                    <p className="text-white/70 text-xs mt-2 font-medium">
+                      {selectedReservation.trajet?.dateDepart ? new Date(selectedReservation.trajet.dateDepart).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </p>
                   </div>
-                ) : (
-                  <p className="text-xs text-slate-500/80 italic font-medium">Aucun bagage déclaré pour cette réservation.</p>
-                )}
+                  <div className="flex flex-col items-center pb-2 px-2">
+                    <Bus className="text-white/80 mb-1" size={20} />
+                    <div className="w-10 border-t-2 border-dashed border-white/30"></div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white/50 text-[10px] font-black uppercase tracking-wider mb-1">Arrivée</p>
+                    <h2 className="text-3xl font-black leading-none">{selectedReservation.trajet?.villeArrivee}</h2>
+                    <p className="text-white/70 text-xs mt-2 font-medium">
+                      {selectedReservation.trajet?.dateArriveePrevue ? new Date(selectedReservation.trajet.dateArriveePrevue).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* ── Actions ── */}
-              <button
-                onClick={() => handleDownload(selectedReservation.id, selectedTicket.id)}
-                className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-900/20"
-              >
-                <Download size={18} />
-                Télécharger le billet PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* ── Perforation Line ── */}
+              <div className="relative h-6 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden">
+                <div className="absolute w-6 h-6 bg-orange-500/30 rounded-full -left-3" />
+                <div className="w-full border-t-2 border-dashed border-slate-200 dark:border-zinc-700 mx-4" />
+                <div className="absolute w-6 h-6 bg-orange-500/30 rounded-full -right-3" />
+              </div>
+
+              {/* ── Passenger & QR Code ── */}
+              <div className="px-6 pb-6 pt-1 bg-white dark:bg-zinc-900">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-black uppercase tracking-widest mb-0.5">Passager</p>
+                      <p className="text-base font-black text-slate-800 dark:text-white leading-tight">
+                        {selectedTicket.nomPassager} {selectedTicket.prenomPassager}
+                      </p>
+                    </div>
+                    <div className="flex gap-6">
+                      <div>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-black uppercase tracking-widest mb-0.5">Siège</p>
+                        <p className="text-xl font-black text-orange-500 leading-none">{selectedTicket.numeroSiege}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-black uppercase tracking-widest mb-0.5">Bus</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-zinc-300 mt-1">{selectedReservation.trajet?.busMatricule || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="bg-orange-50 dark:bg-orange-500/10 p-2.5 rounded-2xl border border-orange-100 dark:border-orange-500/20 flex flex-col items-center">
+                    <canvas ref={qrCanvasRef} className="w-20 h-20" />
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-zinc-500 mt-1.5 tracking-wider">
+                      {selectedTicket.qrCode || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ── Bagages ── */}
+                <div className="bg-orange-50 dark:bg-orange-500/10 rounded-2xl p-4 border border-orange-100 dark:border-orange-500/20 mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                      <Briefcase size={16} />
+                      <span className="font-bold text-sm">Bagages</span>
+                    </div>
+                    <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 font-black text-[10px] px-2.5 py-1 rounded-md">
+                      {selectedReservation.bagages?.length || 0} BAGAGE(S)
+                    </span>
+                  </div>
+                  {selectedReservation.bagages && selectedReservation.bagages.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedReservation.bagages.map((b, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs border-b border-orange-100/50 dark:border-orange-500/10 pb-1.5 last:border-0 last:pb-0">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-700 dark:text-zinc-300">Bagage {idx + 1} <span className="text-slate-400 font-normal">({b.typeBagage || 'STANDARD'})</span></span>
+                            <span className="text-[10px] text-orange-500 font-mono mt-0.5 font-bold">ID: {b.id}</span>
+                          </div>
+                          <span className="font-bold text-slate-800 dark:text-white">{b.poidsKg} kg</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 dark:text-zinc-400 italic font-medium">Aucun bagage déclaré.</p>
+                  )}
+                </div>
+
+                {/* ── Download ── */}
+                <button
+                  onClick={() => handleDownload(selectedReservation.id, selectedTicket.id)}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3.5 rounded-xl font-bold hover:opacity-90 transition shadow-lg shadow-orange-200/50 dark:shadow-none"
+                >
+                  <Download size={18} />
+                  Télécharger le billet PDF
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

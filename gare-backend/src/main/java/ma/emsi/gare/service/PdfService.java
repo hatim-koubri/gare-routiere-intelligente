@@ -2,17 +2,23 @@ package ma.emsi.gare.service;
 
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import ma.emsi.gare.entity.StationnementOCR;
+import ma.emsi.gare.entity.*;
+import ma.emsi.gare.repository.BusRepository;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PdfService {
+
+    private final BusRepository busRepository;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -329,6 +335,299 @@ public class PdfService {
                 villeDepart, villeArrivee,
                 java.util.Collections.emptyList()
         );
+    }
+
+    // ===== FACTURE STATIONNEMENT — Version enrichie RIHLA =====
+    public byte[] genererFactureStationnementRIHLA(StationnementOCR stat) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A4, 30, 30, 30, 30);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            document.open();
+
+            BaseColor EMERALD = new BaseColor(16, 185, 129);
+            BaseColor EMERALD_LIGHT = new BaseColor(209, 250, 229);
+            BaseColor EMERALD_DARK = new BaseColor(6, 95, 70);
+            BaseColor EMERALD_MUTED = new BaseColor(167, 243, 208);
+
+            // — Background décoratif
+            PdfContentByte canvas = writer.getDirectContentUnder();
+            Rectangle page = writer.getPageSize();
+            canvas.setColorFill(new BaseColor(249, 250, 251));
+            canvas.rectangle(page.getLeft(), page.getBottom(), page.getWidth(), page.getHeight());
+            canvas.fill();
+
+            canvas.setColorFill(EMERALD_LIGHT);
+            canvas.moveTo(page.getRight() - 100, page.getTop());
+            canvas.lineTo(page.getRight(), page.getTop());
+            canvas.lineTo(page.getRight(), page.getTop() - 100);
+            canvas.fill();
+
+            canvas.setColorFill(EMERALD_LIGHT);
+            canvas.moveTo(page.getLeft(), page.getBottom());
+            canvas.lineTo(page.getLeft() + 100, page.getBottom());
+            canvas.lineTo(page.getLeft(), page.getBottom() + 100);
+            canvas.fill();
+
+            // — TOP BAND
+            PdfPTable bandeHaut = new PdfPTable(2);
+            bandeHaut.setWidthPercentage(100);
+            bandeHaut.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            bandeHaut.setWidths(new float[]{50, 50});
+
+            // Logo RIHLA
+            PdfPTable logoTable = new PdfPTable(1);
+            logoTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+
+            Font logoFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 28, EMERALD);
+            Paragraph rihla = new Paragraph("RIHLA", logoFont);
+            rihla.setAlignment(Element.ALIGN_LEFT);
+            logoTable.addCell(rihla);
+
+            Font subLogoFont = FontFactory.getFont(FontFactory.HELVETICA, 9, EMERALD_DARK);
+            Paragraph sub = new Paragraph("Gare Routière Intelligente", subLogoFont);
+            sub.setAlignment(Element.ALIGN_LEFT);
+            logoTable.addCell(sub);
+
+            Font cityFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, EMERALD_MUTED);
+            Paragraph city = new Paragraph("EMSI · Maroc", cityFont);
+            city.setAlignment(Element.ALIGN_LEFT);
+            logoTable.addCell(city);
+
+            PdfPCell logoCell = new PdfPCell(logoTable);
+            logoCell.setBorder(Rectangle.NO_BORDER);
+            bandeHaut.addCell(logoCell);
+
+            // Facture numéro + date
+            PdfPTable infoDroite = new PdfPTable(1);
+            infoDroite.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+
+            Font factureNumFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, EMERALD_DARK);
+            Paragraph factureNum = new Paragraph("FACTURE", factureNumFont);
+            factureNum.setAlignment(Element.ALIGN_RIGHT);
+            infoDroite.addCell(factureNum);
+
+            Font refFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, GRAY_700);
+            Paragraph ref = new Paragraph("Nº FACT-" + stat.getId() + "/" + java.time.LocalDate.now().getYear(), refFont);
+            ref.setAlignment(Element.ALIGN_RIGHT);
+            infoDroite.addCell(ref);
+
+            Font dateFont = FontFactory.getFont(FontFactory.HELVETICA, 9, GRAY_500);
+            Paragraph dateFact = new Paragraph("Date: " + LocalDateTime.now().format(FORMATTER), dateFont);
+            dateFact.setAlignment(Element.ALIGN_RIGHT);
+            infoDroite.addCell(dateFact);
+
+            PdfPCell infoCell = new PdfPCell(infoDroite);
+            infoCell.setBorder(Rectangle.NO_BORDER);
+            bandeHaut.addCell(infoCell);
+
+            document.add(bandeHaut);
+
+            // — Séparateur
+            PdfPTable sep = new PdfPTable(1);
+            sep.setWidthPercentage(100);
+            PdfPCell sepCell = new PdfPCell();
+            sepCell.setFixedHeight(3);
+            sepCell.setBackgroundColor(EMERALD);
+            sepCell.setBorder(Rectangle.NO_BORDER);
+            sep.addCell(sepCell);
+            sep.setSpacingBefore(12);
+            sep.setSpacingAfter(16);
+            document.add(sep);
+
+            // — Détection image (si disponible)
+            if (stat.getImageEntreeUrl() != null && !stat.getImageEntreeUrl().isBlank()) {
+                try {
+                    String imagePath = stat.getImageEntreeUrl();
+                    if (imagePath.startsWith("/")) imagePath = "." + imagePath;
+                    Image img = Image.getInstance(imagePath);
+                    img.scaleToFit(200, 130);
+                    img.setAlignment(Element.ALIGN_CENTER);
+                    img.setSpacingAfter(12);
+                    document.add(img);
+                } catch (Exception e) {
+                    log.warn("Impossible d'ajouter l'image de détection: {}", e.getMessage());
+                }
+            }
+
+            // — Infos bus et compagnie
+            PdfPTable infosTable = new PdfPTable(2);
+            infosTable.setWidthPercentage(100);
+            infosTable.setSpacingBefore(6);
+            infosTable.setSpacingAfter(10);
+            infosTable.setWidths(new float[]{50, 50});
+
+            // Bloc gauche : Compagnie
+            PdfPTable blocGauche = new PdfPTable(1);
+            blocGauche.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            Font infoTitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, GRAY_500);
+
+            PdfPCell cLeft = new PdfPCell();
+            cLeft.setBorder(Rectangle.NO_BORDER);
+            cLeft.setBackgroundColor(GRAY_50);
+            cLeft.setPadding(10);
+
+            Paragraph clTitre = new Paragraph("COMPAGNIE", infoTitleFont);
+            clTitre.setSpacingAfter(4);
+            cLeft.addElement(clTitre);
+
+            Font companyNameFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, GRAY_900);
+            String compagnieNom = stat.getCompagnie() != null ? stat.getCompagnie().getNom() : "—";
+            cLeft.addElement(new Paragraph(compagnieNom, companyNameFont));
+
+            if (stat.getCompagnie() != null) {
+                Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 9, GRAY_700);
+                Compagnie c = stat.getCompagnie();
+                if (c.getCode() != null) cLeft.addElement(new Paragraph("Code: " + c.getCode(), smallFont));
+                if (c.getTelephone() != null) cLeft.addElement(new Paragraph("Tél: " + c.getTelephone(), smallFont));
+                if (c.getEmail() != null) cLeft.addElement(new Paragraph("Email: " + c.getEmail(), smallFont));
+            }
+
+            // Bus info
+            Bus bus = null;
+            try {
+                Optional<Bus> busOpt = busRepository.findByMatricule(stat.getMatricule());
+                if (busOpt.isPresent()) bus = busOpt.get();
+            } catch (Exception e) {
+                log.warn("Bus non trouvé pour matricule {}: {}", stat.getMatricule(), e.getMessage());
+            }
+
+            if (bus != null) {
+                Font busLabelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, GRAY_500);
+                Paragraph busTitre = new Paragraph("BUS", busLabelFont);
+                busTitre.setSpacingBefore(8);
+                busTitre.setSpacingAfter(4);
+                cLeft.addElement(busTitre);
+                Font busValFont = FontFactory.getFont(FontFactory.HELVETICA, 10, GRAY_700);
+                cLeft.addElement(new Paragraph("Matricule: " + bus.getMatricule(), busValFont));
+                cLeft.addElement(new Paragraph("Marque: " + bus.getMarque() + (bus.getModele() != null ? " " + bus.getModele() : ""), busValFont));
+                cLeft.addElement(new Paragraph("Places: " + bus.getNbSieges(), busValFont));
+            }
+
+            infosTable.addCell(cLeft);
+
+            // Bloc droit : Quai + Durée
+            PdfPCell cRight = new PdfPCell();
+            cRight.setBorder(Rectangle.NO_BORDER);
+            cRight.setBackgroundColor(EMERALD_LIGHT);
+            cRight.setPadding(10);
+
+            Paragraph qTitre = new Paragraph("STATIONNEMENT", infoTitleFont);
+            qTitre.setSpacingAfter(4);
+            cRight.addElement(qTitre);
+
+            Font valFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, GRAY_900);
+            Font smallValFont = FontFactory.getFont(FontFactory.HELVETICA, 10, GRAY_700);
+
+            if (stat.getQuai() != null) {
+                cRight.addElement(new Paragraph("Quai Nº " + stat.getQuai().getNumero(), valFont));
+                cRight.addElement(new Paragraph("Tarif: " + String.format("%.2f", stat.getQuai().getTarifHoraire()) + " DH/h", smallValFont));
+            }
+
+            cRight.addElement(new Paragraph("Entrée: " + (stat.getHeureEntree() != null ? stat.getHeureEntree().format(FORMATTER) : "—"), smallValFont));
+            cRight.addElement(new Paragraph("Sortie: " + (stat.getHeureSortie() != null ? stat.getHeureSortie().format(FORMATTER) : "En cours"), smallValFont));
+
+            if (stat.getDureeMinutes() != null) {
+                long h = stat.getDureeMinutes() / 60;
+                long m = stat.getDureeMinutes() % 60;
+                cRight.addElement(new Paragraph("Durée: " + h + "h " + m + "min (" + stat.getDureeMinutes() + " min)", smallValFont));
+            }
+
+            infosTable.addCell(cRight);
+            document.add(infosTable);
+
+            // — Tableau détaillé
+            PdfPTable detailTable = new PdfPTable(3);
+            detailTable.setWidthPercentage(100);
+            detailTable.setSpacingBefore(10);
+            detailTable.setSpacingAfter(14);
+            detailTable.setWidths(new float[]{40, 30, 30});
+
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, WHITE);
+            PdfPCell h1 = new PdfPCell(new Phrase("Libellé", headerFont));
+            h1.setBackgroundColor(EMERALD);
+            h1.setPadding(8);
+            h1.setBorder(Rectangle.NO_BORDER);
+            detailTable.addCell(h1);
+
+            PdfPCell h2 = new PdfPCell(new Phrase("Durée", headerFont));
+            h2.setBackgroundColor(EMERALD);
+            h2.setPadding(8);
+            h2.setHorizontalAlignment(Element.ALIGN_CENTER);
+            h2.setBorder(Rectangle.NO_BORDER);
+            detailTable.addCell(h2);
+
+            PdfPCell h3 = new PdfPCell(new Phrase("Montant", headerFont));
+            h3.setBackgroundColor(EMERALD);
+            h3.setPadding(8);
+            h3.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            h3.setBorder(Rectangle.NO_BORDER);
+            detailTable.addCell(h3);
+
+            String libelle = "Stationnement Quai " + (stat.getQuai() != null ? stat.getQuai().getNumero() : "N/A") + " — " + stat.getMatricule();
+            String dureeStr = stat.getDureeMinutes() != null ? (stat.getDureeMinutes() / 60 + "h " + stat.getDureeMinutes() % 60 + "min") : "—";
+
+            Font rowFont = FontFactory.getFont(FontFactory.HELVETICA, 10, GRAY_700);
+            PdfPCell r1 = new PdfPCell(new Phrase(libelle, rowFont));
+            r1.setPadding(7);
+            r1.setBorderColor(GRAY_200);
+            detailTable.addCell(r1);
+
+            PdfPCell r2 = new PdfPCell(new Phrase(dureeStr, rowFont));
+            r2.setPadding(7);
+            r2.setHorizontalAlignment(Element.ALIGN_CENTER);
+            r2.setBorderColor(GRAY_200);
+            detailTable.addCell(r2);
+
+            Font montantFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, GRAY_900);
+            PdfPCell r3 = new PdfPCell(new Phrase(String.format("%.2f", stat.getMontantFacture() != null ? stat.getMontantFacture() : 0.0) + " DH", montantFont));
+            r3.setPadding(7);
+            r3.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            r3.setBorderColor(GRAY_200);
+            detailTable.addCell(r3);
+
+            document.add(detailTable);
+
+            // — Ligne de total
+            PdfPTable totalTable = new PdfPTable(1);
+            totalTable.setWidthPercentage(100);
+
+            PdfPCell totalCell = new PdfPCell();
+            totalCell.setBorder(Rectangle.NO_BORDER);
+            totalCell.setBackgroundColor(EMERALD_DARK);
+            totalCell.setPadding(14);
+            totalCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+            Font totalLabelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, EMERALD_LIGHT);
+            Font totalValueFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 26, WHITE);
+
+            Paragraph totalPara = new Paragraph();
+            totalPara.add(new Chunk("TOTAL À PAYER  ", totalLabelFont));
+            totalPara.add(new Chunk(String.format("%.2f", stat.getMontantFacture() != null ? stat.getMontantFacture() : 0.0) + " DH", totalValueFont));
+            totalCell.addElement(totalPara);
+
+            totalTable.addCell(totalCell);
+            totalTable.setSpacingAfter(20);
+            document.add(totalTable);
+
+            // — Footer
+            Font footerFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, GRAY_500);
+            Paragraph footer = new Paragraph("Cette facture est générée automatiquement par le système RIHLA.", footerFont);
+            footer.setAlignment(Element.ALIGN_CENTER);
+            footer.setSpacingAfter(4);
+            document.add(footer);
+
+            Paragraph footer2 = new Paragraph("Merci de votre confiance.", footerFont);
+            footer2.setAlignment(Element.ALIGN_CENTER);
+            document.add(footer2);
+
+            document.close();
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            log.error("Erreur génération facture RIHLA: {}", e.getMessage());
+            throw new RuntimeException("Erreur génération facture: " + e.getMessage());
+        }
     }
 
     // ===== Helpers =====

@@ -39,5 +39,8 @@ public class GroupeVoyage {
     private List<MembreGroupe> membres = new ArrayList<>();
 
     @Column(name = "placement_effectue")
-    private boolean placementEffectue = false;
+    private Boolean placementEffectue = false;
+
+    @Column(name = "accepte_separer")
+    private Boolean accepteSeparer = false;
 }

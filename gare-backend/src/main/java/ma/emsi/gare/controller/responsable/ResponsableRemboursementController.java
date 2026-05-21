@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.TraitementRemboursementRequest;
 import ma.emsi.gare.dto.response.RemboursementResponseDTO;
-import ma.emsi.gare.entity.Remboursement;
 import ma.emsi.gare.service.ResponsableRemboursementService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,13 +22,9 @@ public class ResponsableRemboursementController {
     public ResponseEntity<List<RemboursementResponseDTO>>
     getDemandes(Authentication authentication) {
 
-        List<RemboursementResponseDTO> remboursements =
+        return ResponseEntity.ok(
                 service.getDemandes(authentication)
-                        .stream()
-                        .map(this::toDto)
-                        .toList();
-
-        return ResponseEntity.ok(remboursements);
+        );
     }
 
     @GetMapping("/{id}")
@@ -40,7 +35,7 @@ public class ResponsableRemboursementController {
     ) {
 
         return ResponseEntity.ok(
-                toDto(service.getById(id, authentication))
+                service.getById(id, authentication)
         );
     }
 
@@ -52,7 +47,7 @@ public class ResponsableRemboursementController {
     ) {
 
         return ResponseEntity.ok(
-                toDto(service.accepter(id, authentication))
+                service.accepter(id, authentication)
         );
     }
 
@@ -64,7 +59,7 @@ public class ResponsableRemboursementController {
     ) {
 
         return ResponseEntity.ok(
-                toDto(service.refuser(id, authentication))
+                service.refuser(id, authentication)
         );
     }
 
@@ -78,68 +73,11 @@ public class ResponsableRemboursementController {
     ) {
 
         return ResponseEntity.ok(
-                toDto(
-                        service.traiter(
-                                id,
-                                request,
-                                authentication
-                        )
+                service.traiter(
+                        id,
+                        request,
+                        authentication
                 )
         );
-    }
-
-    private RemboursementResponseDTO toDto(
-            Remboursement remboursement
-    ) {
-
-        RemboursementResponseDTO dto =
-                new RemboursementResponseDTO();
-
-        dto.setId(remboursement.getId());
-
-        dto.setMontant(remboursement.getMontant());
-
-        dto.setMotif(remboursement.getMotif());
-
-        dto.setStatut(remboursement.getStatut());
-
-        dto.setDateDemande(
-                remboursement.getDateDemande()
-        );
-
-        dto.setDateTraitement(
-                remboursement.getDateTraitement()
-        );
-
-        if (remboursement.getReservation() != null) {
-
-            dto.setReservationId(
-                    remboursement.getReservation().getId()
-            );
-
-            if (remboursement.getReservation()
-                    .getVoyageur() != null) {
-
-                dto.setVoyageurId(
-                        remboursement.getReservation()
-                                .getVoyageur()
-                                .getId()
-                );
-
-                dto.setVoyageurNom(
-                        remboursement.getReservation()
-                                .getVoyageur()
-                                .getNom()
-                );
-
-                dto.setVoyageurPrenom(
-                        remboursement.getReservation()
-                                .getVoyageur()
-                                .getPrenom()
-                );
-            }
-        }
-
-        return dto;
     }
 }

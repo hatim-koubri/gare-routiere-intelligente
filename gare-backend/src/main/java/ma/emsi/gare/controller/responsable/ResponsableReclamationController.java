@@ -121,6 +121,17 @@ public class ResponsableReclamationController {
             );
         }
 
+        if (reclamation.getCompagnie() != null) {
+
+            dto.setCompagnieId(
+                    reclamation.getCompagnie().getId()
+            );
+
+            dto.setCompagnieNom(
+                    reclamation.getCompagnie().getNom()
+            );
+        }
+
         return dto;
     }
 }

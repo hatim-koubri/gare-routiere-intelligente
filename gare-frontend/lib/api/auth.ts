@@ -13,6 +13,7 @@ export const authApi = {
         nom: response.data.nom,
         prenom: response.data.prenom,
         role: response.data.role,
+        sexe: response.data.sexe,
       });
     }
     return response.data;
@@ -28,6 +29,7 @@ export const authApi = {
         nom: response.data.nom,
         prenom: response.data.prenom,
         role: response.data.role,
+        sexe: response.data.sexe,
       });
     }
     return response.data;

@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { motion } from 'framer-motion';
+
 export default function ChauffeurSidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuth();
@@ -44,11 +46,40 @@ export default function ChauffeurSidebar() {
 
       {/* ── Brand RIHLA ── */}
       <div className="px-6 py-8 border-b border-slate-50">
-        <div className="mb-6">
-          <p className="font-black text-blue-600 text-3xl tracking-tighter uppercase italic leading-none">
-            RIHLA
-          </p>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Espace Chauffeur</p>
+        <div className="mb-6 flex flex-col gap-1">
+          <Link href="/" className="group flex items-center outline-none">
+            <motion.div
+              initial="initial"
+              whileHover="hover"
+              className="flex items-center"
+            >
+              {"RIHLA".split("").map((letter, index) => (
+                <motion.span
+                  key={index}
+                  variants={{
+                    initial: { y: 0, filter: "blur(0px)" },
+                    hover: { 
+                      y: -2, 
+                      filter: "blur(0.1px)",
+                      transition: {
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 10,
+                        delay: index * 0.03
+                      }
+                    }
+                  }}
+                  className={cn(
+                    "text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-orange-400 via-orange-500 to-red-500",
+                    "drop-shadow-[0_2px_8px_rgba(249,115,22,0.3)] select-none"
+                  )}
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </motion.div>
+          </Link>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1 ml-0.5">Espace Chauffeur</p>
         </div>
 
         {/* Avatar utilisateur */}

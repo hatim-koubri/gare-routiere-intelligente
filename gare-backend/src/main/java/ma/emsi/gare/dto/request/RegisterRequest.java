@@ -12,4 +12,5 @@ public class RegisterRequest {
     @NotBlank @Size(min = 8) private String password;
     private String telephone;
     @NotNull private Role role;
+    private String sexe; // HOMME ou FEMME
 }

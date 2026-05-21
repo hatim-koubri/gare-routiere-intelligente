@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import { ReservationRequest, ReservationResponse, SiegePlanDTO, BagageRequest, BagageResponseDTO, MembreGroupeDTO, RemboursementResponse } from '@/types';
+import { ReservationRequest, ReservationResponse, SiegePlanDTO, BagageRequest, BagageResponseDTO, MembreGroupeDTO, RemboursementResponse, PropositionGroupe } from '@/types';
 
 export interface ChangementSiegeRequest {
   nouveauxSieges: string[];
@@ -35,6 +35,11 @@ export const reservationApi = {
 
   getPlanBus: async (trajetId: number): Promise<SiegePlanDTO[]> => {
     const response = await apiClient.get(`/voyageur/reservations/trajets/${trajetId}/plan-bus`);
+    return response.data;
+  },
+
+  proposerSiegesIntelligents: async (reservationId: number): Promise<PropositionGroupe> => {
+    const response = await apiClient.post('/voyageur/reservations/proposition-groupe', { reservationId });
     return response.data;
   },
 

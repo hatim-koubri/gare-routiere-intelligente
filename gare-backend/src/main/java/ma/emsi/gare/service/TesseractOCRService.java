@@ -20,161 +20,83 @@ public class TesseractOCRService {
 
     private Tesseract tesseract;
 
-    // Patterns pour plaques marocaines
-    private static final Pattern PLAQUE_PATTERN_STRICT =
-            Pattern.compile("(\\d{3,5})[-\\s]([A-Z]{1,2})[-\\s](\\d{1,2})");
-
-    private static final Pattern PLAQUE_PATTERN_FLEX =
-            Pattern.compile("(\\d{3,5})\\s*[-\\s]\\s*([A-Z]{1,2})\\s*[-\\s]\\s*(\\d{1,2})");
-
-    private static final Pattern PLAQUE_PATTERN_DIRECT =
-            Pattern.compile("(\\d{3,6}[-\\s][A-Z]{1,3}[-\\s]\\d{1,3})");
-
-    private static final Pattern PLAQUE_PATTERN_NO_SEP =
-            Pattern.compile("(\\d{3,5})([A-Z]{1,2})(\\d{1,2})");
+    private static final Pattern PLAQUE_PATTERN = Pattern.compile("(\\d{1,5})[-\\s]?([A-Z])[-\\s]?(\\d{1,3})");
 
     @PostConstruct
     public void init() {
+
         tesseract = new Tesseract();
+
         tesseract.setDatapath(tessDataPath);
-        tesseract.setLanguage("fra+eng");
-        tesseract.setPageSegMode(7);      // Single text line
-        tesseract.setOcrEngineMode(3);     // LSTM + Legacy
-        tesseract.setVariable("tessedit_char_whitelist",
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- ");
-        log.info("Tesseract initialisé avec datapath: {}", tessDataPath);
+
+        tesseract.setLanguage("eng");
+
+        tesseract.setPageSegMode(7);
+
+        tesseract.setOcrEngineMode(1);
+
+        tesseract.setVariable(
+                "tessedit_char_whitelist",
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-");
+
+        tesseract.setVariable(
+                "user_defined_dpi",
+                "300");
+
+        log.info(
+                "Tesseract initialisé : {}",
+                tessDataPath);
     }
 
-    // =============================================
-    // Extraction matricule via Tesseract
-    // =============================================
-    public String extraireMatricule(BufferedImage image) {
-        try {
-            String texteOCR = tesseract.doOCR(image);
-            log.info("Texte OCR brut: '{}'", texteOCR);
+    public String extraireMatricule(
+            BufferedImage image) {
 
-            // Passe 1 : essayer avec le texte brut (uniquement mis en majuscule + nettoyage spéciaux)
-            String texteSimple = texteOCR
+        try {
+
+            String texteOCR = tesseract.doOCR(image);
+
+            log.info(
+                    "OCR brut : '{}'",
+                    texteOCR);
+
+            String texte = texteOCR
                     .toUpperCase()
                     .replaceAll("[^A-Z0-9\\-\\s]", "")
                     .replaceAll("\\s+", " ")
                     .trim();
-            log.info("Texte brut nettoyé: '{}'", texteSimple);
 
-            String matricule = extraireAvecPatterns(texteSimple);
-            if (matricule != null) {
-                log.info("Matricule extrait (passe 1): '{}'", matricule);
+            log.info(
+                    "OCR nettoyé : '{}'",
+                    texte);
+
+            Matcher matcher = PLAQUE_PATTERN.matcher(texte);
+
+            if (matcher.find()) {
+
+                String matricule = matcher.group(1)
+                        + "-"
+                        + matcher.group(2)
+                        + "-"
+                        + matcher.group(3);
+
+                log.info(
+                        "Matricule détecté : {}",
+                        matricule);
+
                 return matricule;
             }
 
-            // Passe 2 : appliquer les corrections de confusion OCR (lettre → chiffre)
-            String texteCorrige = texteSimple
-                    .replace("O", "0")
-                    .replace("I", "1")
-                    .replace("L", "1")
-                    .replace("S", "5")
-                    .replace("B", "8")
-                    .replace("G", "6")
-                    .replace("Z", "2");
-            log.info("Texte corrigé: '{}'", texteCorrige);
+            log.warn("Aucun matricule détecté");
 
-            matricule = extraireAvecPatterns(texteCorrige);
-            if (matricule != null) {
-                log.info("Matricule extrait (passe 2): '{}'", matricule);
-                return matricule;
-            }
-
-            // Passe 3 : supprimer les mots parasites (marques, modèles…) et réessayer
-            String textePropre = texteCorrige
-                    .replaceAll("VOYAGEUR|EXPRESS|TOURING|SCANIA|CTM|BUS", "")
-                    .replaceAll("\\s+", " ")
-                    .trim();
-            log.info("Texte nettoyé: '{}'", textePropre);
-
-            matricule = extraireAvecPatterns(textePropre);
-            if (matricule != null) {
-                log.info("Matricule extrait (passe 3): '{}'", matricule);
-                return matricule;
-            }
-
-            // Fallback avec validation
-            return fallbackExtraction(textePropre);
+            return null;
 
         } catch (TesseractException e) {
-            log.error("Erreur Tesseract: {}", e.getMessage());
+
+            log.error(
+                    "Erreur Tesseract : {}",
+                    e.getMessage());
+
             return null;
         }
-    }
-
-    // ===== Extraction avec tous les patterns =====
-    private String extraireAvecPatterns(String texte) {
-        // Pattern direct (déjà formaté)
-        Matcher directMatcher = PLAQUE_PATTERN_DIRECT.matcher(texte);
-        if (directMatcher.find()) {
-            String matricule = directMatcher.group(1).replaceAll("\\s+", "-");
-            log.debug("Match direct: {}", matricule);
-            return matricule;
-        }
-
-        // Pattern strict (chiffres-lettre-chiffres)
-        Matcher strictMatcher = PLAQUE_PATTERN_STRICT.matcher(texte);
-        if (strictMatcher.find()) {
-            String matricule = strictMatcher.group(1) + "-" +
-                    strictMatcher.group(2) + "-" +
-                    strictMatcher.group(3);
-            log.debug("Match strict: {}", matricule);
-            return matricule;
-        }
-
-        // Pattern flexible (espaces variés)
-        Matcher flexMatcher = PLAQUE_PATTERN_FLEX.matcher(texte);
-        if (flexMatcher.find()) {
-            String matricule = flexMatcher.group(1) + "-" +
-                    flexMatcher.group(2) + "-" +
-                    flexMatcher.group(3);
-            log.debug("Match flexible: {}", matricule);
-            return matricule;
-        }
-
-        // Pattern sans séparateur (ex: 331A26)
-        Matcher noSepMatcher = PLAQUE_PATTERN_NO_SEP.matcher(texte);
-        if (noSepMatcher.find()) {
-            String matricule = noSepMatcher.group(1) + "-" +
-                    noSepMatcher.group(2) + "-" +
-                    noSepMatcher.group(3);
-            log.debug("Match sans séparateur: {}", matricule);
-            return matricule;
-        }
-
-        return null;
-    }
-
-    // ===== Fallback avec validation =====
-    private String fallbackExtraction(String texte) {
-        if (texte == null || texte.isEmpty()) {
-            log.warn("Texte vide pour fallback");
-            return null;
-        }
-
-        // Ne garder que chiffres et lettres
-        String fallback = texte.replaceAll("[^A-Z0-9]", "");
-
-        // Validation longueur (plaque marocaine = 6 à 9 caractères)
-        if (fallback.length() < 5 || fallback.length() > 10) {
-            log.warn("Longueur invalide pour fallback: {} caractères", fallback.length());
-            return null;
-        }
-
-        // Essayer de formatter automatiquement
-        // Format: chiffres + lettre(s) + chiffres
-        Matcher matcher = Pattern.compile("(\\d{3,5})([A-Z]{1,2})(\\d{1,2})").matcher(fallback);
-        if (matcher.find()) {
-            String formate = matcher.group(1) + "-" + matcher.group(2) + "-" + matcher.group(3);
-            log.warn("Fallback formaté: {} → {}", fallback, formate);
-            return formate;
-        }
-
-        log.warn("Fallback non formatable: {}", fallback);
-        return fallback.length() <= 12 ? fallback : fallback.substring(0, 12);
     }
 }

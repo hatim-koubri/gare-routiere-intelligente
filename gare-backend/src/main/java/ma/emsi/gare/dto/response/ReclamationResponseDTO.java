@@ -29,4 +29,7 @@ public class ReclamationResponseDTO {
 
     private Long reservationId;
     private String trajetInfo;
+
+    private Long compagnieId;
+    private String compagnieNom;
 }

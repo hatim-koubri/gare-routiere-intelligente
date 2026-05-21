@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import ma.emsi.gare.dto.request.CreerReclamationRequest;
 import ma.emsi.gare.dto.response.ReclamationResponseDTO;
 import ma.emsi.gare.entity.Bagage;
+import ma.emsi.gare.entity.Compagnie;
 import ma.emsi.gare.entity.Reclamation;
 import ma.emsi.gare.entity.Reservation;
 import ma.emsi.gare.entity.Voyageur;
 import ma.emsi.gare.enums.StatutTicket;
 import ma.emsi.gare.enums.TypeReclamation;
 import ma.emsi.gare.repository.BagageRepository;
+import ma.emsi.gare.repository.CompagnieRepository;
 import ma.emsi.gare.repository.ReclamationRepository;
 import ma.emsi.gare.repository.ReservationRepository;
 import ma.emsi.gare.repository.TicketRepository;
@@ -29,12 +31,17 @@ public class VoyageurReclamationService {
     private final ReservationRepository reservationRepository;
     private final TicketRepository ticketRepository;
     private final BagageRepository bagageRepository;
+    private final CompagnieRepository compagnieRepository;
     private final WebSocketNotificationService webSocketNotificationService;
+    private final ResponsableNotificationHelper responsableNotificationHelper;
 
     @Transactional
     public ReclamationResponseDTO creer(Long voyageurId, CreerReclamationRequest request) {
         Voyageur voyageur = voyageurRepository.findById(voyageurId)
                 .orElseThrow(() -> new IllegalArgumentException("Voyageur introuvable"));
+
+        boolean isServiceOuAutre = request.getType() == TypeReclamation.SERVICE_CLIENT
+                || request.getType() == TypeReclamation.AUTRE;
 
         Reservation reservation = null;
         if (request.getReservationId() != null) {
@@ -44,7 +51,7 @@ public class VoyageurReclamationService {
             boolean isBagageClaim = request.getType() == TypeReclamation.BAGAGE_PERDU
                     || request.getType() == TypeReclamation.BAGAGE_ENDOMMAGE;
 
-            if (!isBagageClaim) {
+            if (!isBagageClaim && !isServiceOuAutre) {
                 boolean aTicketUtilise = ticketRepository.findByReservationId(reservation.getId())
                         .stream().anyMatch(t -> t.getStatut() == StatutTicket.UTILISE);
                 if (!aTicketUtilise) {
@@ -52,6 +59,12 @@ public class VoyageurReclamationService {
                             "Vous devez avoir voyagé pour faire une réclamation (ticket scanné par le chauffeur)");
                 }
             }
+        }
+
+        Compagnie compagnie = null;
+        if (isServiceOuAutre && request.getCompagnieId() != null) {
+            compagnie = compagnieRepository.findById(request.getCompagnieId())
+                    .orElseThrow(() -> new IllegalArgumentException("Compagnie introuvable"));
         }
 
         if (request.getCodeBagage() != null && !request.getCodeBagage().isBlank()) {
@@ -74,6 +87,7 @@ public class VoyageurReclamationService {
         reclamation.setDescription(request.getDescription());
         reclamation.setVoyageur(voyageur);
         reclamation.setReservation(reservation);
+        reclamation.setCompagnie(compagnie);
 
         reclamation = reclamationRepository.save(reclamation);
 
@@ -85,6 +99,25 @@ public class VoyageurReclamationService {
                 "voyageurNom", voyageur.getNom() + " " + voyageur.getPrenom(),
                 "dateCreation", reclamation.getDateCreation().toString()
         ));
+
+        // Notifier les responsables de la compagnie
+        if (compagnie != null) {
+            Map<String, Object> notifData = new java.util.HashMap<>();
+            notifData.put("id", reclamation.getId());
+            notifData.put("type", reclamation.getType().name());
+            notifData.put("sujet", reclamation.getSujet());
+            notifData.put("voyageurNom", voyageur.getNom() + " " + voyageur.getPrenom());
+            notifData.put("dateCreation", reclamation.getDateCreation().toString());
+            if (reservation != null) {
+                notifData.put("trajetInfo", reservation.getTrajet().getLigne().getVilleDepart()
+                        + " → " + reservation.getTrajet().getLigne().getVilleArrivee());
+            }
+            responsableNotificationHelper.notifierResponsables(
+                    compagnie.getId(), "NOUVELLE_RECLAMATION", ma.emsi.gare.enums.TypeNotification.NOUVELLE_RECLAMATION,
+                    "📝 Nouvelle réclamation — " + reclamation.getSujet() + " par " + voyageur.getPrenom() + " " + voyageur.getNom(),
+                    notifData
+            );
+        }
 
         return toDTO(reclamation);
     }
@@ -121,6 +154,10 @@ public class VoyageurReclamationService {
             dto.setReservationId(r.getReservation().getId());
             dto.setTrajetInfo(r.getReservation().getTrajet().getLigne().getVilleDepart()
                     + " → " + r.getReservation().getTrajet().getLigne().getVilleArrivee());
+        }
+        if (r.getCompagnie() != null) {
+            dto.setCompagnieId(r.getCompagnie().getId());
+            dto.setCompagnieNom(r.getCompagnie().getNom());
         }
         return dto;
     }

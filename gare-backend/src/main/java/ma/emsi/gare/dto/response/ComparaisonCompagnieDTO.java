@@ -11,4 +11,5 @@ public class ComparaisonCompagnieDTO {
     private double prix;
     private long dureeMinutes;
     private double note;
+    private int nbAvis;
 }

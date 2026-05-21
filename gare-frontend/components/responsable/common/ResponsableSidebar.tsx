@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {
-  LayoutDashboard, Bus, LogOut, ChevronRight, Home, Building2, Route, MapPin, Users, Tag, MessageSquare, Settings, Bell, Megaphone, ArrowLeftRight, ArmchairIcon, BarChart3, Mail
+  LayoutDashboard, Bus, LogOut, ChevronRight, Home, MapPin, Route, Users, Tag, MessageSquare, Settings, Bell, Megaphone, ArrowLeftRight, BarChart3, Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const menu = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/fr/responsable' },
@@ -21,7 +22,6 @@ const menu = [
   { name: 'Tarification', icon: Settings, href: '/fr/responsable/tarification' },
   { name: 'Notifications', icon: Bell, href: '/fr/responsable/notifications' },
   { name: 'Annonces', icon: Megaphone, href: '/fr/responsable/annonces' },
-  { name: 'Sièges', icon: ArmchairIcon, href: '/fr/responsable/sieges' },
   { name: 'Analytics', icon: BarChart3, href: '/fr/responsable/analytics' },
   { name: 'Messages', icon: Mail, href: '/fr/responsable/messages' },
 ];
@@ -41,34 +41,70 @@ export default function ResponsableSidebar() {
     : 'R';
 
   return (
-    <div className="w-64 min-w-[256px] h-screen bg-white flex flex-col flex-shrink-0 border-r border-slate-100 shadow-sm transition-colors duration-300">
-      
-      {/* Brand - RIHLA Style */}
-      <div className="flex items-center gap-3 px-6 py-8 border-b border-slate-50">
-        <div>
-          <p className="font-black text-blue-600 text-3xl tracking-tighter uppercase italic leading-none">
-            RIHLA
-          </p>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Espace Responsable</p>
+    <div className="w-64 min-w-[256px] h-screen bg-white dark:bg-zinc-900 flex flex-col flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 shadow-sm transition-colors duration-300">
+
+      {/* Brand - RIHLA */}
+      <div className="flex flex-col gap-1 px-6 py-8 border-b border-slate-100 dark:border-zinc-800">
+        <Link href="/" className="group flex items-center outline-none">
+          <motion.div
+            initial="initial"
+            whileHover="hover"
+            className="flex items-center"
+          >
+            {"RIHLA".split("").map((letter, index) => (
+              <motion.span
+                key={index}
+                variants={{
+                  initial: { y: 0, filter: "blur(0px)" },
+                  hover: {
+                    y: -2,
+                    filter: "blur(0.1px)",
+                    transition: {
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 10,
+                      delay: index * 0.03
+                    }
+                  }
+                }}
+                className={cn(
+                  "text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-orange-400 via-orange-500 to-red-500",
+                  "drop-shadow-[0_2px_8px_rgba(249,115,22,0.3)] select-none"
+                )}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </motion.div>
+        </Link>
+        <div className="flex items-center gap-2 mt-1 ml-0.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-orange-400 to-red-500" />
+          <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em]">Espace Responsable</p>
         </div>
       </div>
 
-      {/* Responsable User Card */}
+      {/* User Card */}
       {user && (
-        <div className="mx-4 my-6 bg-slate-50 rounded-2xl p-4 flex items-center gap-3 border border-slate-100/50">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-            <span className="text-white text-xs font-bold">{initials}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-800 truncate leading-none mb-1">{user.prenom} {user.nom}</p>
-            <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest">Responsable</p>
+        <div className="mx-4 my-6">
+          <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-500 to-red-500 rounded-2xl p-4 shadow-lg shadow-orange-200/50 dark:shadow-none">
+            <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full" />
+            <div className="absolute -bottom-2 -left-2 w-10 h-10 bg-white/5 rounded-full" />
+            <div className="relative flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 border border-white/30">
+                <span className="text-white text-sm font-bold">{initials}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{user.prenom} {user.nom}</p>
+                <p className="text-[11px] text-orange-100 truncate">Responsable Compagnie</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Nav Section */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto custom-scrollbar">
-        <p className="px-3 py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Menu Principal</p>
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-1 space-y-0.5 overflow-y-auto custom-scrollbar">
+        <p className="px-3 py-3 text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em]">Menu Principal</p>
         {menu.map((item) => {
           const active = isActive(item.href);
           return (
@@ -78,36 +114,36 @@ export default function ResponsableSidebar() {
               className={cn(
                 "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 active
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+                  ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md shadow-orange-200/60 dark:shadow-none"
+                  : "text-slate-600 dark:text-zinc-400 hover:bg-orange-50 dark:hover:bg-zinc-800 hover:text-orange-600 dark:hover:text-orange-400"
               )}
             >
-              <item.icon 
-                size={17} 
+              <item.icon
+                size={17}
                 className={cn(
-                    "flex-shrink-0 transition-transform group-hover:scale-110",
-                    active ? "text-white" : "text-slate-400 group-hover:text-blue-500"
-                )} 
+                  "flex-shrink-0 transition-transform group-hover:scale-110",
+                  active ? "text-white" : "text-slate-400 dark:text-zinc-500 group-hover:text-orange-500"
+                )}
               />
               <span className="flex-1 truncate">{item.name}</span>
-              {active && <ChevronRight size={14} className="text-white/60" />}
+              {active && <div className="w-1.5 h-1.5 rounded-full bg-white/70" />}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer Actions */}
-      <div className="px-3 pb-6 pt-3 border-t border-slate-50 space-y-1">
-        <Link 
-            href="/" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all"
+      {/* Footer */}
+      <div className="px-3 pb-6 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-1">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-zinc-400 hover:bg-orange-50 dark:hover:bg-zinc-800 hover:text-orange-600 dark:hover:text-orange-400 transition-all"
         >
-          <Home size={17} className="text-slate-400" />
+          <Home size={17} className="text-slate-400 dark:text-zinc-500" />
           <span>Tableau de Bord Public</span>
         </Link>
-        <button 
-            onClick={handleLogout} 
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-50 transition-all"
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
         >
           <LogOut size={17} />
           <span>Déconnexion</span>

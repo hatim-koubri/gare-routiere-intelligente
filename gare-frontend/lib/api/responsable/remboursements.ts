@@ -3,13 +3,8 @@ import { Remboursement } from '@/types';
 
 export const responsableRemboursementApi = {
   getAll: async (): Promise<Remboursement[]> => {
-    try {
-      const response = await apiClient.get('/responsable/remboursements');
-      return response.data;
-    } catch (error) {
-      console.error('Erreur getAll Remboursements:', error);
-      return [];
-    }
+    const response = await apiClient.get('/responsable/remboursements');
+    return response.data;
   },
 
   getById: async (id: number): Promise<Remboursement> => {

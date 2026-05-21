@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/Button';
-import { Bus, ArrowUpRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { ArrowUpRight } from 'lucide-react';
 
 export default function Footer() {
 
@@ -16,11 +18,41 @@ export default function Footer() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
                     {/* Left Brand Column */}
                     <div className="lg:col-span-5">
-                        <a href="/" className="font-bold text-3xl tracking-tight text-foreground flex items-center gap-3 mb-8">
-                            <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20">
-                                <Bus size={28} />
-                            </div>
-                            Gare Routière 4.0
+                        <a href="/" className="relative group flex items-center shrink-0 cursor-pointer outline-none mb-8">
+                            <motion.div
+                                initial="initial"
+                                whileHover="hover"
+                                className="flex items-center"
+                            >
+                                {"RIHLA".split("").map((letter, index) => (
+                                    <motion.span
+                                        key={index}
+                                        variants={{
+                                            initial: { y: 0, filter: "blur(0px)" },
+                                            hover: {
+                                                y: -3,
+                                                filter: "blur(0.2px)",
+                                                transition: {
+                                                    type: "spring",
+                                                    stiffness: 400,
+                                                    damping: 10,
+                                                    delay: index * 0.03
+                                                }
+                                            }
+                                        }}
+                                        className={cn(
+                                            "text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-orange-500 via-orange-600 to-red-600",
+                                            "drop-shadow-[0_2px_4px_rgba(249,115,22,0.3)] select-none"
+                                        )}
+                                    >
+                                        {letter}
+                                    </motion.span>
+                                ))}
+                            </motion.div>
+                            <motion.div
+                                className="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            />
+                            <div className="absolute -inset-x-4 -inset-y-2 bg-orange-500/0 group-hover:bg-orange-500/[0.03] rounded-2xl transition-all duration-500 blur-xl -z-10" />
                         </a>
                         <p className="text-muted-foreground text-lg leading-relaxed max-w-sm mb-10">
                             La première plateforme intelligente du Maroc dédiée à la gestion des gares routières et à l'expérience passager.
@@ -72,7 +104,7 @@ export default function Footer() {
                                 placeholder="Votre email..." 
                                 className="bg-background border border-border text-foreground placeholder-muted-foreground rounded-lg px-4 py-3 w-full focus:outline-none focus:border-primary transition-colors"
                             />
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shrink-0 shadow-lg shadow-orange-500/20">
+                            <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold shrink-0 shadow-md border-0">
                                 S'abonner
                             </Button>
                         </form>

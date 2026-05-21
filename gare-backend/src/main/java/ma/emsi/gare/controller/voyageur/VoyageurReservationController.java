@@ -136,6 +136,20 @@ public class VoyageurReservationController {
         return reservationService.proposerSiegesGroupe(trajetId, nombrePlaces);
     }
 
+    @PostMapping("/proposition-groupe")
+    public ResponseEntity<?> proposerSiegesIntelligents(
+            @RequestBody Map<String, Object> body
+    ) {
+        try {
+            Long reservationId = ((Number) body.get("reservationId")).longValue();
+            var result = reservationService.proposerSiegesIntelligents(reservationId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Erreur proposition intelligente: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/verrouiller")
     public void verrouillerSieges(@RequestBody VerrouillageSiegeRequest request) {
         reservationService.verrouillerSieges(request);

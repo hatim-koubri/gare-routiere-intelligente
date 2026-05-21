@@ -108,9 +108,9 @@ const SlideButton = forwardRef<HTMLButtonElement, SlideButtonProps>(
     )
 
     const handleDragStart = useCallback(() => {
-      if (completed) return
+      if (completed || props.disabled) return
       setIsDragging(true)
-    }, [completed])
+    }, [completed, props.disabled])
 
     const handleDragEnd = () => {
       if (completed) return
@@ -118,6 +118,10 @@ const SlideButton = forwardRef<HTMLButtonElement, SlideButtonProps>(
 
       const progress = dragProgress.get()
       if (progress >= DRAG_THRESHOLD) {
+        if (props.disabled) {
+          dragX.set(0)
+          return
+        }
         setCompleted(true)
         handleSubmit()
       } else {

@@ -51,6 +51,8 @@ public class AuthService {
             case VOYAGEUR -> {
                 Voyageur v = new Voyageur();
                 setBaseFields(v, r, hashedPwd, Role.VOYAGEUR);
+                v.setSexe(r.getSexe());
+                v.setAccepteSexeOppose(true);
                 yield v;
             }
             case CHAUFFEUR -> {
@@ -81,6 +83,13 @@ public class AuthService {
     }
 
     private AuthResponse buildResponse(String token, User user) {
+        Long compagnieId = null;
+        if (user instanceof ResponsableCompagnie) {
+            ResponsableCompagnie rc = (ResponsableCompagnie) user;
+            if (rc.getCompagnie() != null) {
+                compagnieId = rc.getCompagnie().getId();
+            }
+        }
         return AuthResponse.builder()
                 .token(token)
                 .email(user.getEmail())
@@ -88,6 +97,8 @@ public class AuthService {
                 .prenom(user.getPrenom())
                 .role(user.getRole())
                 .userId(user.getId())
+                .sexe(user instanceof Voyageur ? ((Voyageur) user).getSexe() : null)
+                .compagnieId(compagnieId)
                 .build();
     }
 }

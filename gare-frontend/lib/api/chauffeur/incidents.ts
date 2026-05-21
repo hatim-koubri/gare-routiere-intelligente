@@ -1,5 +1,8 @@
 import { IncidentRequest, IncidentResponse } from '@/types';
 
+// URL de base du backend - utilise la variable d'environnement (définie dans .env ou docker-compose)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+
 export const chauffeurIncidentApi = {
   // Signaler un incident - Version directe sans proxy
   signalerIncident: async (data: IncidentRequest): Promise<IncidentResponse> => {
@@ -10,7 +13,7 @@ export const chauffeurIncidentApi = {
     console.log('Description:', data.description);
     console.log('Token présent:', !!token);
     
-    const response = await fetch('http://localhost:8080/api/chauffeur/incidents', {
+    const response = await fetch(`${API_BASE}/chauffeur/incidents`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

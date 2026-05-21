@@ -1,7 +1,7 @@
 // components/ui/flight-card.tsx
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bus, Clock, MapPin, Users, ArrowRight, ShieldCheck, Sparkles, Navigation } from "lucide-react";
+import { Bus, Clock, MapPin, Users, ArrowRight, ShieldCheck, Sparkles, Navigation, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface FlightCardProps {
@@ -12,6 +12,7 @@ export interface FlightCardProps {
   departureCode: string;
   departureCity: string;
   departureTime: string;
+  departureDate?: string;
   arrivalCode: string;
   arrivalCity: string;
   arrivalTime: string;
@@ -39,6 +40,7 @@ export const FlightCard = React.forwardRef<HTMLDivElement, FlightCardProps>(
       departureCode,
       departureCity,
       departureTime,
+      departureDate,
       arrivalCode,
       arrivalCity,
       arrivalTime,
@@ -119,6 +121,12 @@ export const FlightCard = React.forwardRef<HTMLDivElement, FlightCardProps>(
                     <p className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white italic tracking-tighter leading-none mb-1">{departureCode}</p>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{departureCity}</p>
                     <p className="text-lg font-black text-orange-500 italic mt-2">{departureTime}</p>
+                    {departureDate && (
+                      <p className="text-[9px] font-bold text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Calendar size={10} />
+                        {departureDate}
+                      </p>
+                    )}
                 </div>
 
                 {/* Animated Connector */}

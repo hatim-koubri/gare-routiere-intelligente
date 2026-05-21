@@ -12,6 +12,7 @@ import ma.emsi.gare.enums.TypeNotification;
 import ma.emsi.gare.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ma.emsi.gare.enums.Role;
 import ma.emsi.gare.enums.StatutStationnement;
 
 import java.time.LocalDateTime;
@@ -36,6 +37,8 @@ public class ChauffeurService {
     private final ChauffeurRepository chauffeurRepository;
     private final JalonValideRepository jalonValideRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final ResponsableNotificationHelper responsableNotificationHelper;
+    private final UserRepository userRepository;
 
     // =========================================================
     // Helper: Notifier tous les voyageurs d'un trajet
@@ -162,13 +165,12 @@ public class ChauffeurService {
 
         // Notifier le voyageur
         String voyageurEmail = ticket.getReservation().getVoyageur().getEmail();
-        Map<String, Object> ticketData = Map.of(
-                "trajetId", ticket.getReservation().getTrajet().getId(),
-                "nomPassager", ticket.getNomPassager(),
-                "prenomPassager", ticket.getPrenomPassager(),
-                "numeroSiege", ticket.getNumeroSiege(),
-                "categorie", ticket.getCategorieTarifaire().name()
-        );
+        Map<String, Object> ticketData = new HashMap<>();
+        ticketData.put("trajetId", ticket.getReservation().getTrajet().getId());
+        ticketData.put("nomPassager", ticket.getNomPassager());
+        ticketData.put("prenomPassager", ticket.getPrenomPassager());
+        ticketData.put("numeroSiege", ticket.getNumeroSiege() != null ? ticket.getNumeroSiege() : "N/A");
+        ticketData.put("categorie", ticket.getCategorieTarifaire().name());
         String payloadJson;
         try {
             payloadJson = objectMapper.writeValueAsString(ticketData);
@@ -179,6 +181,26 @@ public class ChauffeurService {
         notifOfflineService.creerNotification(voyageurEmail, TypeNotification.TICKET_VALIDE,
                 "🎫 Embarquement confirmé — " + ticket.getPrenomPassager() + " " + ticket.getNomPassager() + " — Siège " + ticket.getNumeroSiege(),
                 payloadJson);
+
+        // Envoyer une demande d'avis après embarquement
+        Map<String, Object> avisData = new HashMap<>();
+        avisData.put("trajetId", ticket.getReservation().getTrajet().getId());
+        avisData.put("villeDepart", ticket.getReservation().getTrajet().getLigne().getVilleDepart());
+        avisData.put("villeArrivee", ticket.getReservation().getTrajet().getLigne().getVilleArrivee());
+        avisData.put("compagnieNom", ticket.getReservation().getTrajet().getLigne().getCompagnie().getNom());
+        avisData.put("nomPassager", ticket.getNomPassager());
+        avisData.put("prenomPassager", ticket.getPrenomPassager());
+        String avisPayloadJson;
+        try {
+            avisPayloadJson = objectMapper.writeValueAsString(avisData);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            avisPayloadJson = "{\"trajetId\":" + ticket.getReservation().getTrajet().getId() + "}";
+        }
+        notifOfflineService.creerNotification(voyageurEmail, TypeNotification.DEMANDE_AVIS,
+                "✍️ Merci d'avoir voyagé avec " + ticket.getReservation().getTrajet().getLigne().getCompagnie().getNom()
+                        + " ! Donnez votre avis sur le trajet " + ticket.getReservation().getTrajet().getLigne().getVilleDepart()
+                        + " → " + ticket.getReservation().getTrajet().getLigne().getVilleArrivee(),
+                avisPayloadJson);
 
         log.info("Ticket {} validé pour {} — voyageur notifié {}", qrCode, ticket.getNomPassager(), voyageurEmail);
 
@@ -447,12 +469,18 @@ public class ChauffeurService {
                 .ifPresent(stat -> {
                     stat.setHeureSortie(LocalDateTime.now());
                     stat.setStatut(StatutStationnement.TERMINE);
+
+                    long dureeMin = ChronoUnit.MINUTES.between(stat.getHeureEntree(), stat.getHeureSortie());
+                    stat.setDureeMinutes((int) dureeMin);
+
                     if (stat.getQuai() != null) {
-                        double heures = ChronoUnit.MINUTES.between(
-                                stat.getHeureEntree(),
-                                stat.getHeureSortie()) / 60.0;
+                        double heures = dureeMin / 60.0;
                         stat.setMontantFacture(Math.round(
                                 heures * stat.getQuai().getTarifHoraire() * 100.0) / 100.0);
+                        // Libérer le quai du stationnement
+                        Quai q = stat.getQuai();
+                        q.setDisponible(true);
+                        quaiRepository.save(q);
                     }
                     stationnementRepo.save(stat);
                 });
@@ -463,10 +491,29 @@ public class ChauffeurService {
             quaiRepository.save(quai);
         }
 
-        wsNotifService.notifierAdmins("TRAJET_DEPART", Map.of(
-                "trajetId", trajetId,
-                "bus", trajet.getBus().getMatricule()
-        ));
+        String quaiLib = trajet.getQuai() != null
+                ? String.valueOf(trajet.getQuai().getNumero()) : "N/A";
+
+        Map<String, Object> adminNotifData = new HashMap<>();
+        adminNotifData.put("trajetId", trajetId);
+        adminNotifData.put("bus", trajet.getBus().getMatricule());
+        adminNotifData.put("quaiLibere", quaiLib);
+        adminNotifData.put("compagnie", trajet.getLigne().getCompagnie().getNom());
+        wsNotifService.notifierAdmins("TRAJET_DEPART", adminNotifData);
+
+        // — Notifier les admins offline (quai libéré)
+        try {
+            String adminMsg = "🚍 Quai " + quaiLib + " libéré — Bus " + trajet.getBus().getMatricule()
+                    + " (" + trajet.getLigne().getCompagnie().getNom() + ") a démarré vers " + trajet.getLigne().getVilleArrivee();
+            String adminPayload = objectMapper.writeValueAsString(adminNotifData);
+            List<User> admins = userRepository.findByRole(Role.ADMIN);
+            for (User admin : admins) {
+                notifOfflineService.creerNotification(
+                        admin.getEmail(), TypeNotification.QUAI_LIBERE, adminMsg, adminPayload);
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de notifier les admins offline: {}", e.getMessage());
+        }
 
         // Notifier chaque voyageur ayant une réservation sur ce trajet
         List<Reservation> reservations = trajet.getReservations();
@@ -513,6 +560,18 @@ public class ChauffeurService {
             log.info("Départ déclenché pour trajet {} — {} voyageurs notifiés", trajetId, voyageurEmails.size());
         } catch (Exception e) {
             log.error("Erreur lors de la notification des voyageurs pour le trajet {}: {}", trajetId, e.getMessage());
+        }
+
+        // Notifier les responsables de la compagnie
+        try {
+            Long compagnieId = trajet.getLigne().getCompagnie().getId();
+            responsableNotificationHelper.notifierResponsables(
+                    compagnieId, "TRAJET_DEMARRE", TypeNotification.TRAJET_DEMARRE,
+                    "🚌 Trajet démarré — " + villeDepart + " → " + villeArrivee + " par " + compagnieNom + " (" + trajet.getBus().getMatricule() + ")",
+                    notifData
+            );
+        } catch (Exception e) {
+            log.error("Erreur notification responsables pour trajet {}: {}", trajetId, e.getMessage());
         }
 
         return Map.of(
@@ -595,6 +654,27 @@ public class ChauffeurService {
                 "type", request.getType(),
                 "description", request.getDescription()
         ));
+
+        // Notifier les responsables de la compagnie
+        try {
+            Long compagnieId = trajet.getLigne().getCompagnie().getId();
+            Map<String, Object> incidentNotifData = new HashMap<>();
+            incidentNotifData.put("trajetId", request.getTrajetId());
+            incidentNotifData.put("type", request.getType());
+            incidentNotifData.put("description", request.getDescription());
+            incidentNotifData.put("chauffeurNom", chauffeur.getPrenom() + " " + chauffeur.getNom());
+            incidentNotifData.put("villeDepart", trajet.getLigne().getVilleDepart());
+            incidentNotifData.put("villeArrivee", trajet.getLigne().getVilleArrivee());
+            responsableNotificationHelper.notifierResponsables(
+                    compagnieId, "INCIDENT_SIGNALE", TypeNotification.INCIDENT_SIGNALE,
+                    "⚠️ Incident signalé — " + request.getType() + " sur le trajet "
+                            + trajet.getLigne().getVilleDepart() + " → " + trajet.getLigne().getVilleArrivee()
+                            + " : " + request.getDescription(),
+                    incidentNotifData
+            );
+        } catch (Exception e) {
+            log.error("Erreur notification responsables pour incident: {}", e.getMessage());
+        }
 
         log.info("Incident signalé: {} pour trajet {} par chauffeur {}",
                 request.getType(), request.getTrajetId(), chauffeurId);

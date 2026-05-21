@@ -36,7 +36,7 @@ export default function CompagnieDetailPage() {
     if (id) {
       Promise.all([
         compagnieApi.getById(id).then(d => setCompagnie(d as unknown as CompagnieDetail)),
-        avisApi.getByCompagnie(id).then(d => setAvis(d as unknown as AvisItem[])),
+        avisApi.getByCompagnie(id).then(d => setAvis(d as unknown as AvisItem[])).catch(() => {}),
       ]).finally(() => setLoading(false));
     }
   }, [id]);
@@ -161,8 +161,8 @@ export default function CompagnieDetailPage() {
                 {[
                     { icon: <Bus />, label: 'Flotte Moderne', value: compagnie.nombreBus + ' Bus', desc: 'Véhicules climatisés' },
                     { icon: <MapPin />, label: 'Présence', value: compagnie.nombreQuais + ' Quais', desc: 'Points d\'embarquement' },
-                    { icon: <Clock />, label: 'Ponctualité', value: '98%', desc: 'Taux de respect' },
-                    { icon: <Award />, label: 'Qualité', value: displayReviewsCount + ' Avis', desc: 'Statut partenaire' },
+                    { icon: <Clock />, label: 'Ponctualité', value: avis.length > 0 ? (avgPonctualite * 20).toFixed(0) + '%' : '—', desc: 'Note moyenne' },
+                    { icon: <Award />, label: 'Qualité', value: displayReviewsCount + ' Avis', desc: 'Note ' + noteGlobale.toFixed(1) + '/5' },
                 ].map((s, i) => (
                     <motion.div 
                         key={i}
@@ -202,7 +202,7 @@ export default function CompagnieDetailPage() {
                                     {compagnie.description || "Cette compagnie s'engage à fournir un service de transport de haute qualité sur l'ensemble du territoire national. Avec une attention particulière portée au confort des passagers et à la sécurité des trajets, chaque voyage devient une expérience sereine."}
                                 </p>
                                 <p>
-                                    La ponctualité et la rigueur sont au cœur de nos opérations quotidiennes. Nos équipes travaillent sans relâche pour assurer une liaison parfaite entre les villes marocaines, tout en maintenant des standards d'hygiène et de confort irréprochables dans chaque véhicule.
+                                    Avec {displayReviewsCount} avis certifiés et une note moyenne de {noteGlobale.toFixed(1)}/5, {compagnie.nom} s'engage à offrir un service de qualité. Les voyageurs attribuent en moyenne {avgConfort.toFixed(1)}/5 pour le confort, {avgPonctualite.toFixed(1)}/5 pour la ponctualité et {avgChauffeur.toFixed(1)}/5 pour le service chauffeur.
                                 </p>
                             </div>
                         </div>

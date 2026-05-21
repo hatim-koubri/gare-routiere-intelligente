@@ -14,10 +14,10 @@ export function useNotificationSync() {
   const [syncing, setSyncing] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const isVoyageur = user?.role === 'VOYAGEUR';
+  const isLoggedIn = !!user;
 
   const sync = useCallback(async () => {
-    if (!isVoyageur) return;
+    if (!isLoggedIn) return;
     setSyncing(true);
     try {
       const response = await notificationsApi.syncNotifications();
@@ -30,10 +30,10 @@ export function useNotificationSync() {
     } finally {
       setSyncing(false);
     }
-  }, [isVoyageur]);
+  }, [isLoggedIn]);
 
   const loadHistory = useCallback(async () => {
-    if (!isVoyageur) return;
+    if (!isLoggedIn) return;
     try {
       const history = await notificationsApi.getHistory();
       setNotifications(history);
@@ -41,10 +41,10 @@ export function useNotificationSync() {
     } catch {
       /* silently fail */
     }
-  }, [isVoyageur]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!isVoyageur) {
+    if (!isLoggedIn) {
       setNotifications([]);
       setPendingCount(0);
       setLoaded(false);
@@ -53,13 +53,13 @@ export function useNotificationSync() {
 
     notificationsApi.getPendingCount().then(setPendingCount).catch(() => {});
     loadHistory();
-  }, [isVoyageur, loadHistory]);
+  }, [isLoggedIn, loadHistory]);
 
   useEffect(() => {
-    if (lastMessage && isVoyageur) {
+    if (lastMessage && isLoggedIn) {
       sync();
     }
-  }, [lastMessage, isVoyageur, sync]);
+  }, [lastMessage, isLoggedIn, sync]);
 
   useEffect(() => {
     const handleOnline = () => {

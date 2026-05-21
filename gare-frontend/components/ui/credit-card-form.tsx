@@ -279,17 +279,11 @@ const CreditCardForm = ({
         }
         .wrap {
           width: 100%;
-          max-width: 1000px;
+          max-width: 400px;
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 24px;
+          grid-template-columns: 1fr;
+          gap: 20px;
           align-items: start;
-        }
-        @media (max-width: 920px) {
-          .wrap {
-            grid-template-columns: 1fr;
-            gap: 20px;
-          }
         }
         * {
           box-sizing: border-box;

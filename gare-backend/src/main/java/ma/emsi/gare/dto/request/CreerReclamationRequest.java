@@ -10,5 +10,6 @@ public class CreerReclamationRequest {
     private String description;
     private Long reservationId;
     private String codeBagage;
+    private Long compagnieId;
 }
 

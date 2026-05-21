@@ -47,6 +47,10 @@ public class Reclamation {
     @JoinColumn(name = "reservation_id")
     private Reservation reservation;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "compagnie_id")
+    private Compagnie compagnie;
+
     @PrePersist
     protected void onCreate() {
         dateCreation = LocalDateTime.now();

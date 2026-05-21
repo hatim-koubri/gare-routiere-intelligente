@@ -17,6 +17,16 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true, exclude = {"reservations", "avis"})
 public class Voyageur extends User {
 
+    // HOMME ou FEMME
+    @Column(name = "sexe")
+    private String sexe = "HOMME";
+
+    @Column(name = "accepte_sexe_oppose")
+    private boolean accepteSexeOppose = true;
+
+    @Column(name = "preference_position")
+    private String preferencePosition;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "categorie_tarifaire")
     private CategorieTarifaire categorieTarifaire = CategorieTarifaire.NORMAL;

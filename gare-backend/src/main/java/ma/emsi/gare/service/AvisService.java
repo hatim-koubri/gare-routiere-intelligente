@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,19 +64,22 @@ public class AvisService {
         return toDto(avis);
     }
 
+    @Transactional(readOnly = true)
     public List<AvisResponseDTO> getAvisByCompagnie(Long compagnieId) {
         return avisRepository.findByTrajetBusCompagnieIdOrderByDateAvisDesc(compagnieId)
-                .stream().map(this::toDto).toList();
+                .stream().map(this::toDto).filter(Objects::nonNull).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<AvisResponseDTO> getAvisByTrajet(Long trajetId) {
         return avisRepository.findByTrajetIdOrderByDateAvisDesc(trajetId)
-                .stream().map(this::toDto).toList();
+                .stream().map(this::toDto).filter(Objects::nonNull).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<AvisResponseDTO> getMesAvis(Long voyageurId) {
         return avisRepository.findByVoyageurIdOrderByDateAvisDesc(voyageurId)
-                .stream().map(this::toDto).toList();
+                .stream().map(this::toDto).filter(Objects::nonNull).toList();
     }
 
     public List<Map<String, Object>> getTrajetsEligibles(Long voyageurId) {
@@ -109,22 +113,38 @@ public class AvisService {
     }
 
     private AvisResponseDTO toDto(Avis avis) {
-        AvisResponseDTO dto = new AvisResponseDTO();
-        dto.setId(avis.getId());
-        dto.setVoyageurId(avis.getVoyageur().getId());
-        dto.setVoyageurNom(avis.getVoyageur().getNom());
-        dto.setVoyageurPrenom(avis.getVoyageur().getPrenom());
-        dto.setTrajetId(avis.getTrajet().getId());
-        dto.setNotePonctualite(avis.getNotePonctualite());
-        dto.setNoteConfort(avis.getNoteConfort());
-        dto.setNoteChauffeur(avis.getNoteChauffeur());
-        dto.setCommentaire(avis.getCommentaire());
-        dto.setDateAvis(avis.getDateAvis());
-        dto.setCompagnieId(avis.getTrajet().getBus().getCompagnie().getId());
-        dto.setCompagnieNom(avis.getTrajet().getBus().getCompagnie().getNom());
-        dto.setVilleDepart(avis.getTrajet().getLigne().getVilleDepart());
-        dto.setVilleArrivee(avis.getTrajet().getLigne().getVilleArrivee());
-        dto.setDateDepart(avis.getTrajet().getDateDepart() != null ? avis.getTrajet().getDateDepart().toString() : null);
-        return dto;
+        try {
+            if (
+                avis.getVoyageur() == null
+                || (avis.getVoyageur().getNom() == null && avis.getVoyageur().getPrenom() == null)
+            ) return null;
+
+            AvisResponseDTO dto = new AvisResponseDTO();
+            dto.setId(avis.getId());
+            dto.setVoyageurId(avis.getVoyageur().getId());
+            dto.setVoyageurNom(avis.getVoyageur().getNom());
+            dto.setVoyageurPrenom(avis.getVoyageur().getPrenom());
+
+            if (avis.getTrajet() != null) {
+                dto.setTrajetId(avis.getTrajet().getId());
+                dto.setDateDepart(avis.getTrajet().getDateDepart() != null ? avis.getTrajet().getDateDepart().toString() : null);
+                if (avis.getTrajet().getLigne() != null) {
+                    dto.setVilleDepart(avis.getTrajet().getLigne().getVilleDepart());
+                    dto.setVilleArrivee(avis.getTrajet().getLigne().getVilleArrivee());
+                }
+                if (avis.getTrajet().getBus() != null && avis.getTrajet().getBus().getCompagnie() != null) {
+                    dto.setCompagnieId(avis.getTrajet().getBus().getCompagnie().getId());
+                    dto.setCompagnieNom(avis.getTrajet().getBus().getCompagnie().getNom());
+                }
+            }
+            dto.setNotePonctualite(avis.getNotePonctualite());
+            dto.setNoteConfort(avis.getNoteConfort());
+            dto.setNoteChauffeur(avis.getNoteChauffeur());
+            dto.setCommentaire(avis.getCommentaire());
+            dto.setDateAvis(avis.getDateAvis());
+            return dto;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

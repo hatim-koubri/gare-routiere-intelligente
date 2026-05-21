@@ -5,9 +5,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   timeout: 10000,
 });
 
@@ -16,7 +13,7 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = storage.getToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.set('Authorization', `Bearer ${token}`);
     }
     console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
@@ -47,7 +44,10 @@ apiClient.interceptors.response.use(
       }
     }
     
-    console.error('[API Response Error]', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const hasData = errorData && typeof errorData === 'object' && Object.keys(errorData).length > 0;
+    const errorMsg = hasData ? errorData : error.message;
+    console.error('[API Response Error]', errorMsg);
     return Promise.reject(error);
   }
 );

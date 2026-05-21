@@ -12,6 +12,8 @@ public class ReservationRequest {
     // MOI_SEUL, MOI_PLUS_ACCOMPAGNANTS, AUTRE_PERSONNE
     private String typeGroupe;
 
+    private boolean accepteSeparer;
+
     private List<MembreGroupeRequest> membres;
 
     private String codePromo;

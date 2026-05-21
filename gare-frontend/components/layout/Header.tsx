@@ -9,7 +9,6 @@ import { useScroll } from '@/components/ui/use-scroll';
 import { Bus, Sun, Moon, ChevronDown, History, FileText, HelpCircle, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle as CurtainThemeToggle } from '@/components/ui/curtain-theme-toggle';
@@ -19,7 +18,6 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const scrolled = useScroll(10);
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const locale = 'fr';
 
@@ -92,11 +90,49 @@ export default function Header() {
         )}
       >
         {/* Brand */}
-        <button onClick={handleHomeClick} className="font-bold text-xl tracking-tight flex items-center gap-2 shrink-0 text-orange-500 hover:text-orange-600 transition-colors cursor-pointer">
-          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-            <Bus className="w-5 h-5 text-orange-500" />
-          </div>
-          Gare Routière
+        <button 
+          onClick={handleHomeClick} 
+          className="relative group flex items-center shrink-0 cursor-pointer outline-none"
+        >
+          <motion.div
+            initial="initial"
+            whileHover="hover"
+            className="flex items-center"
+          >
+            {"RIHLA".split("").map((letter, index) => (
+              <motion.span
+                key={index}
+                variants={{
+                  initial: { y: 0, filter: "blur(0px)" },
+                  hover: { 
+                    y: -3, 
+                    filter: "blur(0.2px)",
+                    transition: {
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 10,
+                      delay: index * 0.03
+                    }
+                  }
+                }}
+                className={cn(
+                  "text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-orange-500 via-orange-600 to-red-600",
+                  "drop-shadow-[0_2px_4px_rgba(249,115,22,0.3)] select-none"
+                )}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </motion.div>
+          
+          {/* Decorative elements for 'WOW' effect */}
+          <motion.div 
+            className="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            layoutId="brand-underline"
+          />
+          
+          {/* Subtle glow behind the logo */}
+          <div className="absolute -inset-x-4 -inset-y-2 bg-orange-500/0 group-hover:bg-orange-500/[0.03] rounded-2xl transition-all duration-500 blur-xl -z-10" />
         </button>
           
         {/* Navigation Menu Desktop */}

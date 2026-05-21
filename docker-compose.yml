@@ -1,7 +1,41 @@
 version: '3.8'
 
 services:
+  # ============================================================
+  # Frontend Next.js (mode développement)
+  # Accessible sur : http://localhost:3000
+  # ============================================================
+  frontend:
+    build:
+      context: ./gare-frontend  # Dossier contenant le Dockerfile
+      dockerfile: Dockerfile
+    container_name: gare_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # http://localhost:3000 sur votre PC
+    volumes:
+      # Monter le code source pour le hot-reload en développement
+      - ./gare-frontend:/app
+      # Exclure node_modules du montage (utiliser celui installé dans le container)
+      - /app/node_modules
+      # Exclure .next du montage pour éviter les conflits de build
+      - /app/.next
+    environment:
+      # URL du backend Spring Boot (vue depuis le NAVIGATEUR, pas depuis Docker)
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api
+      - NEXT_PUBLIC_WS_URL=http://localhost:8080
+      # Nécessaire pour que Next.js accepte les connexions externes
+      - HOSTNAME=0.0.0.0
+    extra_hosts:
+      # Permet au container d'accéder à "localhost" du PC hôte
+      # Nécessaire pour communiquer avec le backend qui tourne sur votre machine
+      - "host.docker.internal:host-gateway"
+    networks:
+      - gare_network
+
+  # ============================================================
   # Base de données MySQL
+  # ============================================================
   mysql:
     image: mysql:8.0
     container_name: gare_mysql
@@ -23,7 +57,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # phpMyAdmin (interface web)
+  # ============================================================
+  # phpMyAdmin (interface web pour MySQL)
+  # Accessible sur : http://localhost:8081
+  # ============================================================
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: gare_phpmyadmin

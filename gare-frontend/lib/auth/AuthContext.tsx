@@ -38,12 +38,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
-    const loggedUser = {
+    const loggedUser: User = {
       id: response.userId,
       email: response.email,
       nom: response.nom,
       prenom: response.prenom,
       role: response.role,
+      sexe: response.sexe,
+      compagnieId: response.compagnieId,
     };
     setUser(loggedUser);
     // La navigation est gérée par le composant appelant (LoginForm)
@@ -51,12 +53,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (data: any) => {
     const response = await authApi.register(data);
-    const newUser = {
+    const newUser: User = {
       id: response.userId,
       email: response.email,
       nom: response.nom,
       prenom: response.prenom,
       role: response.role,
+      sexe: response.sexe,
+      compagnieId: response.compagnieId,
     };
     setUser(newUser);
     // La navigation est gérée par le composant appelant (RegisterForm)

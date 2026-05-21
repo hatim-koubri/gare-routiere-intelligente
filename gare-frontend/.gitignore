@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+# .env.local contient les secrets personnels → jamais versionné
+.env.local
+.env.*.local
+# .env est versionné : contient les valeurs par défaut pour Docker (pas de secrets)
+# !.env  ← décommenter si git ne pousse pas le .env
 
 # vercel
 .vercel

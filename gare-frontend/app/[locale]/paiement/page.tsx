@@ -97,7 +97,9 @@ export default function PaiementPage() {
 
   const fetchPrixDepuisAPI = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/voyageur/reservations/${id}`, {
+      // URL du backend via variable d'environnement (compatible Docker)
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const response = await fetch(`${API_BASE}/voyageur/reservations/${id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
       const data = await response.json();
@@ -110,7 +112,9 @@ export default function PaiementPage() {
 
   const fetchTrajetInfo = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/voyageur/reservations/${id}`, {
+      // URL du backend via variable d'environnement (compatible Docker)
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const response = await fetch(`${API_BASE}/voyageur/reservations/${id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
       const data = await response.json();

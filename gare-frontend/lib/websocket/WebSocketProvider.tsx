@@ -31,8 +31,11 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) return;
 
+    // URL du WebSocket - utilise la variable d'environnement (définie dans .env ou docker-compose)
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8080';
+
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+      webSocketFactory: () => new SockJS(`${WS_URL}/ws`),
       reconnectDelay: 5000,
       debug: (str) => console.log('[WebSocket]', str),
     });
@@ -59,6 +62,16 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         stompClient.subscribe(`/queue/voyageur/${user.email}`, (message) => {
           setLastMessage(JSON.parse(message.body));
         });
+      }
+      if (user.role === 'RESPONSABLE_COMPAGNIE') {
+        stompClient.subscribe(`/queue/responsable/${user.email}`, (message) => {
+          setLastMessage(JSON.parse(message.body));
+        });
+        if (user.compagnieId) {
+          stompClient.subscribe(`/topic/responsable/${user.compagnieId}`, (message) => {
+            setLastMessage(JSON.parse(message.body));
+          });
+        }
       }
     };
 

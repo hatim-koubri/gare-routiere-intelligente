@@ -60,3 +60,153 @@ Les systèmes classiques de gestion des gares routières présentent plusieurs l
 ## 🏗️ Architecture du système
 
 La plateforme repose sur une **architecture distribuée multicouche** :
+
+
+---
+
+## 👥 Acteurs du système
+
+| Acteur | Rôle |
+|---|---|
+| **Administrateur** | Supervision globale, gestion des quais, OCR, tableaux de bord |
+| **Voyageur** | Réservation, paiement, gestion des tickets, notifications |
+| **Chauffeur** | Consultation trajets, scan QR Code, gestion bagages, départ |
+| **Responsable Compagnie** | Gestion bus, trajets, chauffeurs, promotions, statistiques |
+| **Système OCR** | Détection automatique des plaques et attribution des quais |
+
+---
+
+## ⚙️ Systèmes Distribués implémentés
+
+- 🔗 **Communication synchrone** – API REST sécurisée par JWT + RMI pour la tarification dynamique
+- 📨 **Communication asynchrone** – Apache ActiveMQ / JMS pour les notifications
+- 🛡️ **Résilience** – Resilience4j : Retry, Circuit Breaker et Fallback
+- ⚡ **Temps réel** – WebSocket / STOMP pour les notifications push
+- 📄 **Pagination REST** – Spring Data Pageable pour les grandes collections
+
+---
+
+## 🧩 Modèle de données principal
+
+- **Utilisateur** (id, nom, prénom, email, motDePasse, rôle)
+- **Compagnie** (id, nom, email, noteMoyenne)
+- **Bus** (id, matricule, capacité, état)
+- **Ligne** (id, villeDepart, villeArrivee, active)
+- **Trajet** (id, dateDepart, dateArrivee, prix, statut)
+- **Réservation** (id, dateReservation, prixTotal, statut)
+- **Ticket** (id, qrCode, statut)
+- **Paiement** (id, montant, méthode, transactionId, confirmé)
+- **Quai** (id, numéro, occupé)
+- **StationnementOCR** (id, matriculeDetecte, heureEntree, heureSortie, montantFacture)
+
+---
+
+## 📌 Règles de gestion
+
+- 🔐 Toutes les opérations sensibles nécessitent une authentification JWT préalable.
+- 🪑 Les sièges sont verrouillés pendant **10 minutes** lors du paiement pour éviter les conflits.
+- 💸 Remboursement progressif : **75%** avant 48h, **50%** le jour même, **0%** après.
+- 🔢 Chaque ticket contient un **QR Code unique** vérifié lors de l'embarquement.
+- 🚏 Chaque compagnie dispose de **5 quais fixes** attribués automatiquement via OCR.
+- 🔄 La libération du quai se déclenche automatiquement lors de la déclaration de départ.
+
+---
+
+## 🗂️ Organisation des Sprints
+
+| Sprint | Fonctionnalités | Technologies |
+|---|---|---|
+| **Sprint 1** | Infrastructure, authentification JWT, gestion des rôles | Spring Boot, JWT, MySQL, Docker |
+| **Sprint 2** | Dashboard administrateur, gestion des quais, annonces bilingues | REST API, Next.js |
+| **Sprint 3** | Module OCR, gestion chauffeur, scan QR Code | OpenCV, YOLOv8, ActiveMQ |
+| **Sprint 4** | Réservation voyageur, choix sièges, tickets PDF | iText, WebSocket, ZXing |
+| **Sprint 5** | Paiement, dashboard financier, tarification dynamique | RMI, Resilience4j |
+| **Sprint 6** | Gestion responsable compagnie, promotions, remboursements | Spring Security, JMS |
+| **Sprint 7** | Tests, qualité SonarQube, optimisations | JUnit 5, Selenium, SonarQube |
+
+---
+
+## 📌 Structure du projet
+
+```bash
+gare-routiere-intelligente/
+│
+├── backend/                          # Spring Boot
+│   └── src/main/java/
+│       ├── controller/               # Contrôleurs REST
+│       ├── service/                  # Logique métier
+│       ├── repository/               # Spring Data JPA
+│       ├── model/                    # Entités JPA
+│       ├── dto/                      # Data Transfer Objects
+│       └── config/                   # SecurityConfig, JwtConfig, ActiveMQConfig, RmiConfig
+│   └── src/main/resources/
+│       ├── application.yml
+│       ├── messages_fr.properties
+│       └── messages_ar.properties
+│
+├── frontend/                         # Next.js + TypeScript
+│   └── src/
+│       ├── app/                      # Pages Next.js (App Router)
+│       ├── components/               # Composants réutilisables
+│       └── styles/                   # Tailwind CSS
+│
+├── docker-compose.yml                # Conteneurisation MySQL
+└── README.md
+```
+
+---
+
+## 🚀 Lancement du projet
+
+### Prérequis
+- Java 17+
+- Node.js 18+
+- Docker & Docker Compose
+- Maven
+
+### Backend
+```bash
+cd backend
+docker-compose up -d        # Démarrer MySQL
+mvn spring-boot:run         # Lancer Spring Boot
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev                 # Lancer Next.js sur http://localhost:3000
+```
+
+---
+
+## 📊 Qualité du code – SonarCloud
+
+| Métrique | Résultat |
+|---|---|
+| **Quality Gate** | ✅ Passed |
+| **Sécurité** | A – 0 problèmes ouverts |
+| **Fiabilité** | A – 0 problèmes ouverts |
+| **Maintenabilité** | A – 140 améliorations possibles |
+| **Couverture des tests** | 80.7% |
+| **Duplication** | 2.2% |
+| **Lignes de code** | ~13 000 |
+
+---
+
+## 👨‍💻 Réalisé par
+
+| Nom | Rôle |
+|---|---|
+| **KOUBRI Hatim** | Développeur Full Stack |
+| **LAYHI Rayan** | Développeur Full Stack |
+
+**Encadrant pédagogique :** Dr. Driss ESSABBAR
+**Établissement :** EMSI Marrakech – Filière Développement Digital et Systèmes d'Information
+**Année universitaire :** 2025–2026
+
+---
+
+## 🔗 Liens
+
+- 📁 **GitHub :** [gare-routiere-intelligente](https://github.com/hatim-koubri/gare-routiere-intelligente/tree/develop)

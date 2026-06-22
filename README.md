@@ -1,212 +1,261 @@
-# 🚌 Gestion Intelligente de Gare Routière (RIHLA)
+# 🚌 Projet : Gestion Intelligente de Gare Routière (RIHLA)
 
 ## 🌍 Contexte
-La transformation numérique des infrastructures de transport représente un enjeu stratégique majeur pour améliorer l'efficacité opérationnelle et l'expérience des voyageurs. Les gares routières jouent un rôle central dans l'organisation des déplacements interurbains, mais de nombreux processus restent encore partiellement manuels.
 
-Ce projet propose une **plateforme web intelligente** de gestion de gare routière, développée dans le cadre du Projet de Fin de Semestre à l'**EMSI Marrakech**, reposant sur une architecture distribuée moderne combinant **Spring Boot**, **Next.js**, **MySQL** et **Docker**.
+La gestion d'une gare routière moderne implique la coordination de plusieurs acteurs : voyageurs, chauffeurs, compagnies de transport et administrateurs. Les processus traditionnels reposent souvent sur des opérations manuelles, générant des files d'attente, des conflits de quais, un manque de traçabilité et une faible supervision des activités.
+
+Le projet **RIHLA** propose une plateforme web intelligente permettant de digitaliser et centraliser l'ensemble des opérations d'une gare routière grâce à une architecture distribuée moderne basée sur **Spring Boot**, **Next.js**, **MySQL** et **Docker**.
 
 ---
 
 ## ❗ Problématique
-Les systèmes classiques de gestion des gares routières présentent plusieurs limitations :
 
-- 🎫 Réservations manuelles au guichet engendrant de longues files d'attente.
-- 🚏 Gestion des quais complexe nécessitant une supervision humaine permanente.
-- 🔔 Absence de notifications en temps réel pour les voyageurs et chauffeurs.
-- 📋 Manque de traçabilité des réservations et des opérations.
-- 🚗 Absence d'automatisation pour la reconnaissance des bus entrants.
-- 📊 Aucun outil analytique ou tableau de bord centralisé.
-- 🔒 Problèmes de sécurité des accès et de coordination entre acteurs.
+Les systèmes traditionnels de gestion des gares routières présentent plusieurs limites :
+
+* 🎫 Réservations et billetterie encore partiellement manuelles.
+* 🚏 Difficultés d'attribution et de gestion des quais.
+* 🚌 Manque de coordination entre voyageurs, chauffeurs et compagnies.
+* 📊 Absence de supervision centralisée et de tableaux de bord décisionnels.
+* 🔒 Gestion des accès et de la sécurité insuffisante.
+* 📢 Notifications et informations non diffusées en temps réel.
+* 📝 Faible traçabilité des opérations et des réservations.
+
+Ces problèmes impactent directement la qualité du service, la productivité et l'expérience des voyageurs.
 
 ---
 
 ## 🎯 Objectifs
-- 🔐 Gérer l'**authentification sécurisée** avec JWT et contrôle d'accès basé sur les rôles (RBAC).
-- 🗺️ Gérer les **trajets, lignes, arrêts** et planifications des compagnies.
-- 🎟️ Assurer la **réservation multi-passagers** avec choix interactif des sièges.
-- 📄 Générer des **tickets PDF avec QR Code** et les envoyer par email.
-- 🚏 Automatiser l'**attribution des quais** via reconnaissance OCR des plaques.
-- 💳 Gérer les **paiements, annulations et remboursements progressifs**.
-- 🔔 Envoyer des **notifications temps réel** via WebSocket à tous les acteurs.
-- 📊 Offrir des **tableaux de bord analytiques** et financiers.
-- ⚙️ Implémenter les concepts des **systèmes distribués** : REST, RMI, ActiveMQ/JMS, Resilience4j.
+
+* 👤 Gérer les utilisateurs et les rôles (Administrateur, Voyageur, Chauffeur, Responsable Compagnie).
+* 🎫 Permettre la réservation intelligente de trajets.
+* 💺 Offrir une sélection interactive des sièges.
+* 💳 Gérer les paiements et remboursements.
+* 📄 Générer des tickets PDF avec QR Code.
+* 🚏 Automatiser l'attribution des quais.
+* 🚍 Gérer les bus, lignes et trajets.
+* 🔍 Intégrer un module OCR pour la reconnaissance des plaques d'immatriculation.
+* 🔔 Envoyer des notifications temps réel.
+* 📊 Fournir des dashboards statistiques et financiers.
+* 🧪 Assurer la qualité logicielle avec tests automatisés et SonarQube.
 
 ---
 
 ## 🛠️ Technologies utilisées
 
-| Technologie | Version | Rôle |
-|---|---|---|
-| **Spring Boot** | 3.4.4 | Backend REST, sécurité, services métier |
-| **Next.js** | 14+ | Frontend SSR, interface utilisateur |
-| **TypeScript** | 5+ | Typage fort côté frontend |
-| **MySQL** | 8.0 | Base de données relationnelle |
-| **Docker** | 25+ | Conteneurisation des services |
-| **Spring Security + JWT** | 6+ | Authentification stateless |
-| **ActiveMQ** | 5.18 | Broker de messages JMS asynchrones |
-| **Resilience4j** | 2+ | Retry, Circuit Breaker, Fallback |
-| **RMI Java** | — | Invocation de méthodes distantes (tarification) |
-| **WebSocket / STOMP** | — | Notifications temps réel |
-| **OpenCV + YOLOv8** | — | Reconnaissance OCR des plaques |
-| **iText** | 7+ | Génération de tickets PDF |
-| **ZXing** | — | Génération et scan de QR Code |
-| **JUnit 5 + Mockito** | 5.10 | Tests unitaires backend |
-| **Selenium** | 4+ | Tests d'automatisation UI |
-| **SonarQube / SonarCloud** | — | Analyse qualité et sécurité du code |
-| **Tailwind CSS** | 3+ | Design et mise en page frontend |
+### Backend
+
+* Java 21
+* Spring Boot
+* Spring Security
+* JWT Authentication
+* Spring Data JPA
+* Hibernate
+* Maven
+
+### Frontend
+
+* Next.js
+* TypeScript
+* Tailwind CSS
+* Axios
+
+### Base de données
+
+* MySQL
+
+### Systèmes Distribués
+
+* ActiveMQ (JMS)
+* Java RMI
+* WebSocket + STOMP
+* Resilience4j
+
+### Qualité Logicielle
+
+* JUnit 5
+* Mockito
+* Selenium
+* SonarQube
+* SonarCloud
+
+### Déploiement
+
+* Docker
 
 ---
 
-## 🏗️ Architecture du système
+## 🧩 Modules principaux
 
-La plateforme repose sur une **architecture distribuée multicouche** :
+### 👨‍💼 Administration
 
+* Gestion des utilisateurs
+* Gestion des compagnies
+* Gestion des quais
+* Dashboard financier
+* Gestion OCR
+* Messagerie interne
+* Gestion des annonces
 
----
+### 🧳 Voyageur
 
-## 👥 Acteurs du système
+* Recherche de trajets
+* Réservation multi-passagers
+* Sélection des sièges
+* Paiement sécurisé
+* Gestion des tickets
+* Historique des réservations
+* Notifications temps réel
 
-| Acteur | Rôle |
-|---|---|
-| **Administrateur** | Supervision globale, gestion des quais, OCR, tableaux de bord |
-| **Voyageur** | Réservation, paiement, gestion des tickets, notifications |
-| **Chauffeur** | Consultation trajets, scan QR Code, gestion bagages, départ |
-| **Responsable Compagnie** | Gestion bus, trajets, chauffeurs, promotions, statistiques |
-| **Système OCR** | Détection automatique des plaques et attribution des quais |
+### 🚌 Chauffeur
 
----
+* Consultation des trajets
+* Scan QR Code
+* Validation d'embarquement
+* Gestion des bagages
+* Déclaration des départs
+* Signalement des incidents
 
-## ⚙️ Systèmes Distribués implémentés
+### 🏢 Responsable Compagnie
 
-- 🔗 **Communication synchrone** – API REST sécurisée par JWT + RMI pour la tarification dynamique
-- 📨 **Communication asynchrone** – Apache ActiveMQ / JMS pour les notifications
-- 🛡️ **Résilience** – Resilience4j : Retry, Circuit Breaker et Fallback
-- ⚡ **Temps réel** – WebSocket / STOMP pour les notifications push
-- 📄 **Pagination REST** – Spring Data Pageable pour les grandes collections
+* Gestion des bus
+* Gestion des lignes
+* Gestion des chauffeurs
+* Planification des trajets
+* Tarification dynamique
+* Gestion des promotions
+* Suivi des statistiques
 
----
+### 🤖 Module OCR
 
-## 🧩 Modèle de données principal
-
-- **Utilisateur** (id, nom, prénom, email, motDePasse, rôle)
-- **Compagnie** (id, nom, email, noteMoyenne)
-- **Bus** (id, matricule, capacité, état)
-- **Ligne** (id, villeDepart, villeArrivee, active)
-- **Trajet** (id, dateDepart, dateArrivee, prix, statut)
-- **Réservation** (id, dateReservation, prixTotal, statut)
-- **Ticket** (id, qrCode, statut)
-- **Paiement** (id, montant, méthode, transactionId, confirmé)
-- **Quai** (id, numéro, occupé)
-- **StationnementOCR** (id, matriculeDetecte, heureEntree, heureSortie, montantFacture)
-
----
-
-## 📌 Règles de gestion
-
-- 🔐 Toutes les opérations sensibles nécessitent une authentification JWT préalable.
-- 🪑 Les sièges sont verrouillés pendant **10 minutes** lors du paiement pour éviter les conflits.
-- 💸 Remboursement progressif : **75%** avant 48h, **50%** le jour même, **0%** après.
-- 🔢 Chaque ticket contient un **QR Code unique** vérifié lors de l'embarquement.
-- 🚏 Chaque compagnie dispose de **5 quais fixes** attribués automatiquement via OCR.
-- 🔄 La libération du quai se déclenche automatiquement lors de la déclaration de départ.
+* Détection automatique des plaques
+* Identification des bus
+* Attribution intelligente des quais
+* Facturation du stationnement
 
 ---
 
-## 🗂️ Organisation des Sprints
+## 📌 Fonctionnalités avancées
 
-| Sprint | Fonctionnalités | Technologies |
-|---|---|---|
-| **Sprint 1** | Infrastructure, authentification JWT, gestion des rôles | Spring Boot, JWT, MySQL, Docker |
-| **Sprint 2** | Dashboard administrateur, gestion des quais, annonces bilingues | REST API, Next.js |
-| **Sprint 3** | Module OCR, gestion chauffeur, scan QR Code | OpenCV, YOLOv8, ActiveMQ |
-| **Sprint 4** | Réservation voyageur, choix sièges, tickets PDF | iText, WebSocket, ZXing |
-| **Sprint 5** | Paiement, dashboard financier, tarification dynamique | RMI, Resilience4j |
-| **Sprint 6** | Gestion responsable compagnie, promotions, remboursements | Spring Security, JMS |
-| **Sprint 7** | Tests, qualité SonarQube, optimisations | JUnit 5, Selenium, SonarQube |
+* 🔐 Authentification sécurisée JWT + RBAC
+* 📄 Génération automatique de tickets PDF
+* 📱 QR Code pour validation d'embarquement
+* 🔔 Notifications temps réel via WebSocket
+* 📬 Notifications asynchrones via ActiveMQ
+* 💰 Tarification dynamique via RMI
+* 🛡️ Résilience avec Retry, Circuit Breaker et Fallback
+* 📑 Pagination REST
+* 🌐 Support multilingue (Français / Arabe)
 
 ---
 
-## 📌 Structure du projet
+## 🏗️ Architecture du projet
 
 ```bash
 gare-routiere-intelligente/
 │
-├── backend/                          # Spring Boot
-│   └── src/main/java/
-│       ├── controller/               # Contrôleurs REST
-│       ├── service/                  # Logique métier
-│       ├── repository/               # Spring Data JPA
-│       ├── model/                    # Entités JPA
-│       ├── dto/                      # Data Transfer Objects
-│       └── config/                   # SecurityConfig, JwtConfig, ActiveMQConfig, RmiConfig
-│   └── src/main/resources/
-│       ├── application.yml
-│       ├── messages_fr.properties
-│       └── messages_ar.properties
+├── backend/
+│   ├── controller/
+│   ├── service/
+│   ├── repository/
+│   ├── entity/
+│   ├── dto/
+│   ├── security/
+│   ├── websocket/
+│   ├── activemq/
+│   ├── rmi/
+│   └── config/
 │
-├── frontend/                         # Next.js + TypeScript
-│   └── src/
-│       ├── app/                      # Pages Next.js (App Router)
-│       ├── components/               # Composants réutilisables
-│       └── styles/                   # Tailwind CSS
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── services/
+│   ├── hooks/
+│   ├── lib/
+│   └── public/
 │
-├── docker-compose.yml                # Conteneurisation MySQL
+├── docker/
+│
+├── docs/
+│
+├── screenshots/
+│
+├── docker-compose.yml
+├── pom.xml
 └── README.md
 ```
 
 ---
 
-## 🚀 Lancement du projet
+## 📊 Qualité Logicielle
 
-### Prérequis
-- Java 17+
-- Node.js 18+
-- Docker & Docker Compose
-- Maven
+Le projet applique une démarche qualité complète :
 
-### Backend
-```bash
-cd backend
-docker-compose up -d        # Démarrer MySQL
-mvn spring-boot:run         # Lancer Spring Boot
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev                 # Lancer Next.js sur http://localhost:3000
-```
+* ✅ Tests unitaires avec JUnit 5
+* ✅ Mocking avec Mockito
+* ✅ Tests UI automatisés avec Selenium
+* ✅ Analyse statique avec SonarQube
+* ✅ Analyse continue avec SonarCloud
+* ✅ Respect des principes SOLID
+* ✅ Architecture multicouche
 
 ---
 
-## 📊 Qualité du code – SonarCloud
+## 📌 Diagrammes UML
 
-| Métrique | Résultat |
-|---|---|
-| **Quality Gate** | ✅ Passed |
-| **Sécurité** | A – 0 problèmes ouverts |
-| **Fiabilité** | A – 0 problèmes ouverts |
-| **Maintenabilité** | A – 140 améliorations possibles |
-| **Couverture des tests** | 80.7% |
-| **Duplication** | 2.2% |
-| **Lignes de code** | ~13 000 |
+### Cas d'utilisation
 
----
+*(Ajouter les images UML ici)*
 
-## 👨‍💻 Réalisé par
+### Diagramme de classes
 
-| Nom | Rôle |
-|---|---|
-| **KOUBRI Hatim** | Développeur Full Stack |
-| **LAYHI Rayan** | Développeur Full Stack |
+*(Ajouter l'image ici)*
 
-**Encadrant pédagogique :** Dr. Driss ESSABBAR
-**Établissement :** EMSI Marrakech – Filière Développement Digital et Systèmes d'Information
-**Année universitaire :** 2025–2026
+### Diagrammes de séquence
+
+*(Ajouter les images ici)*
+
+### BPMN
+
+*(Ajouter l'image ici)*
 
 ---
 
-## 🔗 Liens
+## 📸 Captures d'écran
 
-- 📁 **GitHub :** [gare-routiere-intelligente](https://github.com/hatim-koubri/gare-routiere-intelligente/tree/develop)
+### Dashboard Administrateur
+
+*(Ajouter capture)*
+
+### Réservation Voyageur
+
+*(Ajouter capture)*
+
+### Module OCR
+
+*(Ajouter capture)*
+
+### Validation QR Code
+
+*(Ajouter capture)*
+
+### Dashboard Responsable Compagnie
+
+*(Ajouter capture)*
+
+---
+
+## 🎥 Vidéo Démonstrative
+
+Ajouter ici le lien GitHub Video ou YouTube.
+
+
+---
+
+## 🚀 Perspectives
+
+* 📱 Application mobile Android / iOS
+* 🤖 Intelligence artificielle pour la prédiction des flux voyageurs
+* 📍 Géolocalisation temps réel des bus
+* ☁️ Migration vers une architecture Microservices
+* 💳 Intégration de solutions de paiement réelles
+* 📈 Analyses prédictives avancées

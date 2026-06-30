@@ -202,51 +202,19 @@ Le projet applique une démarche qualité complète :
 
 ## 📌 Diagrammes UML
 
-### Cas d'utilisation
-
-*(Ajouter les images UML ici)*
 
 ### Diagramme de classes
 
-*(Ajouter l'image ici)*
-
-### Diagrammes de séquence
-
-*(Ajouter les images ici)*
-
-### BPMN
-
-*(Ajouter l'image ici)*
-
+<img width="1500" height="812" alt="class-diagram" src="https://github.com/user-attachments/assets/8a72b638-a86e-4346-9de1-7150a57c5205" />
 ---
 
-## 📸 Captures d'écran
-
-### Dashboard Administrateur
-
-*(Ajouter capture)*
-
-### Réservation Voyageur
-
-*(Ajouter capture)*
-
-### Module OCR
-
-*(Ajouter capture)*
-
-### Validation QR Code
-
-*(Ajouter capture)*
-
-### Dashboard Responsable Compagnie
-
-*(Ajouter capture)*
-
----
 
 ## 🎥 Vidéo Démonstrative
 
-Ajouter ici le lien GitHub Video ou YouTube.
+
+
+https://github.com/user-attachments/assets/61558e8e-49b4-4865-b7a1-4330a8a3686e
+
 
 
 ---

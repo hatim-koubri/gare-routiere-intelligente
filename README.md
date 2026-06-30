@@ -8,6 +8,18 @@ Le projet **RIHLA** propose une plateforme web intelligente permettant de digita
 
 ---
 
+## 👥 Équipe de développement
+
+Ce projet a été réalisé par :
+
+| Nom | Rôle |
+|-----|------|
+| **Hatim KOUBRI** | Développeur Full Stack |
+| **Rayan LAYHI** | Développeur Full Stack |
+
+---
+
+
 ## ❗ Problématique
 
 Les systèmes traditionnels de gestion des gares routières présentent plusieurs limites :

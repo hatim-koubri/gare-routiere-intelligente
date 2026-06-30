@@ -206,6 +206,8 @@ Le projet applique une démarche qualité complète :
 ### Diagramme de classes
 
 <img width="1500" height="812" alt="class-diagram" src="https://github.com/user-attachments/assets/8a72b638-a86e-4346-9de1-7150a57c5205" />
+
+
 ---
 
 
